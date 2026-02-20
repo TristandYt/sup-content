@@ -24,12 +24,16 @@ const Register = ({ onSwitch }) => {
     setPseudo(''); setEmail(''); setPass(''); setConfirm(''); setError('');
     onSwitch();
   };
+    const handleSocialRegister = (platform) => {
+    console.log(`Inscription via ${platform}...`);
+  };
 
   return (
     <div style={{ padding: '10px 0' }}>
       <div style={{ height: '24px', marginBottom: '10px' }}>
         {error && <p style={{ color: '#ff4444', fontSize: '13px', margin: 0, textAlign: 'center' }}>{error}</p>}
       </div>
+      <h2 style={{ textAlign: 'center', color: '#b208b4', marginBottom: '25px' }}>Rejoindre la communauté</h2>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
         <input 
@@ -75,13 +79,32 @@ const Register = ({ onSwitch }) => {
         </div>
 
         <button onClick={handleRegister} style={styles.btnPrimary}>
-          S'INSCRIRE
+          CRÉER MON COMPTE
         </button>
       </div>
+       {/* --- SÉPARATEUR --- */}
+        <div style={styles.dividerContainer}>
+          <div style={styles.line}></div>
+          <span style={styles.dividerText}>Ou s'inscrire avec</span>
+          <div style={styles.line}></div>
+        </div>
 
-      <button onClick={handleSwitch} style={styles.btnLink}>
-        Déjà un compte ? Se connecter
-      </button>
+        {/* --- BOUTONS SOCIAUX --- */}
+        <div style={styles.socialGroup}>
+          <button onClick={() => handleSocialRegister('Google')} style={styles.socialBtn} title="Google">
+            <img src="https://www.svgrepo.com/show/475656/google-color.svg" width="22" alt="Google" />
+          </button>
+          <button onClick={() => handleSocialRegister('GitHub')} style={styles.socialBtn} title="GitHub">
+            <img src="https://www.svgrepo.com/show/512317/github-142.svg" width="22" alt="GitHub" style={{ filter: 'invert(1)' }} />
+          </button>
+          <button onClick={() => handleSocialRegister('Meta')} style={styles.socialBtn} title="Meta">
+            <img src="https://www.svgrepo.com/show/448224/facebook.svg" width="26" alt="Meta" />
+          </button>
+        </div>
+
+      <p style={styles.footerText}>
+          Déjà inscrit ? <span onClick={onSwitch} style={styles.link}>Se connecter</span>
+        </p>
     </div>
   );
 };
@@ -102,7 +125,24 @@ const styles = {
   btnLink: {
     width: '100%', background: 'none', border: 'none', color: '#94a3b8',
     marginTop: '20px', fontSize: '14px', textDecoration: 'underline'
-  }
+  },
+   footerText: { textAlign: 'center', color: '#94a3b8', marginTop: '20px' },
+   link: { color: '#b208b4', cursor: 'pointer', fontWeight: 'bold' },
+  dividerContainer: { display: 'flex', alignItems: 'center', margin: '25px 0' },
+  line: { flex: 1, height: '1px', background: '#334155' },
+  dividerText: { color: '#94a3b8', margin: '0 10px', fontSize: '13px' },
+  socialGroup: { display: 'flex', justifyContent: 'center', gap: '15px' },
+  socialBtn: { 
+    display: 'flex', 
+    alignItems: 'center', 
+    justifyContent: 'center', 
+    width: '55px', 
+    height: '55px', 
+    borderRadius: '12px', 
+    border: '1px solid #334155', 
+    background: '#1a1a2e', 
+    cursor: 'pointer' 
+    }
 };
 
 export default Register;

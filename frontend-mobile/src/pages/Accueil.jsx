@@ -1,17 +1,20 @@
 import React, { useState, useEffect } from 'react';
 
 const Accueil = ({ onLogin }) => {
-  const [items, setItems] = useState([]); // Stockera les œuvres de l'API
+  const [items, setItems] = useState([]); 
   const [loading, setLoading] = useState(true);
 
-  // Simulation de l'appel API (IGDB / TMDB via ton Backend)
   useEffect(() => {
-    // Ici, tu feras : fetch('http://ton-api-node.com/media')
     setTimeout(() => {
       setItems([
-        { id: 1, title: "The Witcher 3", type: "Jeu", img: "https://via.placeholder.com/150x200/4e1860/ffffff?text=Game+1" },
-        { id: 2, title: "God of War", type: "jeu", img: "https://via.placeholder.com/150x200/4e1860/ffffff?text=Movie+1" },
-        { id: 3, title: "Pokemon Soleil", type: "jeu", img: "https://via.placeholder.com/150x200/4e1860/ffffff?text=Book+1" },
+        { id: 1, title: "Super Mario 64", genre: "Jeu", note: "4.9", img: "https://via.placeholder.com/400/4e1860/fff?text=Mario+64" },
+        { id: 2, title: "Pokémon Soleil", genre: "Jeu", note: "4.3", img: "https://via.placeholder.com/400/4e1860/fff?text=Pokemon+Soleil" },
+        { id: 3, title: "Fortnite", genre: "Jeu", note: "1.0", img: "https://via.placeholder.com/400/4e1860/fff?text=Fortnite" },
+        { id: 4, title: "Elden Ring", genre: "Jeu", note: "4.9", img: "https://via.placeholder.com/400/4e1860/fff?text=Elden+Ring" },
+        { id: 5, title: "Halo: Combat Evolved", genre: "Jeu", note: "4.7", img: "https://via.placeholder.com/400/4e1860/fff?text=Halo" },
+        { id: 6, title: "Grand Theft Auto: San Andreas", genre: "Jeu", note: "4.8", img: "https://via.placeholder.com/400/4e1860/fff?text=GTA+SA" },
+        { id: 7, title: "Final Fantasy VII", genre: "Jeu", note: "4.9", img: "https://via.placeholder.com/400/4e1860/fff?text=FFVII" },
+        { id: 8, title: "Metal Gear Solid", genre: "Jeu", note: "4.8", img: "https://via.placeholder.com/400/4e1860/fff?text=MGS" }
       ]);
       setLoading(false);
     }, 1000);
@@ -26,7 +29,6 @@ const Accueil = ({ onLogin }) => {
         </button>
       </div>
 
-      {/* Barre de recherche (Point 2.2.8) */}
       <input 
         type="text" 
         placeholder="Rechercher un média..." 
@@ -41,8 +43,12 @@ const Accueil = ({ onLogin }) => {
             <div key={item.id} style={styles.card}>
               <img src={item.img} alt={item.title} style={styles.img} />
               <div style={{ padding: '8px' }}>
-                <span style={styles.badge}>{item.type}</span>
+                <span style={styles.badge}>{item.genre}</span>
                 <p style={styles.itemTitle}>{item.title}</p>
+                <p style={{ color: '#b208b4', fontSize: '18px', fontWeight: 'bold', margin: '5px 0 0 0' }}>
+                   ⭐ {item.note}/5
+                </p>
+
               </div>
             </div>
           ))}
@@ -69,8 +75,8 @@ const styles = {
     border: '1px solid rgba(255,255,255,0.05)'
   },
   img: { width: '100%', height: '180px', objectFit: 'cover' },
-  badge: { fontSize: '10px', background: '#4e1860', padding: '2px 6px', borderRadius: '4px', textTransform: 'uppercase' },
-  itemTitle: { margin: '5px 0 0 0', fontSize: '14px', fontWeight: 'bold', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }
+  badge: { fontSize: '10px', background: '#4e1860', padding: '2px 6px', borderRadius: '4px', textTransform: 'uppercase', color: 'white' },
+  itemTitle: { margin: '5px 0 0 0', fontSize: '14px', fontWeight: 'bold', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', color: 'white' }
 };
 
 export default Accueil;
