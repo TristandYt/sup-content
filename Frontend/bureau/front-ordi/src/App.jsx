@@ -1,50 +1,86 @@
 import React, { useState } from 'react';
+import Accueil from './pages/Accueil';
 import Login from './pages/Login';
 import Register from './pages/Register';
-import Accueil from './pages/Accueil';
+import Utilisateur from './pages/utilisateur';
 
-export default function App() {
-  const [currentPage, setCurrentPage] = useState('home');
+const App = () => {
+  // États pour la navigation et l'utilisateur
+  const [currentPage, setCurrentPage] = useState('accueil');
+  const [user, setUser] = useState(null); // null = déconnecté
 
-  const navBtnStyle = { 
-    background: '#b208b4', border: 'none', color: 'white', padding: '12px 25px', 
-    borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', fontSize: '14px'
+  // Fonction pour gérer la connexion ET la mise à jour du profil
+  const handleLoginSuccess = (userData) => {
+    setUser(userData);
+    // On ne redirige vers l'accueil que si on vient de la page login ou register
+    if (currentPage === 'login' || currentPage === 'register') {
+      setCurrentPage('accueil');
+    }
+  };
+
+  // Fonction pour la déconnexion
+  const handleLogout = () => {
+    setUser(null);
+    setCurrentPage('accueil');
   };
 
   return (
-    <div style={{ backgroundColor: '#1a1a2e', minHeight: '100vh', color: 'white', fontFamily: 'sans-serif', margin: 0, padding: 0 }}>
-      
-      {/* Header Pleine Largeur */}
-      <header style={{ 
-        backgroundColor: '#4e1860', 
-        padding: '15px 4%', 
-        display: 'flex', 
-        justifyContent: 'space-between', 
-        alignItems: 'center',
-        boxShadow: '0 4px 15px rgba(0,0,0,0.4)',
-        width: '100%',
-        boxSizing: 'border-box'
-      }}>
-        <h1 
-          style={{ margin: 0, fontSize: '1.8rem', cursor: 'pointer', letterSpacing: '3px', fontWeight: 'bold' }} 
-          onClick={() => setCurrentPage('home')}
-        >
-          SUP<span style={{color: '#b208b4'}}>CONTENT</span>
-        </h1>
+    <div style={styles.appContainer}>
+      {/* --- NAVBAR --- */}
+      <nav style={styles.navbar}>
+        <h1 style={styles.logo} onClick={() => setCurrentPage('accueil')}>SUPCONTENT</h1>
+        <div>
+          {user ? (
+            <button style={styles.navBtn} onClick={() => setCurrentPage('utilisateur')}>
+              👤 {user.pseudo}
+            </button>
+          ) : (
+            <button style={styles.navBtn} onClick={() => setCurrentPage('login')}>
+              CONNEXION
+            </button>
+          )}
+        </div>
+      </nav>
 
-        {currentPage === 'home' ? (
-          <button onClick={() => setCurrentPage('login')} style={navBtnStyle}>CONNEXION</button>
-        ) : (
-          <button onClick={() => setCurrentPage('home')} style={navBtnStyle}>RETOUR ACCUEIL</button>
+      {/* --- CONTENU DYNAMIQUE --- */}
+      <main style={styles.mainContent}>
+        {currentPage === 'accueil' && <Accueil user={user} />}
+        
+        {currentPage === 'login' && (
+          <Login 
+            onSwitch={() => setCurrentPage('register')} 
+            onLoginSuccess={handleLoginSuccess} 
+          />
         )}
-      </header>
 
-      {/* Main sans AUCUNE limite de largeur */}
-      <main style={{ width: '100%', padding: '40px 4%', boxSizing: 'border-box' }}>
-        {currentPage === 'login' && <Login onSwitch={() => setCurrentPage('register')} />}
-        {currentPage === 'register' && <Register onSwitch={() => setCurrentPage('login')} />}
-        {currentPage === 'home' && <Accueil />}
+        {currentPage === 'register' && (
+          <Register onSwitch={() => setCurrentPage('login')} />
+        )}
+
+        {currentPage === 'utilisateur' && (
+          <Utilisateur 
+            user={user} 
+            onLogout={handleLogout} 
+            onLoginSuccess={handleLoginSuccess} // <--- C'est ici que la magie opère pour la sauvegarde
+          />
+        )}
       </main>
     </div>
   );
-}
+};
+
+const styles = {
+  appContainer: { minHeight: '100vh', background: '#0f172a', color: 'white' },
+  navbar: { 
+    display: 'flex', justifyContent: 'space-between', alignItems: 'center', 
+    padding: '15px 50px', background: '#1e1e38', borderBottom: '1px solid #334155' 
+  },
+  logo: { color: '#b208b4', cursor: 'pointer', margin: 0, fontSize: '1.5rem' },
+  navBtn: { 
+    background: '#b208b4', color: 'white', border: 'none', padding: '10px 20px', 
+    borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', transition: '0.3s'
+  },
+  mainContent: { padding: '20px' }
+};
+
+export default App;

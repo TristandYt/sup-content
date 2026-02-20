@@ -1,51 +1,67 @@
 import React, { useState, useEffect } from 'react';
 
-// On récupère 'user' et 'onLogout' depuis les props passées par App.jsx
-const Profile = ({ user, onLogout }) => {
+const Profile = ({ user, onLoginSuccess, onLogout }) => {
+  // On initialise avec les données de l'utilisateur connecté s'il existe
   const [profileData, setProfileData] = useState({
-    pseudo: '',
-    email: '',
-    bio: '',
-    lang: 'Français',
-    avatar: 'https://api.dicebear.com/7.x/bottts/svg?seed=Lucky'
+    pseudo: user?.pseudo || 'kiki',
+    email: user?.email || 'kiki@kiki.com',
+    bio: user?.bio || 'kiki kiki kiki',
+    lang: user?.lang || 'Français',
+    avatar: user?.avatar || 'https://api.dicebear.com/7.x/bottts/svg?seed=Lucky'
   });
 
-  // On synchronise les données reçues à la connexion avec l'état du profil
+  // Si l'utilisateur change dans App.js, on met à jour ici
   useEffect(() => {
     if (user) {
-      setProfileData(prev => ({
-        ...prev,
-        pseudo: user.pseudo,
-        email: user.email,
-        // Tu peux aussi changer le seed de l'avatar selon le pseudo !
-        avatar: `https://api.dicebear.com/7.x/bottts/svg?seed=${user.pseudo}`
-      }));
+      setProfileData(prev => ({ ...prev, ...user }));
     }
   }, [user]);
 
   const handleChange = (e) => setProfileData({ ...profileData, [e.target.name]: e.target.value });
+
+  const handleAvatarChange = (e) => {
+    const file = e.target.files[0];
+    if (file && file.type.startsWith('image/')) {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        setProfileData({ ...profileData, avatar: event.target.result });
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  // --- FONCTION DE SAUVEGARDE ---
+  const handleUpdate = () => {
+    // On appelle onLoginSuccess pour mettre à jour l'état global dans App.js
+    // Cela permet de "garder" la photo même si on change de page
+    onLoginSuccess(profileData);
+    alert('Profil et photo mis à jour avec succès !');
+  };
 
   return (
     <div style={styles.container}>
       <div style={styles.card}>
         <h2 style={styles.title}>Mon Profil</h2>
 
-        {/* --- SECTION AVATAR --- */}
         <div style={styles.avatarSection}>
           <div style={styles.avatarWrapper}>
             <img src={profileData.avatar} alt="Avatar" style={styles.avatarImg} />
             <label htmlFor="avatar-input" style={styles.editBadge}>
               ✏️
-              <input id="avatar-input" type="file" style={{ display: 'none' }} />
+              <input 
+                id="avatar-input" 
+                type="file" 
+                accept="image/*" 
+                style={{ display: 'none' }} 
+                onChange={handleAvatarChange} 
+              />
             </label>
           </div>
           <p style={styles.infoText}>Identifié en tant que</p>
           <h3 style={styles.pseudoTitle}>{profileData.pseudo}</h3>
         </div>
 
-        {/* --- FORMULAIRE --- */}
         <div style={styles.form}>
-          
           <label style={styles.label}>Ma Biographie</label>
           <textarea 
             name="bio"
@@ -56,28 +72,19 @@ const Profile = ({ user, onLogout }) => {
           />
 
           <label style={styles.label}>Langue de l'interface</label>
-          <select 
-            name="lang"
-            style={styles.select} 
-            value={profileData.lang} 
-            onChange={handleChange}
-          >
+          <select name="lang" style={styles.select} value={profileData.lang} onChange={handleChange}>
             <option value="Français">Français 🇫🇷</option>
             <option value="English">English 🇬🇧</option>
           </select>
 
           <label style={styles.label}>Email de contact</label>
-          <input 
-            style={styles.disabledInput} 
-            value={profileData.email} 
-            disabled 
-          />
+          <input style={styles.disabledInput} value={profileData.email} disabled />
 
-          <button style={styles.btnSave} onClick={() => alert('Changements enregistrés !')}>
+          {/* APPEL DE LA FONCTION handleUpdate ICI */}
+          <button style={styles.btnSave} onClick={handleUpdate}>
             METTRE À JOUR LE PROFIL
           </button>
 
-          {/* Bouton de déconnexion ajouté pour la navigation */}
           <button style={styles.btnLogout} onClick={onLogout}>
             SE DÉCONNECTER
           </button>
@@ -87,6 +94,7 @@ const Profile = ({ user, onLogout }) => {
   );
 };
 
+// ... (Garder les mêmes styles qu'avant)
 const styles = {
   container: { display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '80vh', background: '#0f172a', padding: '20px' },
   card: { backgroundColor: '#252545', padding: '40px', borderRadius: '25px', width: '100%', maxWidth: '480px', boxShadow: '0 20px 50px rgba(0,0,0,0.5)', border: '1px solid #334155' },
@@ -99,7 +107,7 @@ const styles = {
   pseudoTitle: { color: 'white', fontSize: '1.4rem', margin: 0 },
   form: { display: 'flex', flexDirection: 'column' },
   label: { color: '#94a3b8', fontSize: '14px', marginBottom: '8px', fontWeight: 'bold' },
-  textarea: { width: '100%', padding: '14px', borderRadius: '12px', background: '#0f172a', color: 'white', border: '2px solid #334155', boxSizing: 'border-box', marginBottom: '20px', fontSize: '15px', outline: 'none', minHeight: '80px',resize: 'none',fontFamily: 'inherit'},
+  textarea: { width: '100%', padding: '14px', borderRadius: '12px', background: '#0f172a', color: 'white', border: '2px solid #334155', boxSizing: 'border-box', marginBottom: '20px', fontSize: '15px', outline: 'none', minHeight: '80px', resize: 'none', fontFamily: 'inherit' },
   select: { width: '100%', padding: '14px', borderRadius: '12px', background: '#0f172a', color: 'white', border: '2px solid #334155', boxSizing: 'border-box', marginBottom: '25px', fontSize: '15px', outline: 'none', cursor: 'pointer' },
   disabledInput: { width: '100%', padding: '14px', borderRadius: '12px', background: '#1a1a2e', color: '#64748b', border: '2px solid #334155', boxSizing: 'border-box', marginBottom: '30px', fontSize: '15px', cursor: 'not-allowed' },
   btnSave: { width: '100%', padding: '16px', backgroundColor: '#b208b4', color: 'white', border: 'none', borderRadius: '12px', fontWeight: 'bold', cursor: 'pointer', fontSize: '15px' },
