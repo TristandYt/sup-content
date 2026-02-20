@@ -1,0 +1,40 @@
+
+services:
+  database:
+    image: andreysenov/firebase-tools
+    container_name: supcontent_database
+    ports:
+      - "4000:4000" # UI Firebase
+      - "8081:8081" # Firestore
+      - "9099:9099" # Auth
+    volumes:
+      - .:/home/node/app
+    command: firebase emulators:start --project sup-content-tristan
+
+  backend:
+    build: ./backend
+    container_name: supcontent_backend
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+    environment:
+      - FIRESTORE_EMULATOR_HOST=database:8081
+      - FIREBASE_AUTH_EMULATOR_HOST=database:9099
+    depends_on:
+      - database
+
+  # TON FRONT ORDI (VITE)
+  web:
+    build: ./Frontend/bureau/front-ordi
+    container_name: supcontent_web_ordi
+    ports:
+      - "3001:5173" # <--- IMPORTANT: On mappe le 5173 de Vite vers ton 3001 Windows
+    volumes:
+      - ./Frontend/bureau/front-ordi:/app
+      - /app/node_modules
+    environment:
+      - CHOKIDAR_USEPOLLING=true # Aide au rafraîchissement auto sur Windows
+    depends_on:
+      - backend
