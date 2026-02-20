@@ -1,14 +1,14 @@
 version: '3.8'
 
 services:
-  # ÉMULATEUR FIREBASE 
+  # ÉMULATEUR FIREBASE (Base de données locale)
   database:
-    image: andreysenov/firebase-tools:13.30.0 
+    image: andreysenov/firebase-tools:13.30.0
     container_name: supcontent-db
     ports:
-      - "4000:4000"
-      - "8081:8081"
-      - "9099:9099"
+      - "4000:4000" # UI de l'émulateur
+      - "8081:8081" # Port Firestore
+      - "9099:9099" # Port Auth
     volumes:
       - .:/home/node/app
     working_dir: /home/node/app
@@ -16,11 +16,11 @@ services:
     networks:
       - sup-network
 
-  # BACKEND 
+  # BACKEND (Node 22) - API & IGDB Logic
   backend:
     build: 
       context: ./backend
-      dockerfile: Dockerfile 
+      dockerfile: Dockerfile
     image: supcontent-backend:1.0
     container_name: supcontent-api
     ports:
@@ -28,6 +28,8 @@ services:
     volumes:
       - ./backend:/app
       - /app/node_modules
+    env_file:
+      - ./backend/.env
     environment:
       - FIRESTORE_EMULATOR_HOST=database:8081
       - FIREBASE_AUTH_EMULATOR_HOST=database:9099
@@ -36,11 +38,11 @@ services:
     networks:
       - sup-network
 
-  # FRONTEND 
+  # FRONTEND (Node 22) - Vite / React
   web:
     build:
       context: ./Frontend/bureau/front-ordi
-      dockerfile: Dockerfile 
+      dockerfile: Dockerfile
     image: supcontent-web:1.0
     container_name: supcontent-front
     ports:
@@ -49,7 +51,7 @@ services:
       - ./Frontend/bureau/front-ordi:/app
       - /app/node_modules
     environment:
-      - CHOKIDAR_USEPOLLING=true
+      - CHOKIDAR_USEPOLLING=true 
     depends_on:
       - backend
     networks:
