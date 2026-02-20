@@ -18,6 +18,7 @@ const Login = ({ onSwitch }) => {
   return (
     <div style={{ marginTop: '30px' }}>
       {error && <p style={{ color: '#ff4444', textAlign: 'center', fontSize: '14px' }}>{error}</p>}
+      <h2 style={{ textAlign: 'center', fontSize: '2rem', marginBottom: '30px', color: '#b208b4' }}>Connexion</h2>
 
       <input 
         style={styles.input} 
@@ -30,7 +31,7 @@ const Login = ({ onSwitch }) => {
       <div style={{ position: 'relative', marginBottom: '15px' }}>
         <input 
           style={{ ...styles.input, marginBottom: 0 }} 
-          type={showPassword ? "text" : "password"} // Bascule le type ici
+          type={showPassword ? "text" : "password"} 
           value={password} 
           onChange={(e) => setPassword(e.target.value)} 
           placeholder="Mot de passe" 
@@ -47,7 +48,9 @@ const Login = ({ onSwitch }) => {
       <button onClick={handleLogin} style={styles.btnPrimary}>SE CONNECTER</button>
 
       <div style={{ textAlign: 'center', marginTop: '30px' }}>
-        <button onClick={onSwitch} style={styles.btnOutline}>CRÉER UN COMPTE</button>
+        <p style={{ textAlign: 'center', color: '#94a3b8', marginTop: '25px' }}>
+          Nouveau sur SUPCONTENT ? <span onClick={onSwitch} style={{ color: '#b208b4', cursor: 'pointer', fontWeight: 'bold' }}>Créer un compte</span>
+        </p>
       </div>
     </div>
   );

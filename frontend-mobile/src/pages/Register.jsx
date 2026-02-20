@@ -30,6 +30,7 @@ const Register = ({ onSwitch }) => {
       <div style={{ height: '24px', marginBottom: '10px' }}>
         {error && <p style={{ color: '#ff4444', fontSize: '13px', margin: 0, textAlign: 'center' }}>{error}</p>}
       </div>
+      <h2 style={{ textAlign: 'center', color: '#b208b4', marginBottom: '25px' }}>Rejoindre la communauté</h2>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
         <input 
@@ -75,13 +76,13 @@ const Register = ({ onSwitch }) => {
         </div>
 
         <button onClick={handleRegister} style={styles.btnPrimary}>
-          S'INSCRIRE
+          CRÉER MON COMPTE
         </button>
       </div>
 
-      <button onClick={handleSwitch} style={styles.btnLink}>
-        Déjà un compte ? Se connecter
-      </button>
+      <p style={styles.footerText}>
+          Déjà inscrit ? <span onClick={onSwitch} style={styles.link}>Se connecter</span>
+        </p>
     </div>
   );
 };
@@ -102,7 +103,9 @@ const styles = {
   btnLink: {
     width: '100%', background: 'none', border: 'none', color: '#94a3b8',
     marginTop: '20px', fontSize: '14px', textDecoration: 'underline'
-  }
+  },
+   footerText: { textAlign: 'center', color: '#94a3b8', marginTop: '20px' },
+   link: { color: '#b208b4', cursor: 'pointer', fontWeight: 'bold' }
 };
 
 export default Register;
