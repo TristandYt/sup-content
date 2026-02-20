@@ -2,20 +2,20 @@ import React from 'react';
 
 const Accueil = () => {
   const medias = [
-    { id: 1, title: "Cyberpunk 2077", genre: "Jeu", note: "4.5", img: "https://via.placeholder.com/400/4e1860/fff?text=Cyberpunk" },
-    { id: 2, title: "Interstellar", genre: "Film", note: "4.9", img: "https://via.placeholder.com/400/4e1860/fff?text=Interstellar" },
-    { id: 3, title: "Dune: Part Two", genre: "Film", note: "4.8", img: "https://via.placeholder.com/400/4e1860/fff?text=Dune" },
-    { id: 4, title: "Elden Ring", genre: "Jeu", note: "4.9", img: "https://via.placeholder.com/400/4e1860/fff?text=Elden+Ring" },
-    { id: 5, title: "Batman", genre: "Film", note: "4.2", img: "https://via.placeholder.com/400/4e1860/fff?text=Batman" },
-    { id: 6, title: "Starfield", genre: "Jeu", note: "3.8", img: "https://via.placeholder.com/400/4e1860/fff?text=Starfield" },
-    { id: 7, title: "The Witcher", genre: "Série", note: "4.6", img: "https://via.placeholder.com/400/4e1860/fff?text=Witcher" },
-    { id: 8, title: "Avatar 2", genre: "Film", note: "4.1", img: "https://via.placeholder.com/400/4e1860/fff?text=Avatar" },
+    { id: 1, title: "Super Mario 64", genre: "Jeu", note: "4.9", img: "https://via.placeholder.com/400/4e1860/fff?text=Mario+64" },
+        { id: 2, title: "Pokémon Soleil", genre: "Jeu", note: "4.3", img: "https://via.placeholder.com/400/4e1860/fff?text=Pokemon+Soleil" },
+        { id: 3, title: "Fortnite", genre: "Jeu", note: "1.0", img: "https://via.placeholder.com/400/4e1860/fff?text=Fortnite" },
+        { id: 4, title: "Elden Ring", genre: "Jeu", note: "4.9", img: "https://via.placeholder.com/400/4e1860/fff?text=Elden+Ring" },
+        { id: 5, title: "Halo: Combat Evolved", genre: "Jeu", note: "4.7", img: "https://via.placeholder.com/400/4e1860/fff?text=Halo" },
+        { id: 6, title: "Grand Theft Auto: San Andreas", genre: "Jeu", note: "4.8", img: "https://via.placeholder.com/400/4e1860/fff?text=GTA+SA" },
+        { id: 7, title: "Final Fantasy VII", genre: "Jeu", note: "4.9", img: "https://via.placeholder.com/400/4e1860/fff?text=FFVII" },
+        { id: 8, title: "Metal Gear Solid", genre: "Jeu", note: "4.8", img: "https://via.placeholder.com/400/4e1860/fff?text=MGS" },
   ];
 
   return (
     <div style={{ width: '100%' }}>
       <div style={{ marginBottom: '40px' }}>
-        <h2 style={{ fontSize: '2.8rem', margin: 0, color: 'white' }}>Découvrir</h2>
+        <h2 style={{ fontSize: '2.8rem', margin: 0, color: 'white' }}>Tendances mondiales</h2>
         <p style={{ color: '#94a3b8', fontSize: '1.2rem' }}>Tout le contenu SUPCONTENT à portée de clic.</p>
       </div>
 

@@ -3,9 +3,9 @@ import React, { useState, useEffect } from 'react';
 // On récupère 'user' et 'onLogout' depuis les props passées par App.jsx
 const Profile = ({ user, onLogout }) => {
   const [profileData, setProfileData] = useState({
-    pseudo: 'kiki',
-    email: 'kiki@kiki.com',
-    bio: 'kiki kiki kiki',
+    pseudo: '',
+    email: '',
+    bio: '',
     lang: 'Français',
     avatar: 'https://api.dicebear.com/7.x/bottts/svg?seed=Lucky'
   });
