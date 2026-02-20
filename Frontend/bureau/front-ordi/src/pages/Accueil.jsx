@@ -1,5 +1,5 @@
 import React from 'react';
-
+import '../../../../Style/Styles.css';
 const Accueil = () => {
   const medias = [
     { id: 1, title: "Super Mario 64", genre: "Jeu", note: "4.9", img: "https://via.placeholder.com/400/4e1860/fff?text=Mario+64" },

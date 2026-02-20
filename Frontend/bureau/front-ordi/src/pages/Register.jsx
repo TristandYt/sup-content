@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import '../Style/Styles.css';
+import '../../../../Style/Styles.css';
 
 const Register = ({ onSwitch }) => {
   const [formData, setFormData] = useState({ pseudo: '', email: '', pass: '', confirm: '' });

@@ -3,6 +3,7 @@ import Accueil from './pages/Accueil';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import Utilisateur from './pages/utilisateur';
+import '../../../Style/Styles.css';
 
 const App = () => {
   // États pour la navigation et l'utilisateur

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import '../Style/Styles.css'
+import '../../../../Style/Styles.css';
 
 const Login = ({ onSwitch, onLoginSuccess }) => {
   // ASTUCE : Mets des valeurs par défaut ici pour tester plus vite !
