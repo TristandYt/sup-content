@@ -1,6 +1,6 @@
 const express = require('express');
 const cors = require('cors');
-const { db, auth } = require('./services/Firebase'); // Vérifie bien le S de Services
+const { db, auth } = require('./services/Firebase'); 
 require('dotenv').config();
 
 const app = express();
@@ -11,7 +11,7 @@ app.use(express.json());
 
 // Route de base pour vérifier que l'API répond
 app.get('/', (req, res) => {
-    res.send("🚀 API Sup-Content Opérationnelle");
+    res.send("API Sup-Content Opérationnelle");
 });
 
 // Route test pour Firestore
@@ -21,9 +21,9 @@ app.get('/test', async (req, res) => {
             date: new Date().toISOString(), 
             user: "Tristan" 
         });
-        res.send("✅ Connexion Firestore OK (Document créé)");
+        res.send("Connexion Firestore OK (Document créé)");
     } catch (e) {
-        res.status(500).send("❌ Erreur de liaison : " + e.message);
+        res.status(500).send("Erreur de liaison : " + e.message);
     }
 });
 
