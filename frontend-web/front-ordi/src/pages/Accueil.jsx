@@ -15,7 +15,7 @@ const Accueil = () => {
   return (
     <div style={{ width: '100%' }}>
       <div style={{ marginBottom: '40px' }}>
-        <h2 style={{ fontSize: '2.8rem', margin: 0, color: 'white' }}>Tendances mondiales</h2>
+        <h2 style={{ fontSize: '2.8rem', margin: 0, color: 'white' }}>Découvrir</h2>
         <p style={{ color: '#94a3b8', fontSize: '1.2rem' }}>Tout le contenu SUPCONTENT à portée de clic.</p>
       </div>
 
