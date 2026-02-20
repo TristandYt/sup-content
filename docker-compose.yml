@@ -1,8 +1,10 @@
+version: '3.8'
 
 services:
+  # ÉMULATEUR FIREBASE 
   database:
-    image: andreysenov/firebase-tools
-    container_name: supcontent_database
+    image: andreysenov/firebase-tools:13.30.0 
+    container_name: supcontent-db
     ports:
       - "4000:4000"
       - "8081:8081"
@@ -10,12 +12,17 @@ services:
     volumes:
       - .:/home/node/app
     working_dir: /home/node/app
-    # On ajoute --import/--export pour garder tes données et on force l'écoute sur 0.0.0.0
     command: firebase emulators:start --project sup-content-tristan
+    networks:
+      - sup-network
 
+  # BACKEND 
   backend:
-    build: ./backend
-    container_name: supcontent_backend
+    build: 
+      context: ./backend
+      dockerfile: Dockerfile 
+    image: supcontent-backend:1.0
+    container_name: supcontent-api
     ports:
       - "3000:3000"
     volumes:
@@ -26,17 +33,28 @@ services:
       - FIREBASE_AUTH_EMULATOR_HOST=database:9099
     depends_on:
       - database
+    networks:
+      - sup-network
 
-  # TON FRONT ORDI (VITE)
+  # FRONTEND 
   web:
-    build: ./Frontend/bureau/front-ordi
-    container_name: supcontent_web_ordi
+    build:
+      context: ./Frontend/bureau/front-ordi
+      dockerfile: Dockerfile 
+    image: supcontent-web:1.0
+    container_name: supcontent-front
     ports:
-      - "3001:5173" # <--- IMPORTANT: On mappe le 5173 de Vite vers ton 3001 Windows
+      - "3001:5173"
     volumes:
       - ./Frontend/bureau/front-ordi:/app
       - /app/node_modules
     environment:
-      - CHOKIDAR_USEPOLLING=true # Aide au rafraîchissement auto sur Windows
+      - CHOKIDAR_USEPOLLING=true
     depends_on:
       - backend
+    networks:
+      - sup-network
+
+networks:
+  sup-network:
+    driver: bridge

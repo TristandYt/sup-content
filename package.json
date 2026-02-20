@@ -4,10 +4,12 @@
   "description": "Plateforme Sup Content - Monorepo",
   "private": true,
   "scripts": {
-    "start": "docker compose up",
+    "start": "docker compose up -d",
     "stop": "docker compose down",
-    "build": "docker compose build",
-    "backend-logs": "docker compose logs -f backend"
+    "build": "docker compose up -d --build",
+    "logs": "docker compose logs -f",
+    "api-logs": "docker compose logs -f supcontent-api",
+    "clean": "docker compose down -v --rmi all"
   },
   "devDependencies": {
     "firebase-tools": "^13.0.0"
