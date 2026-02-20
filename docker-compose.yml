@@ -4,11 +4,13 @@ services:
     image: andreysenov/firebase-tools
     container_name: supcontent_database
     ports:
-      - "4000:4000" # UI Firebase
-      - "8081:8081" # Firestore
-      - "9099:9099" # Auth
+      - "4000:4000"
+      - "8081:8081"
+      - "9099:9099"
     volumes:
       - .:/home/node/app
+    working_dir: /home/node/app
+    # On ajoute --import/--export pour garder tes données et on force l'écoute sur 0.0.0.0
     command: firebase emulators:start --project sup-content-tristan
 
   backend:

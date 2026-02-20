@@ -2,7 +2,7 @@ FROM node:18-alpine
 
 WORKDIR /app
 
-# On copie uniquement les fichiers de dépendances du dossier backend
+
 COPY package*.json ./
 
 # Installation propre (sans les packages inutiles de la racine)
