@@ -2,87 +2,96 @@ import React, { useState } from 'react';
 import '../../../../Style/Styles.css';
 
 const Login = ({ onSwitch, onLoginSuccess }) => {
-  // ASTUCE : Mets des valeurs par défaut ici pour tester plus vite !
   const [email, setEmail] = useState('kiki@kiki.com'); 
   const [password, setPassword] = useState('kikiki');
   const [showPass, setShowPass] = useState(false);
   const [error, setError] = useState('');
 
   const handleLogin = () => {
-    // .trim() retire les espaces inutiles
     if (!email.trim() || !password.trim()) {
       setError('Oups ! Il manque des informations pour se connecter.');
     } else {
       setError('');
-      // On envoie les infos au parent (App.jsx)
-      onLoginSuccess({
-        pseudo: email.split('@')[0], 
-        email: email
-      });
+      // On vérifie que la fonction existe avant de l'appeler pour éviter un crash
+      if (typeof onLoginSuccess === 'function') {
+        onLoginSuccess({
+          pseudo: email.includes('@') ? email.split('@')[0] : email, 
+          email: email
+        });
+      }
     }
   };
 
   const handleSocialLogin = (platform) => {
-    onLoginSuccess({ pseudo: platform + "_User", email: `${platform.toLowerCase()}@test.com` });
+    if (typeof onLoginSuccess === 'function') {
+      onLoginSuccess({ 
+        pseudo: platform + "_User", 
+        email: `${platform.toLowerCase()}@test.com` 
+      });
+    }
   };
 
   return (
-    <div style={containerStyle}>
-      <div style={cardStyle}>
-        <h2 style={titleStyle}>Connexion</h2>
+    <div className="container">
+      <div className="card">
+        <h2 className="title">Connexion</h2>
         
-        {/* L'erreur ne s'affiche que s'il y en a une */}
-        <div style={{ minHeight: '24px', marginBottom: '10px' }}>
-            {error && <p style={errorStyle}>{error}</p>}
+        {/* Affichage de l'erreur */}
+        <div className="error-msg">
+            {error && error}
         </div>
 
-        <input 
-          style={inputStyle} 
-          placeholder="Email ou Pseudo" 
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-        />
-
-        <div style={{ position: 'relative', width: '100%' }}>
+        <div className="form-group">
+          <label className="label-text">Email ou Pseudo</label>
           <input 
-            style={{ ...inputStyle, paddingRight: '50px' }} 
-            type={showPass ? "text" : "password"} 
-            placeholder="Mot de passe" 
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            // Permet de valider avec la touche "Entrée"
-            onKeyDown={(e) => e.key === 'Enter' && handleLogin()}
+            className="input-field" 
+            placeholder="Ex: kiki@mail.com" 
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
           />
-          <button type="button" onClick={() => setShowPass(!showPass)} style={eyeStyle}>
-            {showPass ? '👁️' : '🙈'}
-          </button>
+
+          <label className="label-text">Mot de passe</label>
+          <div className="password-container">
+            <input 
+              className="input-field" 
+              type={showPass ? "text" : "password"} 
+              placeholder="••••••••" 
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && handleLogin()}
+            />
+            <button type="button" onClick={() => setShowPass(!showPass)} className="eye-button">
+              {showPass ? '👁️' : '🙈'}
+            </button>
+          </div>
         </div>
 
-        <button onClick={handleLogin} style={btnMainStyle}>SE CONNECTER</button>
+        <button onClick={handleLogin} className="btn-main">SE CONNECTER</button>
 
-        <div style={dividerContainer}>
-          <div style={line}></div>
-          <span style={{ color: '#94a3b8', margin: '0 10px', fontSize: '14px' }}>Ou continuer avec</span>
-          <div style={line}></div>
+        <div className="divider">
+          <div className="divider-line"></div>
+          <span className="divider-text">Ou continuer avec</span>
+          <div className="divider-line"></div>
         </div>
 
-        <div style={socialGroupStyle}>
-          <button onClick={() => handleSocialLogin('Google')} style={socialBtnStyle} title="Google">
+        <div className="social-group">
+          <button onClick={() => handleSocialLogin('Google')} className="social-btn" title="Google">
             <img src="https://www.svgrepo.com/show/475656/google-color.svg" width="24" alt="Google" />
           </button>
-          <button onClick={() => handleSocialLogin('GitHub')} style={socialBtnStyle} title="GitHub">
+          <button onClick={() => handleSocialLogin('GitHub')} className="social-btn" title="GitHub">
             <img src="https://www.svgrepo.com/show/512317/github-142.svg" width="24" alt="GitHub" style={{ filter: 'invert(1)' }} />
           </button>
-          <button onClick={() => handleSocialLogin('Meta')} style={socialBtnStyle} title="Meta">
+          <button onClick={() => handleSocialLogin('Meta')} className="social-btn" title="Meta">
             <img src="https://www.svgrepo.com/show/448224/facebook.svg" width="26" alt="Meta" />
           </button>
         </div>
         
-        <p style={{ textAlign: 'center', color: '#94a3b8', marginTop: '25px' }}>
-          Nouveau sur SUPCONTENT ? <span onClick={onSwitch} style={{ color: '#b208b4', cursor: 'pointer', fontWeight: 'bold' }}>Créer un compte</span>
+        <p className="footer-text">
+          Nouveau sur SUPCONTENT ? <span onClick={onSwitch} className="link-highlight">Créer un compte</span>
         </p>
       </div>
     </div>
   );
 };
+
 export default Login;

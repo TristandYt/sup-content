@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import '../../../../Style/Styles.css';
+
 const Profile = ({ user, onLoginSuccess, onLogout }) => {
-  // On initialise avec les données de l'utilisateur connecté s'il existe
+  // Initialisation avec les données de l'utilisateur
   const [profileData, setProfileData] = useState({
     pseudo: user?.pseudo || 'kiki',
     email: user?.email || 'kiki@kiki.com',
@@ -10,7 +11,7 @@ const Profile = ({ user, onLoginSuccess, onLogout }) => {
     avatar: user?.avatar || 'https://api.dicebear.com/7.x/bottts/svg?seed=Lucky'
   });
 
-  // Si l'utilisateur change dans App.js, on met à jour ici
+  // Mise à jour si l'utilisateur change dans l'état global
   useEffect(() => {
     if (user) {
       setProfileData(prev => ({ ...prev, ...user }));
@@ -30,23 +31,23 @@ const Profile = ({ user, onLoginSuccess, onLogout }) => {
     }
   };
 
-  // --- FONCTION DE SAUVEGARDE ---
   const handleUpdate = () => {
-    // On appelle onLoginSuccess pour mettre à jour l'état global dans App.js
-    // Cela permet de "garder" la photo même si on change de page
-    onLoginSuccess(profileData);
-    alert('Profil et photo mis à jour avec succès !');
+    if (onLoginSuccess) {
+      onLoginSuccess(profileData);
+      alert('Profil et photo mis à jour avec succès !');
+    }
   };
 
   return (
-    <div style={styles.container}>
-      <div style={styles.card}>
-        <h2 style={styles.title}>Mon Profil</h2>
+    <div className="container">
+      <div className="card">
+        <h2 className="title" style={{ color: 'var(--white)' }}>Mon Profil</h2>
 
-        <div style={styles.avatarSection}>
-          <div style={styles.avatarWrapper}>
-            <img src={profileData.avatar} alt="Avatar" style={styles.avatarImg} />
-            <label htmlFor="avatar-input" style={styles.editBadge}>
+        {/* Section Avatar utilisant tes classes CSS */}
+        <div className="avatar-section">
+          <div className="avatar-wrapper">
+            <img src={profileData.avatar} alt="Avatar" className="avatar-img" />
+            <label htmlFor="avatar-input" className="edit-badge">
               ✏️
               <input 
                 id="avatar-input" 
@@ -57,35 +58,40 @@ const Profile = ({ user, onLoginSuccess, onLogout }) => {
               />
             </label>
           </div>
-          <p style={styles.infoText}>Identifié en tant que</p>
-          <h3 style={styles.pseudoTitle}>{profileData.pseudo}</h3>
+          <p className="footer-text" style={{ marginTop: '10px', marginBottom: '5px' }}>Identifié en tant que</p>
+          <h3 className="title" style={{ fontSize: '1.5rem', marginBottom: '0' }}>{profileData.pseudo}</h3>
         </div>
 
-        <div style={styles.form}>
-          <label style={styles.label}>Ma Biographie</label>
+        <div className="form-group">
+          <label className="label-text">Ma Biographie</label>
           <textarea 
             name="bio"
-            style={styles.textarea} 
+            className="input-field textarea" 
             value={profileData.bio} 
             onChange={handleChange}
             placeholder="Écrivez quelques mots sur vous..."
           />
 
-          <label style={styles.label}>Langue de l'interface</label>
-          <select name="lang" style={styles.select} value={profileData.lang} onChange={handleChange}>
+          <label className="label-text">Langue de l'interface</label>
+          <select 
+            name="lang" 
+            className="input-field" 
+            value={profileData.lang} 
+            onChange={handleChange}
+            style={{ appearance: 'none' }}
+          >
             <option value="Français">Français 🇫🇷</option>
             <option value="English">English 🇬🇧</option>
           </select>
 
-          <label style={styles.label}>Email de contact</label>
-          <input style={styles.disabledInput} value={profileData.email} disabled />
+          <label className="label-text">Email de contact</label>
+          <input className="input-field input-disabled" value={profileData.email} disabled />
 
-          {/* APPEL DE LA FONCTION handleUpdate ICI */}
-          <button style={styles.btnSave} onClick={handleUpdate}>
+          <button className="btn-save" onClick={handleUpdate}>
             METTRE À JOUR LE PROFIL
           </button>
 
-          <button style={styles.btnLogout} onClick={onLogout}>
+          <button className="btn-logout" onClick={onLogout}>
             SE DÉCONNECTER
           </button>
         </div>
@@ -93,4 +99,5 @@ const Profile = ({ user, onLoginSuccess, onLogout }) => {
     </div>
   );
 };
+
 export default Profile;
