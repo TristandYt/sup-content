@@ -6,7 +6,7 @@ const Profile = ({ user, onLoginSuccess, onLogout }) => {
   const [profileData, setProfileData] = useState({
     pseudo: user?.pseudo || 'kiki',
     email: user?.email || 'kiki@kiki.com',
-    bio: user?.bio || 'kiki kiki kiki',
+    bio: user?.bio || '',
     lang: user?.lang || 'Français',
     avatar: user?.avatar || 'https://api.dicebear.com/7.x/bottts/svg?seed=Lucky'
   });
