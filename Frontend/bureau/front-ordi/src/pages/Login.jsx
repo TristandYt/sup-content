@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
+import '../Style/Styles.css'
 
 const Login = ({ onSwitch, onLoginSuccess }) => {
   // ASTUCE : Mets des valeurs par défaut ici pour tester plus vite !
-  const [email, setEmail] = useState(''); 
-  const [password, setPassword] = useState('');
+  const [email, setEmail] = useState('kiki@kiki.com'); 
+  const [password, setPassword] = useState('kikiki');
   const [showPass, setShowPass] = useState(false);
   const [error, setError] = useState('');
 
@@ -72,8 +73,8 @@ const Login = ({ onSwitch, onLoginSuccess }) => {
           <button onClick={() => handleSocialLogin('GitHub')} style={socialBtnStyle} title="GitHub">
             <img src="https://www.svgrepo.com/show/512317/github-142.svg" width="24" alt="GitHub" style={{ filter: 'invert(1)' }} />
           </button>
-          <button onClick={() => handleSocialLogin('Facebook')} style={socialBtnStyle} title="Facebook">
-            <img src="https://www.svgrepo.com/show/448224/facebook.svg" width="26" alt="Facebook" />
+          <button onClick={() => handleSocialLogin('Meta')} style={socialBtnStyle} title="Meta">
+            <img src="https://www.svgrepo.com/show/448224/facebook.svg" width="26" alt="Meta" />
           </button>
         </div>
         
@@ -84,18 +85,4 @@ const Login = ({ onSwitch, onLoginSuccess }) => {
     </div>
   );
 };
-
-// --- STYLES (Inchangés mais regroupés pour la propreté) ---
-const containerStyle = { width: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '80vh' };
-const cardStyle = { backgroundColor: '#1e1e38', padding: '40px 50px', borderRadius: '25px', width: '100%', maxWidth: '500px', boxShadow: '0 20px 50px rgba(0,0,0,0.5)', border: '1px solid #334155' };
-const titleStyle = { textAlign: 'center', fontSize: '2rem', marginBottom: '20px', color: '#b208b4' };
-const inputStyle = { width: '100%', padding: '16px', marginBottom: '20px', borderRadius: '12px', border: '1px solid #334155', background: '#0f172a', color: 'white', boxSizing: 'border-box', fontSize: '16px', outline: 'none' };
-const btnMainStyle = { width: '100%', padding: '18px', background: '#b208b4', border: 'none', color: 'white', borderRadius: '12px', fontWeight: 'bold', fontSize: '16px', cursor: 'pointer', transition: '0.3s' };
-const eyeStyle = { position: 'absolute', right: '15px', top: '23px', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', fontSize: '20px' };
-const errorStyle = { color: '#ff4444', textAlign: 'center', fontSize: '14px', margin: 0 };
-const dividerContainer = { display: 'flex', alignItems: 'center', margin: '30px 0' };
-const line = { flex: 1, height: '1px', background: '#334155' };
-const socialGroupStyle = { display: 'flex', justifyContent: 'center', gap: '20px' };
-const socialBtnStyle = { display: 'flex', alignItems: 'center', justifyContent: 'center', width: '60px', height: '60px', borderRadius: '15px', border: '1px solid #334155', background: '#1e293b', cursor: 'pointer' };
-
 export default Login;
