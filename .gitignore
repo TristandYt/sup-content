@@ -4,6 +4,7 @@ node_modules/
 
 # --- SECRETS (IGDB, API Keys) ---
 .env
+*
 
 # Docker & Logs
 .docker/

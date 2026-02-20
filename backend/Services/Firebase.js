@@ -1,19 +1,14 @@
-// Fichier de confiuguration de Firebase et d'initialisation de l'application Firebase
-import { initializeApp } from "firebase/app";
-import { getFirestore } from "firebase/firestore";
-import { getAuth } from "firebase/auth";
+const admin = require("firebase-admin");
 
-const firebaseConfig = {
-  apiKey: process.env.FIREBASE_API_KEY,
-  authDomain: process.env.FIREBASE_AUTH_DOMAIN,
-  projectId: process.env.FIREBASE_PROJECT_ID,
-  storageBucket: process.env.FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: process.env.FIREBASE_MESSAGING_SENDER_ID,
-  appId: process.env.FIREBASE_APP_ID,
-};
+// IMPORTANT : On dit à l'admin SDK de regarder vers le conteneur 'database'
+process.env.FIRESTORE_EMULATOR_HOST = "database:8081";
+process.env.FIREBASE_AUTH_EMULATOR_HOST = "database:9099";
 
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
-const auth = getAuth(app);
+admin.initializeApp({
+  projectId: "sup-content-tristan"
+});
 
-export { db, auth };
+const db = admin.firestore();
+const auth = admin.auth();
+
+module.exports = { db, auth };
