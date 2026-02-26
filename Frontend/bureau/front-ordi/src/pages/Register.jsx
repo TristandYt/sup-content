@@ -38,7 +38,7 @@ const Register = ({ onSwitch }) => {
       await new Promise(resolve => setTimeout(resolve, 1500));
       
       alert("Compte créé avec succès !");
-      /
+      
     } catch (err) {
       setError("Une erreur est survenue lors de l'inscription.");
     } finally {
