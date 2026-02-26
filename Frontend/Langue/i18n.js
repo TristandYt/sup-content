@@ -7,16 +7,14 @@ i18n
   .use(LanguageDetector)
   .use(initReactI18next)
   .init({
-    resources, 
+    resources,
     detection: {
       order: ['localStorage', 'navigator'],
       caches: ['localStorage'],
     },
     lng: localStorage.getItem('i18nextLng') || 'Français', 
     fallbackLng: "Français",
-    interpolation: {
-      escapeValue: false
-    }
+    interpolation: { escapeValue: false }
   });
 
 export default i18n;
