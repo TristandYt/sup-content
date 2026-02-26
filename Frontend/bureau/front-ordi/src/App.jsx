@@ -4,7 +4,7 @@ import Login from './pages/Login';
 import Register from './pages/Register';
 import Utilisateur from './pages/utilisateur';
 import '../../../Style/Styles.css';
-import '../../../Langue/i18n';
+import './Langue/i18n';
 
 const App = () => {
   // États pour la navigation et l'utilisateur
