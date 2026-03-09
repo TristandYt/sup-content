@@ -12,7 +12,6 @@ const Login = ({ onSwitch, onLoginSuccess }) => {
       setError('Oups ! Il manque des informations pour se connecter.');
     } else {
       setError('');
-      // On vérifie que la fonction existe avant de l'appeler pour éviter un crash
       if (typeof onLoginSuccess === 'function') {
         onLoginSuccess({
           pseudo: email.includes('@') ? email.split('@')[0] : email, 
@@ -31,12 +30,20 @@ const Login = ({ onSwitch, onLoginSuccess }) => {
     }
   };
 
+  // Composant interne pour l'icône d'œil classique
+  const EyeIcon = ({ open }) => (
+    open ? (
+      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 19c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>
+    ) : (
+      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+    )
+  );
+
   return (
     <div className="container">
       <div className="card">
         <h2 className="title">Connexion</h2>
         
-        {/* Affichage de l'erreur */}
         <div className="error-msg">
             {error && error}
         </div>
@@ -60,8 +67,8 @@ const Login = ({ onSwitch, onLoginSuccess }) => {
               onChange={(e) => setPassword(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleLogin()}
             />
-            <button type="button" onClick={() => setShowPass(!showPass)} className="eye-button">
-              {showPass ? '👁️' : '🙈'}
+            <button type="button" onClick={() => setShowPass(!showPass)} className="eye-button" style={{ opacity: 0.7 }}>
+              <EyeIcon open={showPass} />
             </button>
           </div>
         </div>
@@ -87,7 +94,7 @@ const Login = ({ onSwitch, onLoginSuccess }) => {
         </div>
         
         <p className="footer-text">
-          Nouveau sur SUPCONTENT ? <span onClick={onSwitch} className="link-highlight">Créer un compte</span>
+          Nouveau sur SUPCONTENT ? <span onClick={onSwitch} className="link-highlight" style={{ cursor: 'pointer' }}>Créer un compte</span>
         </p>
       </div>
     </div>

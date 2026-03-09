@@ -6,7 +6,7 @@ const Register = ({ onSwitch }) => {
   const [showPass, setShowPass] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [error, setError] = useState('');
-  const [isLoading, setIsLoading] = useState(false); 
+  const [isLoading, setIsLoading] = useState(false);
 
   const handleChange = (e) => setFormData({ ...formData, [e.target.name]: e.target.value });
 
@@ -33,12 +33,9 @@ const Register = ({ onSwitch }) => {
     setIsLoading(true);
 
     try {
-      
       console.log("Envoi des données :", formData);
       await new Promise(resolve => setTimeout(resolve, 1500));
-      
       alert("Compte créé avec succès !");
-      
     } catch (err) {
       setError("Une erreur est survenue lors de l'inscription.");
     } finally {
@@ -47,10 +44,17 @@ const Register = ({ onSwitch }) => {
   };
 
   const handleSocialRegister = (platform) => {
-    
     console.log(`Redirection vers l'authentification ${platform}...`);
-    // window.location.href = `http://localhost:5000/auth/${platform.toLowerCase()}`;
   };
+
+  // Composant interne pour l'icône d'œil (SVG)
+  const EyeIcon = ({ open }) => (
+    open ? (
+      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 19c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>
+    ) : (
+      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+    )
+  );
 
   return (
     <div className="container">
@@ -91,8 +95,8 @@ const Register = ({ onSwitch }) => {
               onChange={handleChange} 
               disabled={isLoading}
             />
-            <button onClick={() => setShowPass(!showPass)} className="eye-button" type="button">
-              {showPass ? '👁️' : '🙈'}
+            <button onClick={() => setShowPass(!showPass)} className="eye-button" type="button" style={{ opacity: 0.7 }}>
+              <EyeIcon open={showPass} />
             </button>
           </div>
 
@@ -106,8 +110,8 @@ const Register = ({ onSwitch }) => {
               onChange={handleChange} 
               disabled={isLoading}
             />
-            <button onClick={() => setShowConfirm(!showConfirm)} className="eye-button" type="button">
-              {showConfirm ? '👁️' : '🙈'}
+            <button onClick={() => setShowConfirm(!showConfirm)} className="eye-button" type="button" style={{ opacity: 0.7 }}>
+              <EyeIcon open={showConfirm} />
             </button>
           </div>
         </div>
@@ -138,8 +142,9 @@ const Register = ({ onSwitch }) => {
           </button>
         </div>
 
+        {/* Section remise en place comme demandé */}
         <p className="footer-text">
-          Déjà inscrit ? <span onClick={!isLoading ? onSwitch : null} className="link-highlight">Se connecter</span>
+          Déjà inscrit ? <span onClick={!isLoading ? onSwitch : null} className="link-highlight" style={{ cursor: 'pointer' }}>Se connecter</span>
         </p>
       </div>
     </div>

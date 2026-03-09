@@ -19,7 +19,6 @@ const Accueil = () => {
     { id: 8, title: "Metal Gear Solid", genre: t('genreGame'), note: "4.8", img: "https://via.placeholder.com/400/4e1860/fff?text=MGS" },
   ];
 
-  // 2. Filtrage des médias selon la recherche (insensible à la casse)
   const filteredMedias = medias.filter(m => 
     m.title.toLowerCase().includes(searchTerm.toLowerCase())
   );
@@ -34,7 +33,7 @@ const Accueil = () => {
           {t('homeSubtitle')}
         </p>
 
-        {/* 3. Barre de recherche */}
+        
         <div style={{ marginTop: '20px' }}>
           <input
             type="text"
@@ -56,7 +55,7 @@ const Accueil = () => {
         </div>
       </div>
 
-      {/* 4. Affichage des résultats filtrés */}
+      
       <div style={{ 
         display: 'grid', 
         gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', 
