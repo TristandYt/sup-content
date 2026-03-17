@@ -3,6 +3,7 @@ import { initReactI18next } from 'react-i18next';
 import LanguageDetector from 'i18next-browser-languagedetector';
 import { resources } from './dictionnaire_Accueil_Profil'; 
 import { resources_connexion } from './dictionnaire_Connexion'; 
+import { resources_inscription } from './dictionnaire_inscription';
 
 // Fusion des dictionnaires
 const combinedResources = {
@@ -10,12 +11,14 @@ const combinedResources = {
     translation: {
       ...resources.Français.translation,
       ...resources_connexion.Français.translation,
+      ...resources_inscription.Français.translation,
     }
   },
   English: {
     translation: {
       ...resources.English.translation,
       ...resources_connexion.English.translation,
+      ...resources_inscription.English.translation,
     }
   }
 };

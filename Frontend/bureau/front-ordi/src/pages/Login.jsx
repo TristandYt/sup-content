@@ -9,7 +9,6 @@ const Login = ({ onSwitch, onLoginSuccess }) => {
   const [showPass, setShowPass] = useState(false);
   const [error, setError] = useState('');
 
-  // Fonction pour changer la langue
   const changeLanguage = (lng) => {
     i18n.changeLanguage(lng);
   };
@@ -47,53 +46,54 @@ const Login = ({ onSwitch, onLoginSuccess }) => {
 
   return (
     <div className="container">
-      <div className="card">
+      {/* On s'assure que la card est en position relative pour que les drapeaux se calent dessus */}
+      <div className="card" style={{ position: 'relative' }}>
         
-        {/* TITRE + DRAPEAUX CENTRÉS */}
+        {/* SÉLECTEUR DE LANGUE : Positionné en haut à droite de la card */}
         <div style={{ 
+          position: 'absolute', 
+          top: '20px', 
+          right: '20px', 
           display: 'flex', 
-          alignItems: 'center', 
-          justifyContent: 'center', 
-          gap: '15px', 
-          marginBottom: '25px' 
+          gap: '8px',
+          zIndex: 10 
         }}>
-          <h2 className="title" style={{ margin: 0 }}>{t('title')}</h2>
-          
-          <div style={{ display: 'flex', gap: '10px' }}>
-            <button 
-              onClick={() => changeLanguage('Français')} 
-              title="Français"
-              style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'flex' }}
-            >
-              <img 
-                src="https://flagcdn.com/w40/fr.png" 
-                width="24" 
-                alt="FR" 
-                style={{ 
-                  opacity: i18n.language === 'Français' ? 1 : 0.3, 
-                  transition: 'opacity 0.3s',
-                  borderRadius: '2px' 
-                }} 
-              />
-            </button>
-            <button 
-              onClick={() => changeLanguage('English')} 
-              title="English"
-              style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'flex' }}
-            >
-              <img 
-                src="https://flagcdn.com/w40/gb.png" 
-                width="24" 
-                alt="EN" 
-                style={{ 
-                  opacity: i18n.language === 'English' ? 1 : 0.3, 
-                  transition: 'opacity 0.3s',
-                  borderRadius: '2px' 
-                }} 
-              />
-            </button>
-          </div>
+          <button 
+            onClick={() => changeLanguage('Français')} 
+            style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+          >
+            <img 
+              src="https://flagcdn.com/w40/fr.png" 
+              width="22" 
+              alt="FR" 
+              style={{ 
+                opacity: i18n.language === 'Français' ? 1 : 0.3, 
+                borderRadius: '2px',
+                transition: 'opacity 0.2s'
+              }} 
+            />
+          </button>
+          <button 
+            onClick={() => changeLanguage('English')} 
+            style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+          >
+            <img 
+              src="https://flagcdn.com/w40/gb.png" 
+              width="22" 
+              alt="EN" 
+              style={{ 
+                opacity: i18n.language === 'English' ? 1 : 0.3, 
+                borderRadius: '2px',
+                transition: 'opacity 0.2s'
+              }} 
+            />
+          </button>
         </div>
+
+        {/* TITRE : Reste parfaitement centré */}
+        <h2 className="title" style={{ textAlign: 'center', marginBottom: '25px' }}>
+          {t('title')}
+        </h2>
         
         <div className="error-msg">
             {error && error}
