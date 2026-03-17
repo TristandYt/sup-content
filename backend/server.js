@@ -8,11 +8,11 @@ app.use(express.json());
 
 // --- IMPORT DES ROUTES ---
 const authRoutes = require('./Routes/authRoutes');
-const gameRoutes = require('./Routes/gameRoutes');
+const gameRoutes = require('./Routes/gameRoutes.jsx');
 
 // --- UTILISATION DES ROUTES ---
-app.use('/api/auth', authRoutes);   // Toutes les routes d'auth commenceront par /api/auth
-app.use('/api/games', gameRoutes); // Toutes les routes de jeux par /api/games
+app.use('/api/auth', authRoutes);   
+app.use('/api/games', gameRoutes); 
 
 const PORT = 3000;
-app.listen(PORT, () => console.log(`🚀 Serveur sur le port ${PORT}`));
+app.listen(PORT, () => console.log(`Serveur sur le port ${PORT}`));
