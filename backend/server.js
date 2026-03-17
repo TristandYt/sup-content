@@ -5,6 +5,7 @@ const admin = require('firebase-admin');
 const listRoutes = require('./routes/listRouter');
 const reviewRoutes = require('./routes/reviewRouter');
 const followRoutes = require('./routes/followRouter');
+const feedRoutes = require('./routes/feedRouter');
 
 dotenv.config();
 
@@ -48,6 +49,7 @@ app.use('/api/users', userRoutes);
 app.use('/api/lists', listRoutes);
 app.use('/api/reviews', reviewRoutes);
 app.use('/api/follows', followRoutes);
+app.use('/api/feeds', feedRoutes);
 
 // middleware
 app.use(errorHandler);
