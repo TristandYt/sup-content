@@ -1,7 +1,7 @@
 services:
   # ÉMULATEUR FIREBASE (Base de données locale)
   database:
-    image: andreysenov/firebase-tools:13.30.0
+    image: andreysenov/firebase-tools:latest
     container_name: supcontent-db
     ports:
       - "4000:4000" # UI de l'émulateur

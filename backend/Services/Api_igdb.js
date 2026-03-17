@@ -1,32 +1,94 @@
-let cachedToken = null; 
+const axios = require('axios');
 
-app.get('/api/search-game', async (req, res) => {
-    const gameTitle = req.query.q; 
-    
-    if (!gameTitle) return res.status(400).json({ error: "Nom du jeu manquant" });
-
-    try {
-        if (!cachedToken) {
-            const authRes = await axios.post(`https://id.twitch.tv/oauth2/token?client_id=${process.env.IGDB_CLIENT_ID}&client_secret=${process.env.IGDB_CLIENT_SECRET}&grant_type=client_credentials`);
-            cachedToken = authRes.data.access_token;
-            console.log("🔑 Nouveau Token IGDB généré et mis en cache");
-        }
-
-        const gamesRes = await axios({
-            url: "https://api.igdb.com/v4/games",
-            method: 'POST',
-            headers: {
-                'Client-ID': process.env.IGDB_CLIENT_ID,
-                'Authorization': `Bearer ${cachedToken}`,
-            },
-            data: `fields name, cover.url, total_rating; search "${gameTitle}"; limit 10;`
-        });
-
-        res.json(gamesRes.data);
-    } catch (error) {
-        if (error.response?.status === 401) cachedToken = null;
-        
-        console.error("Erreur IGDB:", error.message);
-        res.status(500).json({ error: "Erreur lors de la recherche IGDB" });
+class IGDBService {
+    constructor() {
+        this.clientId = process.env.IGDB_CLIENT_ID;
+        this.clientSecret = process.env.IGDB_CLIENT_SECRET;
+        this.accessToken = null;
+        this.baseUrl = 'https://api.igdb.com/v4';
     }
-});
+
+    /**
+     * Gère l'authentification OAuth2 auprès de Twitch
+     */
+    async getAccessToken() {
+        if (this.accessToken) return this.accessToken;
+
+        try {
+            const response = await axios.post(
+                `https://id.twitch.tv/oauth2/token?client_id=${this.clientId}&client_secret=${this.client_secret}&grant_type=client_credentials`
+            );
+            this.accessToken = response.data.access_token;
+            return this.accessToken;
+        } catch (error) {
+            console.error("❌ Erreur d'authentification Twitch:", error.message);
+            throw new Error("Impossible de récupérer le token IGDB");
+        }
+    }
+
+    /**
+     * Méthode POST à IGDB
+     */
+    async request(endpoint, query) {
+        try {
+            const token = await this.getAccessToken();
+            const response = await axios({
+                url: `${this.baseUrl}/${endpoint}`,
+                method: 'POST',
+                headers: {
+                    'Client-ID': this.clientId,
+                    'Authorization': `Bearer ${token}`,
+                    'Accept': 'application/json',
+                },
+                data: query
+            });
+            return response.data;
+        } catch (error) {
+            //token est expiré (401)
+            if (error.response && error.response.status === 401) {
+                this.accessToken = null;
+            }
+            console.error(`❌ Erreur IGDB (${endpoint}):`, error.message);
+            throw error;
+        }
+    }
+
+    /**
+     * Recherche de jeux par titre
+     */
+    async searchGames(title) {
+        // On récupère le nom, l'ID de l'image (cover), la note et le résumé
+        const query = `
+            fields name, cover.image_id, total_rating, summary;
+            search "${title}";
+            limit 12;
+        `;
+        return this.request('games', query);
+    }
+
+    /**
+     * Récupère les jeux les mieux notés (pour la page d'accueil)
+     */
+    async getPopularGames() {
+        const query = `
+            fields name, cover.image_id, total_rating;
+            sort total_rating desc;
+            where total_rating != null & cover != null;
+            limit 10;
+        `;
+        return this.request('games', query);
+    }
+
+    /**
+     * Récupère les détails complets d'un jeu par son ID
+     */
+    async getGameDetails(gameId) {
+        const query = `
+            fields name, cover.image_id, summary, genres.name, platforms.name, screenshots.image_id, first_release_date;
+            where id = ${gameId};
+        `;
+        return this.request('games', query);
+    }
+}
+
+module.exports = new IGDBService();
