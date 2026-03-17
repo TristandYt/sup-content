@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import '../../../../Style/Styles.css';
+import "../Style/Styles.css";
 
 const Login = ({ onSwitch, onLoginSuccess }) => {
   const { t, i18n } = useTranslation();

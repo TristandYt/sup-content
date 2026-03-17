@@ -7,8 +7,8 @@ app.use(cors());
 app.use(express.json());
 
 // --- IMPORT DES ROUTES ---
-const authRoutes = require('./Routes/authRoutes.jsx'); 
-const gameRoutes = require('./Routes/gameRoutes.jsx');
+const authRoutes = require('./Routes/authRoutes.js'); 
+const gameRoutes = require('./Routes/gameRoutes.js');
 
 // --- UTILISATION DES ROUTES ---
 app.use('/api/auth', authRoutes); 

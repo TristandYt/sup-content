@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import '../../../../Style/Styles.css';
+import "../Style/Styles.css";
 
 const Profile = ({ user, onLoginSuccess, onLogout }) => {
   const { t, i18n } = useTranslation();

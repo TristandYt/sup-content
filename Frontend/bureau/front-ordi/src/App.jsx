@@ -3,7 +3,7 @@ import Accueil from './pages/Accueil';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import Utilisateur from './pages/utilisateur';
-import '../../../Style/Styles.css';
+import "./";
 import './Langue/i18n';
 
 const App = () => {
