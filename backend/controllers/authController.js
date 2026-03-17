@@ -4,7 +4,7 @@ const admin = require('firebase-admin');
 
 const db = admin.firestore();
 
-export.register = async (req, res) => {
+exports.register = async (req, res) => {
     const {username, email, password} = req.body;
 
     try {
@@ -60,7 +60,7 @@ export.register = async (req, res) => {
     }
 };
 
-export.login = async (req, res) => {
+exports.login = async (req, res) => {
     const {email, password} = req.body;
 
     try {

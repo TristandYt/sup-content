@@ -5,7 +5,7 @@ let accessToken = null;
 let tokenExpirationTime = null;
 
 const getIgdbToken = async () => {
-    // Si on a un token et qu'il est encore valide, on le réutilise
+    // si on a un token et qu'il est encore valide --> on le réutilise
     if (accessToken && Date.now() < tokenExpirationTime) {
         return accessToken;
     }
@@ -20,7 +20,7 @@ const getIgdbToken = async () => {
         });
 
         accessToken = response.data.access_token;
-        // On calcule la date d'expiration (expires_in est en secondes)
+        // on calcule la date d'expiration (expires_in est en secondes)
         tokenExpirationTime = Date.now() + (response.data.expires_in * 1000) - 60000; // Marge de 1 min
 
         return accessToken;
