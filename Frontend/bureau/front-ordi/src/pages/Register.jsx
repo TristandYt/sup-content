@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next'; // Ajouté
-import "../Style/Styles.css";
+import "../../Style/Styles.css";
 
 const Register = ({ onSwitch }) => {
   const { t, i18n } = useTranslation(); // Initialisation traduction

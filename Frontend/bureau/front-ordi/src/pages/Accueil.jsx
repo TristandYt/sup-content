@@ -1,6 +1,6 @@
 import React, { useState } from 'react'; // Ajout de useState
 import { useTranslation } from 'react-i18next';
-import "../Style/Styles.css";
+import "../../Style/Styles.css";
 
 const Accueil = () => {
   const { t } = useTranslation();
