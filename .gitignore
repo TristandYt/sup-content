@@ -1,1 +1,12 @@
-node_modules
+# --- DEPENDANCES ---
+node_modules/
+**/node_modules/
+
+# --- SECRETS (IGDB, API Keys) ---
+.env
+*
+
+# Docker & Logs
+.docker/
+*.log
+*-debug.log

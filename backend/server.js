@@ -1,33 +1,34 @@
 const express = require('express');
-const mongoose = require('mongoose');
 const cors = require('cors');
-const dotenv = require('dotenv');
-const authRoutes = require('./routes/auth');
-const gameRoutes = require('./routes/games');
-const userRoutes = require('./routes/users');
-
-dotenv.config();
+const { db, auth } = require('./services/Firebase'); 
+require('dotenv').config();
 
 const app = express();
-const PORT = process.env.PORT || 5000;
 
-// Middleware
+// Middlewares basiques
 app.use(cors());
 app.use(express.json());
 
-// Database connection
-mongoose.connect(process.env.MONGODB_URI, {
-  useNewUrlParser: true,
-  useUnifiedTopology: true,
-})
-.then(() => console.log('MongoDB connected'))
-.catch(err => console.log(err));
+// Route de base pour vérifier que l'API répond
+app.get('/', (req, res) => {
+    res.send("API Sup-Content Opérationnelle");
+});
 
-// Routes
-app.use('/api/auth', authRoutes);
-app.use('/api/games', gameRoutes);
-app.use('/api/users', userRoutes);
+// Route test pour Firestore
+app.get('/test', async (req, res) => {
+    try {
+        await db.collection('test').add({ 
+            date: new Date().toISOString(), 
+            user: "Tristan" 
+        });
+        res.send("Connexion Firestore OK (Document créé)");
+    } catch (e) {
+        res.status(500).send("Erreur de liaison : " + e.message);
+    }
+});
 
+// Port d'écoute
+const PORT = 3000;
 app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+    console.log(`\nReady on http://localhost:${PORT}`);
 });
