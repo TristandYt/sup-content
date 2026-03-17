@@ -1,12 +1,16 @@
-# --- DEPENDANCES ---
+# Dépendances
 node_modules/
-**/node_modules/
+.pnp/
+.pnp.js
 
-# --- SECRETS (IGDB, API Keys) ---
+# Environnement (Tes secrets !)
 .env
-*
 
-# Docker & Logs
-.docker/
-*.log
-*-debug.log
+# Docker
+.dockerignore
+
+# Firebase
+.firebase/
+firestore-debug.log
+ui-debug.log
+firebase-debug.log

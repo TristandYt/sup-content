@@ -1,34 +1,18 @@
 const express = require('express');
 const cors = require('cors');
-const { db, auth } = require('./services/Firebase'); 
 require('dotenv').config();
 
 const app = express();
-
-// Middlewares basiques
 app.use(cors());
 app.use(express.json());
 
-// Route de base pour vérifier que l'API répond
-app.get('/', (req, res) => {
-    res.send("API Sup-Content Opérationnelle");
-});
+// --- IMPORT DES ROUTES ---
+const authRoutes = require('./Routes/authRoutes');
+const gameRoutes = require('./Routes/gameRoutes');
 
-// Route test pour Firestore
-app.get('/test', async (req, res) => {
-    try {
-        await db.collection('test').add({ 
-            date: new Date().toISOString(), 
-            user: "Tristan" 
-        });
-        res.send("Connexion Firestore OK (Document créé)");
-    } catch (e) {
-        res.status(500).send("Erreur de liaison : " + e.message);
-    }
-});
+// --- UTILISATION DES ROUTES ---
+app.use('/api/auth', authRoutes);   // Toutes les routes d'auth commenceront par /api/auth
+app.use('/api/games', gameRoutes); // Toutes les routes de jeux par /api/games
 
-// Port d'écoute
 const PORT = 3000;
-app.listen(PORT, () => {
-    console.log(`\nReady on http://localhost:${PORT}`);
-});
+app.listen(PORT, () => console.log(`🚀 Serveur sur le port ${PORT}`));
