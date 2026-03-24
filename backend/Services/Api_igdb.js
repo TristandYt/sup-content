@@ -16,7 +16,7 @@ class IGDBService {
 
         try {
             const response = await axios.post(
-                `https://id.twitch.tv/oauth2/token?client_id=${this.clientId}&client_secret=${this.client_secret}&grant_type=client_credentials`
+                `https://id.twitch.tv/oauth2/token?client_id=${this.clientId}&client_secret=${this.clientSecret}&grant_type=client_credentials`
             );
             this.accessToken = response.data.access_token;
             return this.accessToken;
