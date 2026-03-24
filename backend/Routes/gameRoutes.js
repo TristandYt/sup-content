@@ -4,7 +4,11 @@ const igdb = require('../Services/Api_igdb');
 
 router.get('/popular', async (req, res) => {
     try {
-        const games = await igdb.getPopularGames();
+        // On récupère sortBy et order depuis les paramètres de l'URL (ex: ?sortBy=name&order=asc)
+        const { sortBy, order } = req.query;
+        
+        // On passe ces paramètres à notre service IGDB
+        const games = await igdb.getPopularGames(sortBy, order);
         res.json(games);
     } catch (error) {
         res.status(500).json({ error: "Erreur IGDB Populaires" });
@@ -21,7 +25,5 @@ router.get('/search', async (req, res) => {
         res.status(500).json({ error: "Erreur IGDB Recherche" });
     }
 });
-
-
 
 module.exports = router;

@@ -59,22 +59,27 @@ class IGDBService {
     async searchGames(title) {
         // On récupère le nom, l'ID de l'image (cover), la note et le résumé
         const query = `
-            fields name, cover.image_id, total_rating, summary;
+            fields name, cover.image_id, total_rating, summary, first_release_date;
             search "${title}";
-            limit 12;
+            limit 40;
         `;
         return this.request('games', query);
     }
 
     /**
      * Récupère les jeux les mieux notés (pour la page d'accueil)
+     * Ajout de paramètres pour le tri global
      */
-    async getPopularGames() {
+    async getPopularGames(sortBy = 'total_rating', order = 'desc') {
+        // Validation simple pour éviter les erreurs de syntaxe IGDB
+        const field = ['name', 'total_rating', 'first_release_date'].includes(sortBy) ? sortBy : 'total_rating';
+        const direction = order === 'asc' ? 'asc' : 'desc';
+
         const query = `
-            fields name, cover.image_id, total_rating;
-            sort total_rating desc;
+            fields name, cover.image_id, total_rating, first_release_date;
+            sort ${field} ${direction};
             where total_rating != null & cover != null;
-            limit 10;
+            limit 40;
         `;
         return this.request('games', query);
     }
