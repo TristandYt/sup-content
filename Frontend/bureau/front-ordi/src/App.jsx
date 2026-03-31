@@ -3,6 +3,7 @@ import Accueil from './pages/Accueil';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import Utilisateur from './pages/utilisateur';
+import Jeu from './pages/Jeu'; // Assurez-vous de créer ce fichier
 import "../Style/Styles.css";
 import './Langue/i18n';
 
@@ -10,11 +11,11 @@ const App = () => {
   // États pour la navigation et l'utilisateur
   const [currentPage, setCurrentPage] = useState('accueil');
   const [user, setUser] = useState(null); // null = déconnecté
+  const [selectedGameId, setSelectedGameId] = useState(null); // ID du jeu à afficher
 
   // Fonction pour gérer la connexion ET la mise à jour du profil
   const handleLoginSuccess = (userData) => {
     setUser(userData);
-    // On ne redirige vers l'accueil que si on vient de la page login ou register
     if (currentPage === 'login' || currentPage === 'register') {
       setCurrentPage('accueil');
     }
@@ -24,6 +25,12 @@ const App = () => {
   const handleLogout = () => {
     setUser(null);
     setCurrentPage('accueil');
+  };
+
+  // Fonction pour aller sur la page d'un jeu spécifique
+  const handleShowGame = (id) => {
+    setSelectedGameId(id);
+    setCurrentPage('jeu');
   };
 
   return (
@@ -46,8 +53,17 @@ const App = () => {
 
       {/* --- CONTENU DYNAMIQUE --- */}
       <main style={styles.mainContent}>
-        {currentPage === 'accueil' && <Accueil user={user} />}
+        {currentPage === 'accueil' && (
+          <Accueil user={user} onGameClick={handleShowGame} />
+        )}
         
+        {currentPage === 'jeu' && (
+          <Jeu 
+            gameId={selectedGameId} 
+            onBack={() => setCurrentPage('accueil')} 
+          />
+        )}
+
         {currentPage === 'login' && (
           <Login 
             onSwitch={() => setCurrentPage('register')} 
@@ -63,7 +79,7 @@ const App = () => {
           <Utilisateur 
             user={user} 
             onLogout={handleLogout} 
-            onLoginSuccess={handleLoginSuccess} // <--- C'est ici que la magie opère pour la sauvegarde
+            onLoginSuccess={handleLoginSuccess}
           />
         )}
       </main>

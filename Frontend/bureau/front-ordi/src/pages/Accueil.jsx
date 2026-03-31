@@ -3,15 +3,14 @@ import { useTranslation } from 'react-i18next';
 import axios from 'axios';
 import "../../Style/Styles.css";
 
-const Accueil = () => {
+const Accueil = ({ onGameClick }) => { // Ajout de la prop onGameClick
   const { t } = useTranslation();
   const [searchTerm, setSearchTerm] = useState("");
   const [games, setGames] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // Nouveaux états pour le tri
-  const [sortBy, setSortBy] = useState("total_rating"); // 'name', 'total_rating', ou 'first_release_date'
-  const [sortOrder, setSortOrder] = useState("desc"); // 'asc' ou 'desc'
+  const [sortBy, setSortBy] = useState("total_rating"); 
+  const [sortOrder, setSortOrder] = useState("desc"); 
 
   const getImageUrl = (game) => {
     if (game.cover && game.cover.image_id) {
@@ -20,16 +19,11 @@ const Accueil = () => {
     return "https://via.placeholder.com/400x533/252545/fff?text=No+Cover";
   };
 
-  // Chargement des jeux avec prise en compte du tri global
   const fetchPopular = async () => {
     try {
       setLoading(true);
-      // On passe les paramètres de tri à l'URL pour que le backend les utilise
       const res = await axios.get(`http://localhost:3000/api/games/popular`, {
-        params: {
-          sortBy: sortBy,
-          order: sortOrder
-        }
+        params: { sortBy, order: sortOrder }
       });
       setGames(res.data);
     } catch (err) {
@@ -39,19 +33,14 @@ const Accueil = () => {
     }
   };
 
-  // Recharger les jeux dès que le tri change
   useEffect(() => {
     if (searchTerm.trim() === "") {
       fetchPopular();
     }
   }, [sortBy, sortOrder]); 
 
-  // Gérer la recherche
   useEffect(() => {
-    if (searchTerm.trim() === "") {
-      fetchPopular();
-      return;
-    }
+    if (searchTerm.trim() === "") return;
     const delay = setTimeout(async () => {
       try {
         setLoading(true);
@@ -84,12 +73,8 @@ const Accueil = () => {
         <p style={{ color: '#94a3b8', fontSize: '1.2rem' }}>{t('homeSubtitle')}</p>
 
         <div style={{ 
-          display: 'flex', 
-          justifyContent: 'space-between', 
-          alignItems: 'center', 
-          flexWrap: 'wrap', 
-          gap: '20px',
-          marginTop: '20px' 
+          display: 'flex', justifyContent: 'space-between', alignItems: 'center', 
+          flexWrap: 'wrap', gap: '20px', marginTop: '20px' 
         }}>
           <input
             type="text"
@@ -103,7 +88,6 @@ const Accueil = () => {
             }}
           />
 
-          {/* SECTION DE TRI */}
           <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
             <select 
               value={sortBy} 
@@ -134,10 +118,16 @@ const Accueil = () => {
           <p style={{ color: 'white' }}>Chargement...</p>
         ) : games.length > 0 ? (
           games.map((game) => (
-            <div key={game.id} className="game-card" style={{ 
-              backgroundColor: '#252545', borderRadius: '20px', overflow: 'hidden', 
-              border: '1px solid rgba(255,255,255,0.1)', transition: '0.3s'
-            }}>
+            <div 
+              key={game.id} 
+              className="game-card" 
+              onClick={() => onGameClick(game.id)} // Déclencheur du clic
+              style={{ 
+                backgroundColor: '#252545', borderRadius: '20px', overflow: 'hidden', 
+                border: '1px solid rgba(255,255,255,0.1)', transition: '0.3s',
+                cursor: 'pointer' // Changement du curseur
+              }}
+            >
               <img 
                 src={getImageUrl(game)} 
                 alt={game.name} 
