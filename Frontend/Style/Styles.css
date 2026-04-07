@@ -457,3 +457,75 @@
   background: var(--border);
   transform: scale(1.05);
 }
+/* --- PAGE JEU (Détails) --- */
+
+.game-page {
+  padding: 20px;
+  min-height: 100vh;
+  background-color: #0b0e14; /* Fond sombre pour coller à ton interface */
+  color: white;
+}
+
+.game-container {
+  display: flex;         /* ACTIVE LE MODE CÔTE À CÔTE */
+  gap: 40px;            /* Espace entre la photo et le texte */
+  align-items: flex-start;
+  margin-top: 20px;
+}
+
+/* La colonne de gauche (Image + Note) */
+.game-sidebar {
+  flex: 0 0 300px;      /* Largeur fixe de 300px, elle ne rétrécit pas */
+  display: flex;
+  flex-direction: column;
+}
+
+.game-cover {
+  width: 100%;
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+}
+
+/* La colonne de droite (Titre, Résumé, Infos) */
+.game-content {
+  flex: 1;              /* Prend tout le reste de la largeur disponible */
+  display: flex;
+  flex-direction: column;
+  text-align: left;     /* On s'assure que tout est bien aligné à gauche */
+}
+
+.game-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.game-title {
+  font-size: 3rem;
+  margin: 0;
+}
+
+/* --- BOUTONS ET FORMULAIRE --- */
+
+.btn-save {
+  background-color: var(--primary-pink, #b208b4);
+  color: white;
+  border: none;
+  padding: 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: bold;
+  margin-top: 10px;
+  width: 100%; /* Ici, il prend 100% de la sidebar (300px), pas de l'écran ! */
+}
+
+.note-textarea {
+  width: 100%;
+  height: 100px;
+  background: #1a1d24;
+  border: 1px solid #333;
+  color: white;
+  padding: 10px;
+  border-radius: 4px;
+  resize: none;
+}

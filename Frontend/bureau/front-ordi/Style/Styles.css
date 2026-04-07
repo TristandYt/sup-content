@@ -457,3 +457,170 @@
   background: var(--border);
   transform: scale(1.05);
 }
+/* --- BASE PAGE JEU --- */
+.game-details-page {
+    padding: 30px;
+    color: white;
+    min-height: 100vh;
+}
+
+.game-details-page .game-main-container {
+    display: flex !important;
+    flex-direction: row !important;
+    gap: 40px;
+    align-items: flex-start;
+    max-width: 1200px;
+    margin: 20px auto;
+}
+
+/* --- SIDEBAR GAUCHE --- */
+.game-details-page .game-sidebar {
+    flex: 0 0 300px !important;
+    width: 300px;
+}
+
+.game-details-page .game-cover-img {
+    width: 100%;
+    border-radius: 12px;
+    box-shadow: 0 8px 25px rgba(0,0,0,0.5);
+}
+
+.game-details-page .game-meta-under-cover {
+    margin-top: 20px;
+    background: rgba(255, 255, 255, 0.03);
+    padding: 15px;
+    border-radius: 10px;
+    text-align: left;
+    font-size: 0.9rem;
+}
+
+.game-details-page .game-meta-under-cover strong {
+    color: #b208b4;
+    display: block;
+    margin-bottom: 2px;
+}
+
+/* --- COEUR MINIMALISTE --- */
+.minimal-heart-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+}
+
+.minimal-heart-btn svg {
+    width: 30px;
+    height: 30px;
+    fill: none;
+    stroke: rgba(255, 255, 255, 0.5);
+    stroke-width: 2px;
+    transition: all 0.3s ease;
+}
+
+.minimal-heart-btn.active svg {
+    fill: #b208b4;
+    stroke: #b208b4;
+}
+
+.minimal-heart-btn:hover svg {
+    transform: scale(1.1);
+}
+
+/* --- CONTENU DROITE --- */
+.game-details-page .game-info-content {
+    flex: 1;
+    text-align: left;
+}
+
+.game-details-page .game-title-row {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+}
+
+.game-details-page .rating-text {
+    color: #b208b4;
+    font-weight: bold;
+    font-size: 1.2rem;
+    margin: 10px 0;
+}
+
+.game-details-page .summary-text {
+    line-height: 1.6;
+    color: #94a3b8;
+    margin-bottom: 30px;
+}
+
+/* --- SYSTEME DE COMMENTAIRES --- */
+.comments-section {
+    margin-top: 40px;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    padding-top: 20px;
+}
+
+.comments-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.btn-open-comment {
+    background: transparent;
+    border: 1px dashed #b208b4;
+    color: white;
+    padding: 8px 15px;
+    border-radius: 5px;
+    cursor: pointer;
+}
+
+.comment-input-area {
+    margin-bottom: 30px;
+}
+
+.comment-input-area textarea {
+    width: 100%;
+    height: 100px;
+    background: #1a1a2e;
+    color: white;
+    border: 1px solid #333;
+    border-radius: 8px;
+    padding: 10px;
+    margin-bottom: 10px;
+}
+
+.save-comment-btn {
+    background: #b208b4;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 5px;
+    cursor: pointer;
+}
+
+.comment-item {
+    background: rgba(255, 255, 255, 0.03);
+    padding: 15px;
+    border-radius: 8px;
+    margin-bottom: 10px;
+    border-left: 4px solid #b208b4;
+}
+
+.comment-date {
+    font-size: 0.75rem;
+    color: #64748b;
+    margin-top: 5px;
+    display: block;
+}
+
+/* --- BOUTON RETOUR --- */
+.btn-back {
+    background: #b208b4;
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 6px;
+    cursor: pointer;
+    margin-bottom: 20px;
+}

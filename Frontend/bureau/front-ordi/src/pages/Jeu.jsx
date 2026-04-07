@@ -1,22 +1,28 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import '../../Style/Styles.css'; 
 
 const Jeu = ({ gameId, onBack, user }) => {
   const [game, setGame] = useState(null);
   const [loading, setLoading] = useState(true);
   const [isFavorite, setIsFavorite] = useState(false);
-  const [personalNote, setPersonalNote] = useState("");
+  const [newComment, setNewComment] = useState("");
+  const [comments, setComments] = useState([]); 
+  const [showCommentBox, setShowCommentBox] = useState(false);
 
   useEffect(() => {
     const fetchDetails = async () => {
       try {
         setLoading(true);
+        // Récupération des détails du jeu
         const res = await axios.get(`http://localhost:3000/api/games/details/${gameId}`);
-        if (res.data && res.data.length > 0) {
-          setGame(res.data[0]);
-        }
+        if (res.data && res.data.length > 0) setGame(res.data[0]);
+
+        // Récupération des commentaires existants
+        const resComments = await axios.get(`http://localhost:3000/api/comments/${gameId}`);
+        setComments(resComments.data);
       } catch (err) {
-        console.error("Erreur détails:", err);
+        console.error("Erreur de chargement:", err);
       } finally {
         setLoading(false);
       }
@@ -24,77 +30,99 @@ const Jeu = ({ gameId, onBack, user }) => {
     if (gameId) fetchDetails();
   }, [gameId]);
 
-  if (loading) return <div style={{ color: 'white', padding: '50px' }}>Chargement...</div>;
-  if (!game) return <div style={{ color: 'white', padding: '50px' }}>Jeu introuvable.</div>;
+  const handleSaveComment = async () => {
+    if (!newComment.trim()) return;
+    try {
+      const commentData = {
+        gameId,
+        userId: user?.id,
+        text: newComment,
+        date: new Date().toLocaleDateString()
+      };
+      // Envoi au backend pour stockage réel
+      await axios.post(`http://localhost:3000/api/comments`, commentData);
+      
+      setComments([...comments, commentData]);
+      setNewComment("");
+      setShowCommentBox(false);
+    } catch (err) {
+      alert("Erreur lors de l'enregistrement");
+    }
+  };
 
-  // Calcul identique à Accueil.jsx
-  const ratingOn5 = game.total_rating ? (game.total_rating / 20).toFixed(1) : "N/A";
+  if (loading) return <div className="game-details-page">Chargement...</div>;
+  if (!game) return <div className="game-details-page">Jeu introuvable.</div>;
 
   return (
-    <div style={{ color: 'white', maxWidth: '1200px', margin: '0 auto', padding: '20px' }}>
-      <button onClick={onBack} style={styles.btnBack}>← Retour à l'accueil</button>
+    <div className="game-details-page">
+      <button onClick={onBack} className="btn-back">← Retour à l'accueil</button>
 
-      <div style={styles.container}>
-        {/* Colonne Gauche */}
-        <div style={styles.sidebar}>
+      <div className="game-main-container">
+        {/* COLONNE GAUCHE */}
+        <div className="game-sidebar">
           <img 
             src={`https://images.igdb.com/igdb/image/upload/t_cover_big/${game.cover?.image_id}.jpg`} 
             alt={game.name} 
-            style={styles.cover}
+            className="game-cover-img"
           />
-          <div style={styles.noteSection}>
-            <h4 style={{ color: '#b208b4' }}>Ma note personnelle</h4>
-            <textarea 
-              style={styles.textarea}
-              placeholder="Écrivez votre avis ou vos astuces ici..."
-              value={personalNote}
-              onChange={(e) => setPersonalNote(e.target.value)}
-            />
-            <button style={styles.btnSave}>Sauvegarder</button>
+          <div className="game-meta-under-cover">
+            <p><strong>Genres:</strong> {game.genres?.map(g => g.name).join(', ') || 'N/A'}</p>
+            <p><strong>Plateformes:</strong> {game.platforms?.map(p => p.name).join(', ') || 'N/A'}</p>
           </div>
         </div>
 
-        {/* Colonne Droite */}
-        <div style={styles.content}>
-          <div style={styles.headerRow}>
-            <h1 style={{ fontSize: '3rem', margin: 0 }}>{game.name}</h1>
+        {/* COLONNE DROITE */}
+        <div className="game-info-content">
+          <div className="game-title-row">
+            <h1>{game.name}</h1>
             <button 
               onClick={() => setIsFavorite(!isFavorite)} 
-              style={{ ...styles.heartBtn, color: isFavorite ? '#ff4b4b' : '#94a3b8' }}
+              className={`minimal-heart-btn ${isFavorite ? 'active' : ''}`}
             >
-              {isFavorite ? '❤️' : '🤍'}
+              <svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
+                <path d="M16 28.5L4.5 17C1.9 14.4 1.9 10.1 4.5 7.5C7.1 4.9 11.4 4.9 14 7.5L16 9.5L18 7.5C20.6 4.9 24.9 4.9 27.5 7.5C30.1 10.1 30.1 14.4 27.5 17L16 28.5Z"/>
+              </svg>
             </button>
           </div>
 
-          <p style={styles.rating}>⭐ {ratingOn5} / 5</p>
+          <p className="rating-text">⭐ {(game.total_rating / 20).toFixed(1)} / 5</p>
           
-          <h3 style={{ color: '#b208b4' }}>Résumé</h3>
-          <p style={styles.summary}>{game.summary || "Aucun résumé disponible."}</p>
+          <h3 className="section-subtitle">Résumé</h3>
+          <p className="summary-text">{game.summary || "Aucun résumé disponible."}</p>
 
-          <div style={styles.infoGrid}>
-            <p><strong>Genres:</strong> {game.genres?.map(g => g.name).join(', ') || 'N/A'}</p>
-            <p><strong>Plateformes:</strong> {game.platforms?.map(p => p.name).join(', ') || 'N/A'}</p>
+          {/* SECTION COMMENTAIRES */}
+          <div className="comments-section">
+            <div className="comments-header">
+              <h3>Commentaires ({comments.length})</h3>
+              <button className="btn-open-comment" onClick={() => setShowCommentBox(!showCommentBox)}>
+                {showCommentBox ? "Annuler" : "Ajouter un commentaire"}
+              </button>
+            </div>
+
+            {showCommentBox && (
+              <div className="comment-input-area">
+                <textarea 
+                  value={newComment}
+                  onChange={(e) => setNewComment(e.target.value)}
+                  placeholder="Écrivez votre avis ici..."
+                />
+                <button onClick={handleSaveComment} className="save-comment-btn">Publier</button>
+              </div>
+            )}
+
+            <div className="comments-list">
+              {comments.length > 0 ? comments.map((c, index) => (
+                <div key={index} className="comment-item">
+                  <p className="comment-text">{c.text}</p>
+                  <span className="comment-date">Posté le {c.date}</span>
+                </div>
+              )) : <p className="no-comments">Soyez le premier à donner votre avis !</p>}
+            </div>
           </div>
         </div>
       </div>
     </div>
   );
-};
-
-const styles = {
-  btnBack: { background: '#b208b4', color: 'white', border: 'none', padding: '10px 20px', borderRadius: '8px', cursor: 'pointer', marginBottom: '20px', fontWeight: 'bold' },
-  container: { display: 'flex', gap: '40px', flexWrap: 'wrap' },
-  sidebar: { flex: '0 0 300px' },
-  cover: { width: '100%', borderRadius: '15px', boxShadow: '0 10px 30px rgba(0,0,0,0.5)' },
-  content: { flex: 1, minWidth: '300px' },
-  headerRow: { display: 'flex', justifyContent: 'space-between', alignItems: 'center' },
-  heartBtn: { background: 'none', border: 'none', fontSize: '2.5rem', cursor: 'pointer' },
-  rating: { color: '#b208b4', fontSize: '1.8rem', fontWeight: 'bold', margin: '15px 0' },
-  summary: { lineHeight: '1.7', color: '#cbd5e1' },
-  infoGrid: { marginTop: '30px', padding: '20px', background: 'rgba(255,255,255,0.05)', borderRadius: '10px' },
-  noteSection: { marginTop: '20px' },
-  textarea: { width: '100%', height: '100px', borderRadius: '10px', padding: '10px', background: '#1e1e38', color: 'white', border: '1px solid #334155', outline: 'none' },
-  btnSave: { marginTop: '10px', background: '#1e1e38', color: 'white', border: '1px solid #b208b4', padding: '8px', borderRadius: '5px', cursor: 'pointer', width: '100%' }
 };
 
 export default Jeu;
