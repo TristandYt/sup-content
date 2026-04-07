@@ -887,3 +887,73 @@
   font-size: 0.9rem;
   font-weight: 600;
 }
+.btn-follow {
+  background-color: #9c27b0;
+  color: white;
+  border: none;
+  padding: 8px 20px;
+  border-radius: 25px;
+  font-weight: bold;
+  cursor: pointer;
+  margin-top: 10px;
+  transition: 0.3s;
+}
+
+.btn-follow:hover {
+  background-color: #7b1fa2;
+  transform: scale(1.05);
+}
+
+.btn-follow.following {
+  background-color: #4caf50; /* Vert quand on suit déjà */
+}
+/* Système d'étoiles */
+.star-rating-selector {
+  font-size: 1.8rem;
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.star-icon {
+  cursor: pointer;
+  color: #444; /* Gris par défaut */
+  transition:
+    color 0.2s ease-in-out,
+    transform 0.1s;
+}
+
+.star-icon.filled {
+  color: #ffca28; /* Or/Jaune */
+}
+
+.star-icon:hover {
+  transform: scale(1.2);
+}
+
+.rating-label {
+  font-size: 1rem;
+  margin-left: 10px;
+  color: #aaa;
+}
+
+/* Affichage des commentaires */
+.comment-item {
+  background: rgba(255, 255, 255, 0.05);
+  padding: 15px;
+  border-radius: 8px;
+  margin-bottom: 10px;
+}
+
+.comment-rating {
+  color: #ffca28;
+  letter-spacing: 2px;
+  margin-right: 10px;
+}
+
+.comment-user {
+  font-weight: bold;
+  font-size: 0.9rem;
+  color: #888;
+}

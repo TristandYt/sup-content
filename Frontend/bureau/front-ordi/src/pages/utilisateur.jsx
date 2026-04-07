@@ -7,6 +7,7 @@ const Profile = ({ user, onLoginSuccess, onLogout }) => {
   const { t, i18n } = useTranslation();
 
   const [profileData, setProfileData] = useState({
+    id: user?.id || "",
     pseudo: user?.pseudo || "Joueur",
     email: user?.email || "",
     bio: user?.bio || "",
@@ -16,22 +17,49 @@ const Profile = ({ user, onLoginSuccess, onLogout }) => {
 
   const [favorites, setFavorites] = useState([]);
   const [filter, setFilter] = useState("Tous");
+  const [isFollowing, setIsFollowing] = useState(false); // État pour le bouton follow
 
   useEffect(() => {
     if (user) {
       setProfileData((prev) => ({ ...prev, ...user }));
 
-      // CHARGEMENT IMMÉDIAT (Local) pour éviter le vide au chargement
       const localKey = `library_${user.email}`;
       const savedLocal = JSON.parse(localStorage.getItem(localKey)) || [];
       setFavorites(savedLocal);
 
-      // CHARGEMENT BDD (Background)
       fetchLibrary(user.id, user.email);
+      checkIfFollowing(user.id); // Optionnel : vérifier si on suit déjà cet ID
     }
   }, [user]);
 
+  // --- LOGIQUE FOLLOW ---
+  const handleFollow = async () => {
+    if (!user?.id) {
+      alert("Connectez-vous pour suivre des joueurs !");
+      return;
+    }
+
+    try {
+      // On envoie qui suit (followerId) et qui est suivi (followingId)
+      await axios.post(`http://localhost:3000/api/user/follow`, {
+        followerId: user.id,
+        followingId: profileData.id,
+      });
+      setIsFollowing(true);
+      alert(`Vous suivez désormais ${profileData.pseudo} !`);
+    } catch (err) {
+      alert("Erreur lors de l'action de suivi.");
+    }
+  };
+
+  const checkIfFollowing = async (myId) => {
+    // Logique à implémenter si ton backend permet de vérifier le statut
+    // try { const res = await axios.get(...); setIsFollowing(res.data.isFollowing); } catch {}
+  };
+
+  // --- RESTE DE TES FONCTIONS ---
   const fetchLibrary = async (userId, userEmail) => {
+    if (!userId || userId === "undefined") return;
     try {
       const res = await axios.get(
         `http://localhost:3000/api/user/favorites/${userId}`,
@@ -72,7 +100,6 @@ const Profile = ({ user, onLoginSuccess, onLogout }) => {
         bio: profileData.bio,
         avatar: profileData.avatar,
       });
-
       if (onLoginSuccess) onLoginSuccess(profileData);
       alert(t("alertSuccess"));
     } catch (err) {
@@ -81,14 +108,12 @@ const Profile = ({ user, onLoginSuccess, onLogout }) => {
   };
 
   const handleUpdateStatus = async (gameId, newStatus) => {
-    // 1. Mise à jour visuelle immédiate
     const updated = favorites.map((f) =>
       f.id === gameId ? { ...f, status: newStatus } : f,
     );
     setFavorites(updated);
     localStorage.setItem(`library_${user.email}`, JSON.stringify(updated));
 
-    // 2. Envoi silencieux à la BDD
     try {
       await axios.put(`http://localhost:3000/api/user/favorites/status`, {
         userId: user.id,
@@ -96,13 +121,12 @@ const Profile = ({ user, onLoginSuccess, onLogout }) => {
         status: newStatus,
       });
     } catch (err) {
-      console.error("Impossible de synchroniser le statut avec le serveur.");
+      console.error("Impossible de synchroniser le statut.");
     }
   };
 
   return (
     <div className="user-page-container">
-      {/* SECTION PROFIL */}
       <div className="profile-card-vertical">
         <h2 className="profile-main-title">{t("profileTitle")}</h2>
 
@@ -126,6 +150,14 @@ const Profile = ({ user, onLoginSuccess, onLogout }) => {
           </div>
           <p className="identified-text">{t("identifiedAs")}</p>
           <h3 className="pseudo-v2">{profileData.pseudo}</h3>
+
+          {/* NOUVEAU : Bouton Follow (visible uniquement si on regarde le profil de quelqu'un d'autre) */}
+          <button
+            className={`btn-follow ${isFollowing ? "following" : ""}`}
+            onClick={handleFollow}
+          >
+            {isFollowing ? "Abonné" : "Suivre"}
+          </button>
         </div>
 
         <div className="profile-form-v2">
@@ -186,10 +218,7 @@ const Profile = ({ user, onLoginSuccess, onLogout }) => {
 
         {favorites.length === 0 ? (
           <div className="empty-library">
-            <p>
-              Votre bibliothèque est vide. Allez sur un jeu et cliquez sur le
-              cœur !
-            </p>
+            <p>Votre bibliothèque est vide.</p>
           </div>
         ) : (
           <div className="library-grid">

@@ -7,6 +7,8 @@ const Jeu = ({ gameId, onBack, user }) => {
   const [loading, setLoading] = useState(true);
   const [isFavorite, setIsFavorite] = useState(false);
   const [newComment, setNewComment] = useState("");
+  const [rating, setRating] = useState(0); // État pour la note (1 à 5)
+  const [hoverRating, setHoverRating] = useState(0); // Effet de survol des étoiles
   const [comments, setComments] = useState([]);
   const [showCommentBox, setShowCommentBox] = useState(false);
 
@@ -14,7 +16,7 @@ const Jeu = ({ gameId, onBack, user }) => {
     const fetchDetails = async () => {
       try {
         setLoading(true);
-        // 1. Récupération des détails du jeu
+        // 1. Détails du jeu
         const res = await axios.get(
           `http://localhost:3000/api/games/details/${gameId}`,
         );
@@ -22,16 +24,15 @@ const Jeu = ({ gameId, onBack, user }) => {
           const gameData = res.data[0];
           setGame(gameData);
 
-          // 2. Vérification FAVORIS (Hybride BDD / Local)
+          // 2. Vérification Favoris
           if (user) {
-            // On vérifie d'abord en local pour la rapidité
             const localLib =
               JSON.parse(localStorage.getItem(`library_${user.email}`)) || [];
             setIsFavorite(localLib.some((item) => item.id === gameId));
           }
         }
 
-        // 3. Récupération des commentaires
+        // 3. Commentaires
         const resComments = await axios.get(
           `http://localhost:3000/api/comments/${gameId}`,
         );
@@ -45,7 +46,6 @@ const Jeu = ({ gameId, onBack, user }) => {
     if (gameId) fetchDetails();
   }, [gameId, user]);
 
-  // --- LOGIQUE FAVORIS (BDD + LOCAL) ---
   const toggleFavorite = async () => {
     if (!user) {
       alert("Vous devez être connecté pour ajouter un favori.");
@@ -64,57 +64,55 @@ const Jeu = ({ gameId, onBack, user }) => {
 
     try {
       if (isFavorite) {
-        // SUPPRIMER
         await axios.delete(
           `http://localhost:3000/api/user/favorites/${user.id}/${gameId}`,
         );
-
-        // Update Local
         const local = JSON.parse(localStorage.getItem(storageKey)) || [];
-        const filtered = local.filter((item) => item.id !== gameId);
-        localStorage.setItem(storageKey, JSON.stringify(filtered));
+        localStorage.setItem(
+          storageKey,
+          JSON.stringify(local.filter((i) => i.id !== gameId)),
+        );
       } else {
-        // AJOUTER
-        await axios.post(`http://axios:3000/api/user/favorites`, {
+        await axios.post(`http://localhost:3000/api/user/favorites`, {
           userId: user.id,
           ...gameData,
         });
-
-        // Update Local
         const local = JSON.parse(localStorage.getItem(storageKey)) || [];
         localStorage.setItem(storageKey, JSON.stringify([...local, gameData]));
       }
       setIsFavorite(!isFavorite);
     } catch (err) {
-      console.error("Erreur BDD, bascule en mode Local uniquement");
-
-      // Secours : si la BDD n'est pas encore prête, on le fait quand même en local pour tester
+      // Mode secours local
       let local = JSON.parse(localStorage.getItem(storageKey)) || [];
-      if (isFavorite) {
-        local = local.filter((item) => item.id !== gameId);
-      } else {
-        local.push(gameData);
-      }
+      isFavorite
+        ? (local = local.filter((i) => i.id !== gameId))
+        : local.push(gameData);
       localStorage.setItem(storageKey, JSON.stringify(local));
       setIsFavorite(!isFavorite);
     }
   };
 
   const handleSaveComment = async () => {
-    if (!newComment.trim()) return;
+    if (!newComment.trim() || rating === 0) {
+      alert("Merci d'ajouter un texte et une note !");
+      return;
+    }
     try {
       const commentData = {
         gameId,
         userId: user?.id,
+        pseudo: user?.pseudo || "Anonyme",
         text: newComment,
+        rating: rating,
         date: new Date().toLocaleDateString(),
       };
       await axios.post(`http://localhost:3000/api/comments`, commentData);
-      setComments([...comments, commentData]);
+      setComments([commentData, ...comments]);
       setNewComment("");
+      setRating(0);
       setShowCommentBox(false);
     } catch (err) {
-      alert("Erreur lors de l'enregistrement du commentaire");
+      alert("Erreur lors de l'envoi du commentaire.");
     }
   };
 
@@ -124,7 +122,7 @@ const Jeu = ({ gameId, onBack, user }) => {
   return (
     <div className="game-details-page">
       <button onClick={onBack} className="btn-back">
-        ← Retour à l'accueil
+        ← Retour
       </button>
 
       <div className="game-main-container">
@@ -153,37 +151,52 @@ const Jeu = ({ gameId, onBack, user }) => {
               onClick={toggleFavorite}
               className={`minimal-heart-btn ${isFavorite ? "active" : ""}`}
             >
-              <svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
+              <svg viewBox="0 0 32 32">
                 <path d="M16 28.5L4.5 17C1.9 14.4 1.9 10.1 4.5 7.5C7.1 4.9 11.4 4.9 14 7.5L16 9.5L18 7.5C20.6 4.9 24.9 4.9 27.5 7.5C30.1 10.1 30.1 14.4 27.5 17L16 28.5Z" />
               </svg>
             </button>
           </div>
 
           <p className="rating-text">
-            ⭐ {(game.total_rating / 20).toFixed(1)} / 5
+            ⭐ {(game.total_rating / 20).toFixed(1)} / 5 (IGDB)
           </p>
           <h3 className="section-subtitle">Résumé</h3>
           <p className="summary-text">
             {game.summary || "Aucun résumé disponible."}
           </p>
 
+          {/* SECTION COMMENTAIRES & NOTES */}
           <div className="comments-section">
             <div className="comments-header">
-              <h3>Commentaires ({comments.length})</h3>
+              <h3>Avis des joueurs ({comments.length})</h3>
               <button
                 className="btn-open-comment"
                 onClick={() => setShowCommentBox(!showCommentBox)}
               >
-                {showCommentBox ? "Annuler" : "Ajouter un commentaire"}
+                {showCommentBox ? "Annuler" : "Noter ce jeu"}
               </button>
             </div>
 
             {showCommentBox && (
               <div className="comment-input-area">
+                <div className="star-rating-selector">
+                  {[1, 2, 3, 4, 5].map((star) => (
+                    <span
+                      key={star}
+                      className={`star-icon ${(hoverRating || rating) >= star ? "filled" : ""}`}
+                      onClick={() => setRating(star)}
+                      onMouseEnter={() => setHoverRating(star)}
+                      onMouseLeave={() => setHoverRating(0)}
+                    >
+                      ★
+                    </span>
+                  ))}
+                  <span className="rating-label">{rating}/5</span>
+                </div>
                 <textarea
                   value={newComment}
                   onChange={(e) => setNewComment(e.target.value)}
-                  placeholder="Écrivez votre avis ici..."
+                  placeholder="Votre avis sur ce titre..."
                 />
                 <button
                   onClick={handleSaveComment}
@@ -195,18 +208,21 @@ const Jeu = ({ gameId, onBack, user }) => {
             )}
 
             <div className="comments-list">
-              {comments.length > 0 ? (
-                comments.map((c, index) => (
-                  <div key={index} className="comment-item">
-                    <p className="comment-text">{c.text}</p>
-                    <span className="comment-date">Posté le {c.date}</span>
+              {comments.map((c, index) => (
+                <div key={index} className="comment-item">
+                  <div className="comment-header-info">
+                    <span className="comment-rating">
+                      {"★".repeat(c.rating)}
+                      {"☆".repeat(5 - c.rating)}
+                    </span>
+                    <span className="comment-user">
+                      par {c.pseudo || "Anonyme"}
+                    </span>
                   </div>
-                ))
-              ) : (
-                <p className="no-comments">
-                  Soyez le premier à donner votre avis !
-                </p>
-              )}
+                  <p className="comment-body">{c.text}</p>
+                  <span className="comment-date">Le {c.date}</span>
+                </div>
+              ))}
             </div>
           </div>
         </div>
