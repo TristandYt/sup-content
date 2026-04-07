@@ -529,3 +529,107 @@
   border-radius: 4px;
   resize: none;
 }
+/* --- LAYOUT UTILISATEUR --- */
+.user-page-container {
+    padding: 40px 20px;
+    max-width: 1200px;
+    margin: 0 auto;
+    color: var(--white);
+}
+
+.profile-card {
+    background: var(--bg-card);
+    padding: 30px;
+    border-radius: 15px;
+    border: 1px solid var(--border-color);
+    margin-bottom: 50px;
+}
+
+.user-pseudo {
+    font-size: 1.8rem;
+    margin-top: 10px;
+    color: var(--primary);
+}
+
+/* --- FILTRES BIBLIOTHÈQUE --- */
+.library-filters {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    margin-bottom: 40px;
+}
+
+.filter-btn {
+    background: var(--bg-social);
+    border: 1px solid var(--border-color);
+    color: var(--white);
+    padding: 10px 25px;
+    border-radius: 30px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.filter-btn.active {
+    background: var(--primary);
+    border-color: var(--primary);
+    box-shadow: 0 0 15px rgba(178, 8, 180, 0.3);
+}
+
+/* --- GRILLE DE JEUX --- */
+.library-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 30px;
+}
+
+.library-item {
+    background: var(--bg-card);
+    border-radius: 12px;
+    border: 1px solid var(--border-color);
+    overflow: hidden;
+    transition: transform 0.3s ease;
+}
+
+.library-item:hover {
+    transform: translateY(-8px);
+}
+
+.library-cover {
+    width: 100%;
+    height: 260px;
+    object-fit: cover;
+}
+
+.library-info {
+    padding: 15px;
+}
+
+.library-info h4 {
+    margin: 0 0 10px 0;
+    font-size: 1rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* --- SELECTEUR DE STATUT --- */
+.status-select {
+    width: 100%;
+    padding: 6px;
+    background: var(--bg-main);
+    color: white;
+    border: 1px solid var(--border-color);
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 0.85rem;
+}
+
+.status-select.a-faire { border-left: 4px solid #64748b; }
+.status-select.en-cours { border-left: 4px solid var(--primary); }
+.status-select.fini { border-left: 4px solid #22c55e; }
+
+.empty-msg {
+    grid-column: 1 / -1;
+    color: var(--text-dim);
+    padding: 40px;
+}
