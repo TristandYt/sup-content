@@ -14,13 +14,24 @@ const Jeu = ({ gameId, onBack, user }) => {
     const fetchDetails = async () => {
       try {
         setLoading(true);
-        // Récupération des détails du jeu
+        // 1. Récupération des détails du jeu
         const res = await axios.get(
           `http://localhost:3000/api/games/details/${gameId}`,
         );
-        if (res.data && res.data.length > 0) setGame(res.data[0]);
+        if (res.data && res.data.length > 0) {
+          const gameData = res.data[0];
+          setGame(gameData);
 
-        // Récupération des commentaires existants
+          // 2. Vérification FAVORIS (Hybride BDD / Local)
+          if (user) {
+            // On vérifie d'abord en local pour la rapidité
+            const localLib =
+              JSON.parse(localStorage.getItem(`library_${user.email}`)) || [];
+            setIsFavorite(localLib.some((item) => item.id === gameId));
+          }
+        }
+
+        // 3. Récupération des commentaires
         const resComments = await axios.get(
           `http://localhost:3000/api/comments/${gameId}`,
         );
@@ -32,7 +43,62 @@ const Jeu = ({ gameId, onBack, user }) => {
       }
     };
     if (gameId) fetchDetails();
-  }, [gameId]);
+  }, [gameId, user]);
+
+  // --- LOGIQUE FAVORIS (BDD + LOCAL) ---
+  const toggleFavorite = async () => {
+    if (!user) {
+      alert("Vous devez être connecté pour ajouter un favori.");
+      return;
+    }
+
+    const storageKey = `library_${user.email}`;
+    const imageUrl = `https://images.igdb.com/igdb/image/upload/t_cover_big/${game.cover?.image_id}.jpg`;
+
+    const gameData = {
+      id: gameId,
+      name: game.name,
+      image_url: imageUrl,
+      status: "A faire",
+    };
+
+    try {
+      if (isFavorite) {
+        // SUPPRIMER
+        await axios.delete(
+          `http://localhost:3000/api/user/favorites/${user.id}/${gameId}`,
+        );
+
+        // Update Local
+        const local = JSON.parse(localStorage.getItem(storageKey)) || [];
+        const filtered = local.filter((item) => item.id !== gameId);
+        localStorage.setItem(storageKey, JSON.stringify(filtered));
+      } else {
+        // AJOUTER
+        await axios.post(`http://axios:3000/api/user/favorites`, {
+          userId: user.id,
+          ...gameData,
+        });
+
+        // Update Local
+        const local = JSON.parse(localStorage.getItem(storageKey)) || [];
+        localStorage.setItem(storageKey, JSON.stringify([...local, gameData]));
+      }
+      setIsFavorite(!isFavorite);
+    } catch (err) {
+      console.error("Erreur BDD, bascule en mode Local uniquement");
+
+      // Secours : si la BDD n'est pas encore prête, on le fait quand même en local pour tester
+      let local = JSON.parse(localStorage.getItem(storageKey)) || [];
+      if (isFavorite) {
+        local = local.filter((item) => item.id !== gameId);
+      } else {
+        local.push(gameData);
+      }
+      localStorage.setItem(storageKey, JSON.stringify(local));
+      setIsFavorite(!isFavorite);
+    }
+  };
 
   const handleSaveComment = async () => {
     if (!newComment.trim()) return;
@@ -43,14 +109,12 @@ const Jeu = ({ gameId, onBack, user }) => {
         text: newComment,
         date: new Date().toLocaleDateString(),
       };
-      // Envoi au backend pour stockage réel
       await axios.post(`http://localhost:3000/api/comments`, commentData);
-
       setComments([...comments, commentData]);
       setNewComment("");
       setShowCommentBox(false);
     } catch (err) {
-      alert("Erreur lors de l'enregistrement");
+      alert("Erreur lors de l'enregistrement du commentaire");
     }
   };
 
@@ -64,7 +128,6 @@ const Jeu = ({ gameId, onBack, user }) => {
       </button>
 
       <div className="game-main-container">
-        {/* COLONNE GAUCHE */}
         <div className="game-sidebar">
           <img
             src={`https://images.igdb.com/igdb/image/upload/t_cover_big/${game.cover?.image_id}.jpg`}
@@ -83,12 +146,11 @@ const Jeu = ({ gameId, onBack, user }) => {
           </div>
         </div>
 
-        {/* COLONNE DROITE */}
         <div className="game-info-content">
           <div className="game-title-row">
             <h1>{game.name}</h1>
             <button
-              onClick={() => setIsFavorite(!isFavorite)}
+              onClick={toggleFavorite}
               className={`minimal-heart-btn ${isFavorite ? "active" : ""}`}
             >
               <svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
@@ -100,13 +162,11 @@ const Jeu = ({ gameId, onBack, user }) => {
           <p className="rating-text">
             ⭐ {(game.total_rating / 20).toFixed(1)} / 5
           </p>
-
           <h3 className="section-subtitle">Résumé</h3>
           <p className="summary-text">
             {game.summary || "Aucun résumé disponible."}
           </p>
 
-          {/* SECTION COMMENTAIRES */}
           <div className="comments-section">
             <div className="comments-header">
               <h3>Commentaires ({comments.length})</h3>

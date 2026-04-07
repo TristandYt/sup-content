@@ -6,47 +6,45 @@ import "../../Style/Styles.css";
 const Profile = ({ user, onLoginSuccess, onLogout }) => {
   const { t, i18n } = useTranslation();
 
-  // --- ÉTAT DU PROFIL ---
   const [profileData, setProfileData] = useState({
-    pseudo: user?.pseudo || "kiki",
-    email: user?.email || "kiki@kiki.com",
+    pseudo: user?.pseudo || "Joueur",
+    email: user?.email || "",
     bio: user?.bio || "",
     avatar:
       user?.avatar || "https://api.dicebear.com/7.x/bottts/svg?seed=Lucky",
   });
 
-  // --- ÉTAT DE LA BIBLIOTHÈQUE ---
   const [favorites, setFavorites] = useState([]);
   const [filter, setFilter] = useState("Tous");
 
-  // --- CHARGEMENT DES DONNÉES ---
   useEffect(() => {
     if (user) {
       setProfileData((prev) => ({ ...prev, ...user }));
-      fetchLibrary();
+
+      // CHARGEMENT IMMÉDIAT (Local) pour éviter le vide au chargement
+      const localKey = `library_${user.email}`;
+      const savedLocal = JSON.parse(localStorage.getItem(localKey)) || [];
+      setFavorites(savedLocal);
+
+      // CHARGEMENT BDD (Background)
+      fetchLibrary(user.id, user.email);
     }
   }, [user]);
 
-  const fetchLibrary = async () => {
-    if (user?.id) {
-      try {
-        // 1. On tente de récupérer la bibliothèque depuis la BDD
-        const res = await axios.get(
-          `http://localhost:3000/api/user/favorites/${user.id}`,
-        );
+  const fetchLibrary = async (userId, userEmail) => {
+    try {
+      const res = await axios.get(
+        `http://localhost:3000/api/user/favorites/${userId}`,
+      );
+      if (res.data) {
         setFavorites(res.data);
-        // 2. On synchronise le local pour le composant Jeu.jsx
-        localStorage.setItem(`library_${user.email}`, JSON.stringify(res.data));
-      } catch (err) {
-        console.error("Erreur BDD, chargement du secours local...");
-        const local =
-          JSON.parse(localStorage.getItem(`library_${user.email}`)) || [];
-        setFavorites(local);
+        localStorage.setItem(`library_${userEmail}`, JSON.stringify(res.data));
       }
+    } catch (err) {
+      console.warn("Serveur injoignable, conservation des données locales.");
     }
   };
 
-  // --- GESTION DES CHANGEMENTS PROFIL ---
   const handleChange = (e) => {
     const { name, value } = e.target;
     if (name === "lang") {
@@ -69,7 +67,6 @@ const Profile = ({ user, onLoginSuccess, onLogout }) => {
 
   const handleUpdate = async () => {
     try {
-      // Sauvegarde en BDD
       await axios.put(`http://localhost:3000/api/user/update`, {
         userId: user.id,
         bio: profileData.bio,
@@ -79,25 +76,27 @@ const Profile = ({ user, onLoginSuccess, onLogout }) => {
       if (onLoginSuccess) onLoginSuccess(profileData);
       alert(t("alertSuccess"));
     } catch (err) {
-      alert("Erreur lors de la sauvegarde");
+      alert("Erreur de sauvegarde (Serveur déconnecté)");
     }
   };
 
-  // --- GESTION STATUT JEUX ---
   const handleUpdateStatus = async (gameId, newStatus) => {
+    // 1. Mise à jour visuelle immédiate
+    const updated = favorites.map((f) =>
+      f.id === gameId ? { ...f, status: newStatus } : f,
+    );
+    setFavorites(updated);
+    localStorage.setItem(`library_${user.email}`, JSON.stringify(updated));
+
+    // 2. Envoi silencieux à la BDD
     try {
       await axios.put(`http://localhost:3000/api/user/favorites/status`, {
         userId: user.id,
         gameId,
         status: newStatus,
       });
-      const updated = favorites.map((f) =>
-        f.id === gameId ? { ...f, status: newStatus } : f,
-      );
-      setFavorites(updated);
-      localStorage.setItem(`library_${user.email}`, JSON.stringify(updated));
     } catch (err) {
-      console.error("Erreur mise à jour statut");
+      console.error("Impossible de synchroniser le statut avec le serveur.");
     }
   };
 
@@ -168,7 +167,7 @@ const Profile = ({ user, onLoginSuccess, onLogout }) => {
         </div>
       </div>
 
-      {/* SECTION BIBLIOTHÈQUE (BILBOTHEQUE) */}
+      {/* SECTION BIBLIOTHÈQUE */}
       <div className="library-section">
         <div className="library-header-compact">
           <h2>Ma Bibliothèque ({favorites.length})</h2>
@@ -187,7 +186,10 @@ const Profile = ({ user, onLoginSuccess, onLogout }) => {
 
         {favorites.length === 0 ? (
           <div className="empty-library">
-            <p>Votre bibliothèque est vide.</p>
+            <p>
+              Votre bibliothèque est vide. Allez sur un jeu et cliquez sur le
+              cœur !
+            </p>
           </div>
         ) : (
           <div className="library-grid">
