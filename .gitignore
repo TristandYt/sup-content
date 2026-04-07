@@ -1,1 +1,16 @@
-node_modules
+# Dépendances
+node_modules/
+.pnp/
+.pnp.js
+
+# Environnement (Tes secrets !)
+.env
+
+# Docker
+.dockerignore
+
+# Firebase
+.firebase/
+firestore-debug.log
+ui-debug.log
+firebase-debug.log
