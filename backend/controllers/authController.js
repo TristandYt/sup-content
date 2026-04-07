@@ -1,4 +1,3 @@
-const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const admin = require('firebase-admin');
 
@@ -25,10 +24,6 @@ exports.register = async (req, res) => {
                 msg: 'Ce pseudo est déjà pris.'
             });
         }
-
-        /* --------- Hachage du mdp --------- */
-        const salt = await bcrypt.genSalt(10);
-        const hashedPassword = await bcrypt.hash(password, salt);
 
         /* --------- create new user --------- */
         const newUserRef = userRef.doc() // --> genere un id unique auto
@@ -78,15 +73,6 @@ exports.login = async (req, res) => {
         /* --------- get data user trouve en premier --------- */
         const userDoc = snapshot.docs[0];
         const user = userDoc.data();
-
-        /* --------- compare mdp --------- */
-        const isMatch = await bcrypt.compare(password, user.password);
-        if (!isMatch) {
-            return res.status(401).json({
-                success: false,
-                msg: 'Identifiants invalide'
-            });
-        }
 
         /* --------- create token JWT --------- */
         const payload = {user: {id: userRef.id}};

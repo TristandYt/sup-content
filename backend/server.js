@@ -10,21 +10,12 @@ const feedRoutes = require('./routes/feedRouter');
 dotenv.config();
 
 // configuration Firebase
-if (process.env.FIRESTORE_EMULATOR_HOST) {
-  admin.initializeApp({ projectId: 'demo-supcontent' });
-  console.log("Connecté à l'émulateur Firebase (Docker)");
-} else {
-  try {
-    const serviceAccount = require('./chemin/vers/notre/cle-firebase.json'); // a modif
+if (admin.apps.length === 0) {
     admin.initializeApp({
-      credential: admin.credential.cert(serviceAccount)
+        projectId: 'demo-supcontent'
     });
-    console.log("Connecté au vrai Firebase Cloud");
-  } catch(err) {
-    console.log("Attention: Fichier firebase-key.json introuvable. (Ignoré pour les tests locaux) : "/*, err*/);
-    admin.initializeApp({projectId: 'demo-supcontent'});
-  }
 }
+console.log("✅ Firebase Admin initialisé pour l'émulateur");
 
 const db = admin.firestore();
 const auth = admin.auth();

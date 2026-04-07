@@ -6,7 +6,7 @@ const { getIgdbToken } = require('../services/igdbAuth');
 
 
 const router = express.Router();
-const db = admin.firestore();
+const getDb = () => admin.firestore();
 
 const IGDB_BASE_URL = 'https://api.igdb.com/v4';
 
@@ -47,7 +47,7 @@ router.get('/search', async (req, res) => {
 // route pour les details d'un jeu (fiche media detaillée)
 router.get('/:id', async (req, res) => {
     const gameId = req.params.id;
-
+    const db = getDb();
     try {
         // cherche le jeu dans notre base firestore locale
         const gameRef = db.collection('games').doc(gameId); // L'ID du document sera l'ID IGDB
