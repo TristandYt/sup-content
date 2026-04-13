@@ -1,28 +1,81 @@
-import React, { useState, useEffect } from 'react';
-import { useTranslation } from 'react-i18next';
+import React, { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
+import axios from "axios";
 import "../../Style/Styles.css";
 
 const Profile = ({ user, onLoginSuccess, onLogout }) => {
   const { t, i18n } = useTranslation();
 
   const [profileData, setProfileData] = useState({
-    pseudo: user?.pseudo || 'kiki',
-    email: user?.email || 'kiki@kiki.com',
-    bio: user?.bio || '',
-    avatar: user?.avatar || 'https://api.dicebear.com/7.x/bottts/svg?seed=Lucky'
+    id: user?.id || "",
+    pseudo: user?.pseudo || "Joueur",
+    email: user?.email || "",
+    bio: user?.bio || "",
+    avatar:
+      user?.avatar || "https://api.dicebear.com/7.x/bottts/svg?seed=Lucky",
   });
+
+  const [favorites, setFavorites] = useState([]);
+  const [filter, setFilter] = useState("Tous");
+  const [isFollowing, setIsFollowing] = useState(false); // État pour le bouton follow
 
   useEffect(() => {
     if (user) {
-      setProfileData(prev => ({ ...prev, ...user }));
+      setProfileData((prev) => ({ ...prev, ...user }));
+
+      const localKey = `library_${user.email}`;
+      const savedLocal = JSON.parse(localStorage.getItem(localKey)) || [];
+      setFavorites(savedLocal);
+
+      fetchLibrary(user.id, user.email);
+      checkIfFollowing(user.id); // Optionnel : vérifier si on suit déjà cet ID
     }
   }, [user]);
 
+  // --- LOGIQUE FOLLOW ---
+  const handleFollow = async () => {
+    if (!user?.id) {
+      alert("Connectez-vous pour suivre des joueurs !");
+      return;
+    }
+
+    try {
+      // On envoie qui suit (followerId) et qui est suivi (followingId)
+      await axios.post(`http://localhost:3000/api/user/follow`, {
+        followerId: user.id,
+        followingId: profileData.id,
+      });
+      setIsFollowing(true);
+      alert(`Vous suivez désormais ${profileData.pseudo} !`);
+    } catch (err) {
+      alert("Erreur lors de l'action de suivi.");
+    }
+  };
+
+  const checkIfFollowing = async (myId) => {
+    // Logique à implémenter si ton backend permet de vérifier le statut
+    // try { const res = await axios.get(...); setIsFollowing(res.data.isFollowing); } catch {}
+  };
+
+  // --- RESTE DE TES FONCTIONS ---
+  const fetchLibrary = async (userId, userEmail) => {
+    if (!userId || userId === "undefined") return;
+    try {
+      const res = await axios.get(
+        `http://localhost:3000/api/user/favorites/${userId}`,
+      );
+      if (res.data) {
+        setFavorites(res.data);
+        localStorage.setItem(`library_${userEmail}`, JSON.stringify(res.data));
+      }
+    } catch (err) {
+      console.warn("Serveur injoignable, conservation des données locales.");
+    }
+  };
+
   const handleChange = (e) => {
     const { name, value } = e.target;
-    
-    // Si on change la langue, on informe i18next immédiatement
-    if (name === 'lang') {
+    if (name === "lang") {
       i18n.changeLanguage(value);
     } else {
       setProfileData({ ...profileData, [name]: value });
@@ -31,7 +84,7 @@ const Profile = ({ user, onLoginSuccess, onLogout }) => {
 
   const handleAvatarChange = (e) => {
     const file = e.target.files[0];
-    if (file && file.type.startsWith('image/')) {
+    if (file && file.type.startsWith("image/")) {
       const reader = new FileReader();
       reader.onload = (event) => {
         setProfileData({ ...profileData, avatar: event.target.result });
@@ -40,69 +93,162 @@ const Profile = ({ user, onLoginSuccess, onLogout }) => {
     }
   };
 
-  const handleUpdate = () => {
-    if (onLoginSuccess) {
-      onLoginSuccess(profileData);
-      alert(t('alertSuccess'));
+  const handleUpdate = async () => {
+    try {
+      await axios.put(`http://localhost:3000/api/user/update`, {
+        userId: user.id,
+        bio: profileData.bio,
+        avatar: profileData.avatar,
+      });
+      if (onLoginSuccess) onLoginSuccess(profileData);
+      alert(t("alertSuccess"));
+    } catch (err) {
+      alert("Erreur de sauvegarde (Serveur déconnecté)");
+    }
+  };
+
+  const handleUpdateStatus = async (gameId, newStatus) => {
+    const updated = favorites.map((f) =>
+      f.id === gameId ? { ...f, status: newStatus } : f,
+    );
+    setFavorites(updated);
+    localStorage.setItem(`library_${user.email}`, JSON.stringify(updated));
+
+    try {
+      await axios.put(`http://localhost:3000/api/user/favorites/status`, {
+        userId: user.id,
+        gameId,
+        status: newStatus,
+      });
+    } catch (err) {
+      console.error("Impossible de synchroniser le statut.");
     }
   };
 
   return (
-    <div className="container">
-      <div className="card">
-        <h2 className="title" style={{ color: 'var(--white)' }}>{t('profileTitle')}</h2>
+    <div className="user-page-container">
+      <div className="profile-card-vertical">
+        <h2 className="profile-main-title">{t("profileTitle")}</h2>
 
-        <div className="avatar-section">
-          <div className="avatar-wrapper">
-            <img src={profileData.avatar} alt="Avatar" className="avatar-img" />
-            <label htmlFor="avatar-input" className="edit-badge">
+        <div className="avatar-section-centered">
+          <div className="avatar-wrapper-v2">
+            <img
+              src={profileData.avatar}
+              alt="Avatar"
+              className="avatar-img-v2"
+            />
+            <label htmlFor="avatar-input" className="edit-badge-v2">
               ✏️
-              <input 
-                id="avatar-input" 
-                type="file" 
-                accept="image/*" 
-                style={{ display: 'none' }} 
-                onChange={handleAvatarChange} 
+              <input
+                id="avatar-input"
+                type="file"
+                accept="image/*"
+                hidden
+                onChange={handleAvatarChange}
               />
             </label>
           </div>
-          <p className="footer-text" style={{ marginTop: '10px', marginBottom: '5px' }}>{t('identifiedAs')}</p>
-          <h3 className="title" style={{ fontSize: '1.5rem', marginBottom: '0' }}>{profileData.pseudo}</h3>
+          <p className="identified-text">{t("identifiedAs")}</p>
+          <h3 className="pseudo-v2">{profileData.pseudo}</h3>
+
+          {/* NOUVEAU : Bouton Follow (visible uniquement si on regarde le profil de quelqu'un d'autre) */}
+          <button
+            className={`btn-follow ${isFollowing ? "following" : ""}`}
+            onClick={handleFollow}
+          >
+            {isFollowing ? "Abonné" : "Suivre"}
+          </button>
         </div>
 
-        <div className="form-group">
-          <label className="label-text">{t('bioLabel')}</label>
-          <textarea 
+        <div className="profile-form-v2">
+          <label className="label-text-v2">{t("bioLabel")}</label>
+          <textarea
             name="bio"
-            className="input-field textarea" 
-            value={profileData.bio} 
+            className="input-field-v2 bio-area-v2"
+            value={profileData.bio}
             onChange={handleChange}
-            placeholder={t('placeholderBio')}
+            placeholder={t("placeholderBio")}
           />
 
-          <label className="label-text">{t('langLabel')}</label>
-          <select 
-            name="lang" 
-            className="input-field" 
-            value={i18n.language} // Connecté à la langue actuelle de i18n
+          <label className="label-text-v2">{t("langLabel")}</label>
+          <select
+            name="lang"
+            className="input-field-v2 select-field-v2"
+            value={i18n.language}
             onChange={handleChange}
-            style={{ appearance: 'none' }}
           >
-            <option value="Français">Français 🇫🇷</option>
-            <option value="English">English 🇬🇧</option>
+            <option value="fr">Français 🇫🇷</option>
+            <option value="en">English 🇬🇧</option>
           </select>
 
-          <label className="label-text">{t('emailLabel')}</label>
-          <input className="input-field input-disabled" value={profileData.email} disabled />
+          <label className="label-text-v2">{t("emailLabel")}</label>
+          <input
+            className="input-field-v2 input-disabled-v2"
+            value={profileData.email}
+            disabled
+          />
 
-          <button className="btn-save" onClick={handleUpdate}>
-            {t('btnUpdate')}
-          </button>
-
-          <button className="btn-logout" onClick={onLogout}>
-            {t('btnLogout')}
-          </button>
+          <div className="profile-actions-v2">
+            <button className="btn-save-v2" onClick={handleUpdate}>
+              {t("btnUpdate")}
+            </button>
+            <button className="btn-logout-v2" onClick={onLogout}>
+              {t("btnLogout")}
+            </button>
+          </div>
         </div>
+      </div>
+
+      {/* SECTION BIBLIOTHÈQUE */}
+      <div className="library-section">
+        <div className="library-header-compact">
+          <h2>Ma Bibliothèque ({favorites.length})</h2>
+          <div className="filter-pill-box">
+            {["Tous", "A faire", "En cours", "Fini"].map((s) => (
+              <button
+                key={s}
+                className={`pill ${filter === s ? "active" : ""}`}
+                onClick={() => setFilter(s)}
+              >
+                {s}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {favorites.length === 0 ? (
+          <div className="empty-library">
+            <p>Votre bibliothèque est vide.</p>
+          </div>
+        ) : (
+          <div className="library-grid">
+            {favorites
+              .filter((g) => filter === "Tous" || g.status === filter)
+              .map((game) => (
+                <div key={game.id} className="library-item">
+                  <img
+                    src={game.image_url}
+                    alt={game.name}
+                    className="library-cover"
+                  />
+                  <div className="library-info">
+                    <h4>{game.name}</h4>
+                    <select
+                      className="status-select"
+                      value={game.status || "A faire"}
+                      onChange={(e) =>
+                        handleUpdateStatus(game.id, e.target.value)
+                      }
+                    >
+                      <option value="A faire">À faire</option>
+                      <option value="En cours">En cours</option>
+                      <option value="Fini">Fini</option>
+                    </select>
+                  </div>
+                </div>
+              ))}
+          </div>
+        )}
       </div>
     </div>
   );
