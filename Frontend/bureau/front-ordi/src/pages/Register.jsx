@@ -2,11 +2,6 @@ import React, { useState } from "react";
 import { useTranslation } from "react-i18next";
 import "../../Style/Styles.css";
 
-// IMPORT FIREBASE (Assure-toi que ce fichier existe dans ton dossier src/firebase/config.js)
-import { auth, db } from "../firebase/config";
-import { createUserWithEmailAndPassword } from "firebase/auth";
-import { doc, setDoc, serverTimestamp } from "firebase/firestore";
-
 const Register = ({ onSwitch }) => {
   const { t, i18n } = useTranslation();
   const [formData, setFormData] = useState({
@@ -20,7 +15,10 @@ const Register = ({ onSwitch }) => {
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
-  const changeLanguage = (lng) => i18n.changeLanguage(lng);
+  const changeLanguage = (lng) => {
+    i18n.changeLanguage(lng);
+  };
+
   const handleChange = (e) =>
     setFormData({ ...formData, [e.target.name]: e.target.value });
 
@@ -28,6 +26,7 @@ const Register = ({ onSwitch }) => {
     const { pseudo, email, pass, confirm } = formData;
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
+    // Utilisation des clés exactes de ton fichier de traduction
     if (!pseudo || !email || !pass || !confirm) return t("error_fields_empty");
     if (!emailRegex.test(email)) return t("placeholder_email");
     if (pass.length < 8) return "8 characters min.";
@@ -46,44 +45,20 @@ const Register = ({ onSwitch }) => {
     setIsLoading(true);
 
     try {
-      // 1. Création de l'utilisateur dans l'Authentication Firebase
-      const userCredential = await createUserWithEmailAndPassword(
-        auth,
-        formData.email,
-        formData.pass,
-      );
-      const user = userCredential.user;
-
-      // 2. Création du profil dans Firestore selon ton schéma d'image
-      await setDoc(doc(db, "users", user.uid), {
-        uid_firebase: user.uid,
-        email: formData.email,
-        pseudo: formData.pseudo,
-        avatar: "", // Valeur par défaut vide
-        role: "user", // Rôle par défaut
-        favorites: [], // Tableau vide selon ton schéma
-        following: [], // Tableau vide selon ton schéma
-        followers: [], // Tableau vide selon ton schéma
-        blockedUsers: [], // Tableau vide selon ton schéma
-        createdAt: serverTimestamp(),
-        lastLoginAt: serverTimestamp(),
-      });
-
-      alert("Compte créé avec succès !");
-      if (onSwitch) onSwitch(); // Retour au login après succès
+      console.log("Envoi des données :", formData);
+      await new Promise((resolve) => setTimeout(resolve, 1500));
+      alert("Success!");
     } catch (err) {
-      console.error(err);
-      if (err.code === "auth/email-already-in-use") {
-        setError("Cet email est déjà utilisé.");
-      } else {
-        setError("Une erreur est survenue lors de l'inscription.");
-      }
+      setError("Error");
     } finally {
       setIsLoading(false);
     }
   };
 
-  // Icône Oeil pour le mot de passe
+  const handleSocialRegister = (platform) => {
+    console.log(`Auth ${platform}...`);
+  };
+
   const EyeIcon = ({ open }) =>
     open ? (
       <svg
@@ -133,7 +108,12 @@ const Register = ({ onSwitch }) => {
         >
           <button
             onClick={() => changeLanguage("fr")}
-            style={{ background: "none", border: "none", cursor: "pointer" }}
+            style={{
+              background: "none",
+              border: "none",
+              cursor: "pointer",
+              padding: 0,
+            }}
           >
             <img
               src="https://flagcdn.com/w40/fr.png"
@@ -147,7 +127,12 @@ const Register = ({ onSwitch }) => {
           </button>
           <button
             onClick={() => changeLanguage("en")}
-            style={{ background: "none", border: "none", cursor: "pointer" }}
+            style={{
+              background: "none",
+              border: "none",
+              cursor: "pointer",
+              padding: 0,
+            }}
           >
             <img
               src="https://flagcdn.com/w40/gb.png"
@@ -172,7 +157,7 @@ const Register = ({ onSwitch }) => {
             marginBottom: "10px",
           }}
         >
-          {error}
+          {error && error}
         </div>
 
         <div className="form-group">
@@ -248,12 +233,52 @@ const Register = ({ onSwitch }) => {
           <div className="divider-line"></div>
         </div>
 
+        <div className="social-group">
+          <button
+            onClick={() => handleSocialRegister("Google")}
+            className="social-btn"
+            title="Google"
+            disabled={isLoading}
+          >
+            <img
+              src="https://www.svgrepo.com/show/475656/google-color.svg"
+              width="22"
+              alt="Google"
+            />
+          </button>
+          <button
+            onClick={() => handleSocialRegister("GitHub")}
+            className="social-btn"
+            title="GitHub"
+            disabled={isLoading}
+          >
+            <img
+              src="https://www.svgrepo.com/show/512317/github-142.svg"
+              width="22"
+              alt="GitHub"
+              style={{ filter: "invert(1)" }}
+            />
+          </button>
+          <button
+            onClick={() => handleSocialRegister("Facebook")}
+            className="social-btn"
+            title="Facebook"
+            disabled={isLoading}
+          >
+            <img
+              src="https://www.svgrepo.com/show/448224/facebook.svg"
+              width="26"
+              alt="Facebook"
+            />
+          </button>
+        </div>
+
         <p className="footer-text">
-          {i18n.language === "fr" ? "Déjà inscrit ?" : "Already registered?"}
+          {i18n.language === "fr" ? "Déjà inscrit ?" : "Already registered?"}{" "}
           <span
             onClick={!isLoading ? onSwitch : null}
             className="link-highlight"
-            style={{ cursor: "pointer", marginLeft: "5px" }}
+            style={{ cursor: "pointer" }}
           >
             {i18n.language === "fr" ? "Se connecter" : "Login"}
           </span>
