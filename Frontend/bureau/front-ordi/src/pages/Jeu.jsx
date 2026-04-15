@@ -7,8 +7,8 @@ const Jeu = ({ gameId, onBack, user }) => {
   const [loading, setLoading] = useState(true);
   const [isFavorite, setIsFavorite] = useState(false);
   const [newComment, setNewComment] = useState("");
-  const [rating, setRating] = useState(0); // État pour la note (1 à 5)
-  const [hoverRating, setHoverRating] = useState(0); // Effet de survol des étoiles
+  const [rating, setRating] = useState(0);
+  const [hoverRating, setHoverRating] = useState(0);
   const [comments, setComments] = useState([]);
   const [showCommentBox, setShowCommentBox] = useState(false);
 
@@ -16,23 +16,29 @@ const Jeu = ({ gameId, onBack, user }) => {
     const fetchDetails = async () => {
       try {
         setLoading(true);
-        // 1. Détails du jeu
+
+        // 1. Récupération des détails du jeu
+        // Le backend renvoie directement l'objet gameData
         const res = await axios.get(
           `http://localhost:3000/api/games/details/${gameId}`,
         );
-        if (res.data && res.data.length > 0) {
-          const gameData = res.data[0];
+
+        if (res.data) {
+          const gameData = res.data;
           setGame(gameData);
 
-          // 2. Vérification Favoris
+          // 2. Vérification des Favoris dans le localStorage
           if (user) {
             const localLib =
               JSON.parse(localStorage.getItem(`library_${user.email}`)) || [];
-            setIsFavorite(localLib.some((item) => item.id === gameId));
+            // Utilisation de String() pour comparer les IDs de types différents (nombre vs chaîne)
+            setIsFavorite(
+              localLib.some((item) => String(item.id) === String(gameId)),
+            );
           }
         }
 
-        // 3. Commentaires
+        // 3. Récupération des commentaires
         const resComments = await axios.get(
           `http://localhost:3000/api/comments/${gameId}`,
         );
@@ -43,6 +49,7 @@ const Jeu = ({ gameId, onBack, user }) => {
         setLoading(false);
       }
     };
+
     if (gameId) fetchDetails();
   }, [gameId, user]);
 
@@ -70,7 +77,7 @@ const Jeu = ({ gameId, onBack, user }) => {
         const local = JSON.parse(localStorage.getItem(storageKey)) || [];
         localStorage.setItem(
           storageKey,
-          JSON.stringify(local.filter((i) => i.id !== gameId)),
+          JSON.stringify(local.filter((i) => String(i.id) !== String(gameId))),
         );
       } else {
         await axios.post(`http://localhost:3000/api/user/favorites`, {
@@ -82,11 +89,13 @@ const Jeu = ({ gameId, onBack, user }) => {
       }
       setIsFavorite(!isFavorite);
     } catch (err) {
-      // Mode secours local
+      console.error("Erreur API, bascule en mode local uniquement", err);
       let local = JSON.parse(localStorage.getItem(storageKey)) || [];
-      isFavorite
-        ? (local = local.filter((i) => i.id !== gameId))
-        : local.push(gameData);
+      if (isFavorite) {
+        local = local.filter((i) => String(i.id) !== String(gameId));
+      } else {
+        local.push(gameData);
+      }
       localStorage.setItem(storageKey, JSON.stringify(local));
       setIsFavorite(!isFavorite);
     }
@@ -158,14 +167,14 @@ const Jeu = ({ gameId, onBack, user }) => {
           </div>
 
           <p className="rating-text">
-            ⭐ {(game.total_rating / 20).toFixed(1)} / 5 (IGDB)
+            ⭐ {game.total_rating ? (game.total_rating / 20).toFixed(1) : "N/A"}{" "}
+            / 5 (IGDB)
           </p>
           <h3 className="section-subtitle">Résumé</h3>
           <p className="summary-text">
             {game.summary || "Aucun résumé disponible."}
           </p>
 
-          {/* SECTION COMMENTAIRES & NOTES */}
           <div className="comments-section">
             <div className="comments-header">
               <h3>Avis des joueurs ({comments.length})</h3>
