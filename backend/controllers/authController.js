@@ -1,94 +1,49 @@
-const jwt = require('jsonwebtoken');
-const admin = require('firebase-admin');
+/*
+ * Contrôleur d'authentification.
+ * Gère l'inscription via Firebase Auth et renvoie des tokens / profils.
+ */
+const { admin, db, auth } = require('../Services/Firebase');
 
-const db = admin.firestore();
-
-exports.register = async (req, res) => {
-    const {username, email, password} = req.body;
-
+exports.register = async (req, res, next) => {
     try {
-        /* --------- check si existe (mail et username) --------- */
-        const userRef = db.collection('users');
-        const snapshot_username = await userRef.where('username', '==', snapshot_mail).get();
-        const snapshot_mail = await userRef.where('email', '==', email).get();
+        const { username, email, password } = req.body;
 
-        if (!snapshot_mail.empty) {
-            return res.status(401).json({
-                success: false,
-                msg: 'Cette adresse mail est déjà utilisée.'
-            });
-        }
-        if (!snapshot_username.empty) {
-            return res.status(401).json({
-                success: false,
-                msg: 'Ce pseudo est déjà pris.'
-            });
+        // Vérification si le pseudo existe déjà (Firestore)
+        const userSnap = await db.collection('users').where('username', '==', username).get();
+        if (!userSnap.empty) {
+            return res.status(401).json({ success: false, msg: 'Ce pseudo est déjà pris.' });
         }
 
-        /* --------- create new user --------- */
-        const newUserRef = userRef.doc() // --> genere un id unique auto
-        const newUser = {
-            username,
-            email,
-            password: hashedPassword,
-            createdAt: admin.firestore.FieldValue.serverTimestamp(),
-        };
-
-        await newUserRef.set(newUser);
-
-        /* --------- create token JWT --------- */
-        const payload = {user: {id: userRef.id}};
-        jwt.sign(
-            payload,
-            process.env.JWT_SECRET || 'super_secret_temp',
-            {expiresIn: 3600},
-            (err, token) => {
-                if (err) throw err;
-                res.status(201).json({success: true, token});
-            });
-    } catch (err) {
-        console.error("Erreur lors de l'inscription", err);
-        res.status(500).json({
-            success: false,
-            msg: 'Erreur serveur'
+        // 1. Firebase Auth crée l'utilisateur et HACHE le mot de passe automatiquement
+        const userRecord = await auth.createUser({
+            email: email,
+            password: password,
+            displayName: username,
         });
+
+        // 2. On crée le document dans Firestore avec l'UID de Firebase Auth (SANS le mot de passe)
+        await db.collection('users').doc(userRecord.uid).set({
+            username: username,
+            email: email,
+            favorites: [], // Array d'objets vide selon ton schéma
+            createdAt: admin.firestore.FieldValue.serverTimestamp()
+        });
+
+        res.status(201).json({ 
+            success: true, 
+            msg: 'Utilisateur créé avec succès',
+            uid: userRecord.uid 
+        });
+
+    } catch (error) {
+        next(error);
     }
 };
 
-exports.login = async (req, res) => {
-    const {email, password} = req.body;
-
-    try {
-        /* --------- check mail if exist --------- */
-        const userRef = db.collection('users');
-        const snapshot = await userRef.where('email', '==', email).get();
-
-        if (snapshot.empty) {
-            return res.status(400).json({
-                success: false,
-                msg: 'Identifiants invalide'
-            });
-        }
-
-        /* --------- get data user trouve en premier --------- */
-        const userDoc = snapshot.docs[0];
-        const user = userDoc.data();
-
-        /* --------- create token JWT --------- */
-        const payload = {user: {id: userRef.id}};
-        jwt.sign(
-            payload,
-            process.env.JWT_SECRET || 'super_secret_temp',
-            {expiresIn: 3600},
-            (err, token) => {
-                if (err) throw err;
-                res.status(201).json({success: true, token});
-            });
-    } catch (err) {
-        console.error("Erreur lors de la connexion", err);
-        res.status(500).json({
-            success: false,
-            msg: 'Erreur serveur'
-        });
-    }
+exports.login = async (req, res, next) => {
+    res.json({ 
+        success: false, 
+        msg: "La connexion avec email/mot de passe doit être gérée côté Front-end avec le SDK Firebase Client (signInWithEmailAndPassword). Le front enverra ensuite le token généré à l'API." 
+    });
 };
+

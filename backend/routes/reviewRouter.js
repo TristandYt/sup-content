@@ -1,20 +1,18 @@
-// backend/routes/reviewsRouter.js
+/*
+ * Routes critiques.
+ * Expose la lecture publique des reviews et les opérations CRUD pour l'utilisateur connecté.
+ */
 const express = require('express');
 const router = express.Router();
-
 const auth = require('../middlewares/auth');
 const reviewController = require('../controllers/reviewController');
 
-// GET /api/reviews/game/:gameId -> voir les critiques (pas besoin d'etre connecte pour lire btw)
-router.get('/game/:gameId', reviewController.getGameReviews);
+router.get('/game/:gameId', reviewController.getGameReviews); // Publique
 
-// les routes en dessous ont besoin d'etre connecte (middleware auth)
-router.use(auth);
-
-// POST /api/reviews -> ajouter ou modifier une critique
+router.use(auth); // Routes privées
+router.get('/me', reviewController.getMyReviews);
 router.post('/', reviewController.addOrUpdateReview);
-
-// DELETE /api/reviews/:gameId -> suppr sa critique
+router.put('/:gameId', reviewController.addOrUpdateReview);
 router.delete('/:gameId', reviewController.deleteReview);
 
 module.exports = router;

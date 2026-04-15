@@ -1,19 +1,18 @@
-// backend/routes/listsRouter.js
+/*
+ * Routes bibliothèque utilisateur.
+ * Permet de lire, mettre à jour et supprimer les jeux dans la bibliothèque du user.
+ */
 const express = require('express');
 const router = express.Router();
-
-// import
 const auth = require('../middlewares/auth');
 const listController = require('../controllers/listController');
 
-// toute les routes de ce fichier ont besoin d'etre connecté
-// on applique le middleware auth globalement sur ce routeur
 router.use(auth);
 
-// POST /api/lists/status -> Mettre a jour le statut d'un jeu
 router.post('/status', listController.updateGameStatus);
-
-// GET /api/lists/library -> Recuperer tous les jeux du user
+router.put('/status', listController.updateGameStatus);
 router.get('/library', listController.getMyLibrary);
+router.get('/library/:gameId', listController.getGameFromLibrary);
+router.delete('/library/:gameId', listController.removeGameFromLibrary);
 
 module.exports = router;

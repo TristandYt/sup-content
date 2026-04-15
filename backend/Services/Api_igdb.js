@@ -1,3 +1,7 @@
+/*
+ * Service IGDB.
+ * Envoie des requêtes Apicalypse à l'API IGDB via le token Twitch.
+ */
 const axios = require('axios');
 
 class IGDBService {
@@ -21,7 +25,7 @@ class IGDBService {
             this.accessToken = response.data.access_token;
             return this.accessToken;
         } catch (error) {
-            console.error("❌ Erreur d'authentification Twitch:", error.message);
+            console.error("Erreur d'authentification Twitch:", error.message);
             throw new Error("Impossible de récupérer le token IGDB");
         }
     }
@@ -48,7 +52,7 @@ class IGDBService {
             if (error.response && error.response.status === 401) {
                 this.accessToken = null;
             }
-            console.error(`❌ Erreur IGDB (${endpoint}):`, error.message);
+            console.error(`Erreur IGDB (${endpoint}):`, error.message);
             throw error;
         }
     }
