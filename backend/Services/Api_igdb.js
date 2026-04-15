@@ -1,3 +1,7 @@
+/*
+ * Service IGDB.
+ * Envoie des requêtes Apicalypse à l'API IGDB via le token Twitch.
+ */
 const axios = require("axios");
 
 class IGDBService {
@@ -27,7 +31,7 @@ class IGDBService {
   }
 
   /**
-   * Méthode POST à IGDB
+   * Méthode générique POST pour IGDB
    */
   async request(endpoint, query) {
     try {
@@ -44,7 +48,7 @@ class IGDBService {
       });
       return response.data;
     } catch (error) {
-      //token est expiré (401)
+      // Si le token est expiré (401), on le réinitialise pour la prochaine tentative
       if (error.response && error.response.status === 401) {
         this.accessToken = null;
       }
@@ -54,7 +58,7 @@ class IGDBService {
   }
 
   /**
-   * Recherche de jeux par titre (MODIFIÉ POUR LA RECHERCHE AVANCÉE)
+   * Recherche de jeux par titre avec filtres
    */
   async searchGames(title, filters = {}) {
     const { genre, platform } = filters;
@@ -77,11 +81,9 @@ class IGDBService {
   }
 
   /**
-   * Récupère les jeux les mieux notés (pour la page d'accueil)
-   * Ajout de paramètres pour le tri global
+   * Récupère les jeux les mieux notés
    */
   async getPopularGames(sortBy = "total_rating", order = "desc") {
-    // Validation simple pour éviter les erreurs de syntaxe IGDB
     const field = ["name", "total_rating", "first_release_date"].includes(
       sortBy,
     )
