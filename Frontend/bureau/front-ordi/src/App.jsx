@@ -1,86 +1,133 @@
-import React, { useState } from 'react';
-import Accueil from './pages/Accueil';
-import Login from './pages/Login';
-import Register from './pages/Register';
-import Utilisateur from './pages/utilisateur';
-import Jeu from './pages/Jeu'; // Assurez-vous de créer ce fichier
+import React, { useState } from "react";
+import Accueil from "./pages/Accueil";
+import Login from "./pages/Login";
+import Register from "./pages/Register";
+import Utilisateur from "./pages/utilisateur";
+import Jeu from "./pages/Jeu";
 import "../Style/Styles.css";
-import './Langue/i18n';
+import "./Langue/i18n";
 
 const App = () => {
-  // États pour la navigation et l'utilisateur
-  const [currentPage, setCurrentPage] = useState('accueil');
-  const [user, setUser] = useState(null); // null = déconnecté
-  const [selectedGameId, setSelectedGameId] = useState(null); // ID du jeu à afficher
+  const [currentPage, setCurrentPage] = useState("accueil");
+  const [user, setUser] = useState(null);
+  const [selectedGameId, setSelectedGameId] = useState(null);
 
-  // Fonction pour gérer la connexion ET la mise à jour du profil
+  const [showSearch, setShowSearch] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
+
   const handleLoginSuccess = (userData) => {
     setUser(userData);
-    if (currentPage === 'login' || currentPage === 'register') {
-      setCurrentPage('accueil');
-    }
+    setCurrentPage("accueil");
   };
 
-  // Fonction pour la déconnexion
-  const handleLogout = () => {
-    setUser(null);
-    setCurrentPage('accueil');
-  };
-
-  // Fonction pour aller sur la page d'un jeu spécifique
   const handleShowGame = (id) => {
     setSelectedGameId(id);
-    setCurrentPage('jeu');
+    setCurrentPage("jeu");
   };
 
   return (
     <div style={styles.appContainer}>
-      {/* --- NAVBAR --- */}
+      {/* NAVBAR CORRIGÉE (FOND SOMBRE) */}
       <nav style={styles.navbar}>
-        <h1 style={styles.logo} onClick={() => setCurrentPage('accueil')}>SUPCONTENT</h1>
-        <div>
-          {user ? (
-            <button style={styles.navBtn} onClick={() => setCurrentPage('utilisateur')}>
-              👤 {user.pseudo}
-            </button>
-          ) : (
-            <button style={styles.navBtn} onClick={() => setCurrentPage('login')}>
-              CONNEXION
-            </button>
-          )}
-        </div>
+        {!showSearch ? (
+          <>
+            <h1 style={styles.logo} onClick={() => setCurrentPage("accueil")}>
+              SUPCONTENT
+            </h1>
+            <div style={{ display: "flex", alignItems: "center", gap: "20px" }}>
+              <div
+                style={styles.searchIconTrigger}
+                onClick={() => setShowSearch(true)}
+              >
+                <svg
+                  width="22"
+                  height="22"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="white"
+                  strokeWidth="2"
+                >
+                  <circle cx="11" cy="11" r="8"></circle>
+                  <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                </svg>
+              </div>
+              <button
+                style={styles.navBtn}
+                onClick={() => setCurrentPage(user ? "utilisateur" : "login")}
+              >
+                {user ? `👤 ${user.pseudo}` : "CONNEXION"}
+              </button>
+            </div>
+          </>
+        ) : (
+          <div style={styles.searchOverlay}>
+            <div style={styles.searchBarWrapper}>
+              <input
+                autoFocus
+                type="text"
+                placeholder="Rechercher"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                style={styles.searchInput}
+              />
+              <div style={styles.blueSearchBtn}>
+                <svg
+                  width="20"
+                  height="20"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="white"
+                  strokeWidth="2.5"
+                >
+                  <circle cx="11" cy="11" r="8"></circle>
+                  <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                </svg>
+              </div>
+            </div>
+            <div
+              style={styles.closeBtn}
+              onClick={() => {
+                setShowSearch(false);
+                setSearchTerm("");
+              }}
+            >
+              <svg
+                width="20"
+                height="20"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="white"
+                strokeWidth="2"
+              >
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+                <line x1="6" y1="6" x2="18" y2="18"></line>
+              </svg>
+            </div>
+          </div>
+        )}
       </nav>
 
-      {/* --- CONTENU DYNAMIQUE --- */}
       <main style={styles.mainContent}>
-        {currentPage === 'accueil' && (
-          <Accueil user={user} onGameClick={handleShowGame} />
+        {currentPage === "accueil" && (
+          <Accueil onGameClick={handleShowGame} searchTerm={searchTerm} />
         )}
-        
-        {currentPage === 'jeu' && (
-          <Jeu 
-            gameId={selectedGameId} 
-            onBack={() => setCurrentPage('accueil')} 
+        {currentPage === "jeu" && (
+          <Jeu
+            gameId={selectedGameId}
+            onBack={() => setCurrentPage("accueil")}
           />
         )}
-
-        {currentPage === 'login' && (
-          <Login 
-            onSwitch={() => setCurrentPage('register')} 
-            onLoginSuccess={handleLoginSuccess} 
-          />
-        )}
-
-        {currentPage === 'register' && (
-          <Register onSwitch={() => setCurrentPage('login')} />
-        )}
-
-        {currentPage === 'utilisateur' && (
-          <Utilisateur 
-            user={user} 
-            onLogout={handleLogout} 
+        {currentPage === "login" && (
+          <Login
+            onSwitch={() => setCurrentPage("register")}
             onLoginSuccess={handleLoginSuccess}
           />
+        )}
+        {currentPage === "register" && (
+          <Register onSwitch={() => setCurrentPage("login")} />
+        )}
+        {currentPage === "utilisateur" && (
+          <Utilisateur user={user} onLogout={() => setUser(null)} />
         )}
       </main>
     </div>
@@ -88,17 +135,81 @@ const App = () => {
 };
 
 const styles = {
-  appContainer: { minHeight: '100vh', background: '#0f172a', color: 'white' },
-  navbar: { 
-    display: 'flex', justifyContent: 'space-between', alignItems: 'center', 
-    padding: '15px 50px', background: '#1e1e38', borderBottom: '1px solid #334155' 
+  appContainer: { minHeight: "100vh", background: "#0f172a", color: "white" },
+  navbar: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    padding: "0 50px",
+    background: "#0f172a",
+    borderBottom: "1px solid #1e293b",
+    height: "80px",
   },
-  logo: { color: '#b208b4', cursor: 'pointer', margin: 0, fontSize: '1.5rem' },
-  navBtn: { 
-    background: '#b208b4', color: 'white', border: 'none', padding: '10px 20px', 
-    borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', transition: '0.3s'
+  logo: {
+    color: "#b208b4",
+    cursor: "pointer",
+    margin: 0,
+    fontSize: "1.5rem",
+    fontWeight: "bold",
   },
-  mainContent: { padding: '20px' }
+  searchIconTrigger: {
+    cursor: "pointer",
+    display: "flex",
+    alignItems: "center",
+  },
+  navBtn: {
+    background: "#b208b4",
+    color: "white",
+    border: "none",
+    padding: "10px 20px",
+    borderRadius: "8px",
+    fontWeight: "bold",
+    cursor: "pointer",
+  },
+  searchOverlay: {
+    display: "flex",
+    alignItems: "center",
+    width: "100%",
+    gap: "15px",
+  },
+  searchBarWrapper: {
+    display: "flex",
+    alignItems: "center",
+    backgroundColor: "#1e293b",
+    borderRadius: "50px",
+    padding: "5px 5px 5px 20px",
+    border: "1px solid #334155",
+    flex: 1,
+  },
+  searchInput: {
+    border: "none",
+    outline: "none",
+    flex: 1,
+    fontSize: "1rem",
+    background: "transparent",
+    color: "white",
+  },
+  blueSearchBtn: {
+    backgroundColor: "#1d4ed8",
+    width: "30px",
+    height: "30px",
+    borderRadius: "50%",
+    display: "flex",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  closeBtn: {
+    width: "35px",
+    height: "35px",
+    borderRadius: "50%",
+    border: "1px solid #334155",
+    display: "flex",
+    justifyContent: "center",
+    alignItems: "center",
+    cursor: "pointer",
+    background: "transparent",
+  },
+  mainContent: { padding: "20px 50px" },
 };
 
 export default App;

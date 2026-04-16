@@ -2,17 +2,12 @@ import React, { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import axios from "axios";
 import "../../Style/Styles.css";
-
-// Importation de l'image de remplacement (plus propre pour React)
 import defaultCover from "../assets/fr-default-large_default.jpg";
 
-const Accueil = ({ onGameClick }) => {
+const Accueil = ({ onGameClick, searchTerm }) => {
   const { t } = useTranslation();
-
-  const [searchTerm, setSearchTerm] = useState("");
   const [games, setGames] = useState([]);
   const [loading, setLoading] = useState(true);
-
   const [params, setParams] = useState({
     sortBy: "total_rating",
     sortOrder: "desc",
@@ -24,7 +19,6 @@ const Accueil = ({ onGameClick }) => {
     if (game.cover && game.cover.image_id) {
       return `https://images.igdb.com/igdb/image/upload/t_cover_big/${game.cover.image_id}.jpg`;
     }
-    // On utilise l'importation définie plus haut
     return defaultCover;
   };
 
@@ -32,7 +26,9 @@ const Accueil = ({ onGameClick }) => {
     setLoading(true);
     try {
       const isSearching =
-        searchTerm.trim() !== "" || params.genre || params.platform;
+        (searchTerm && searchTerm.trim() !== "") ||
+        params.genre ||
+        params.platform;
       const endpoint = isSearching ? "search" : "popular";
 
       const res = await axios.get(
@@ -49,7 +45,7 @@ const Accueil = ({ onGameClick }) => {
       );
       setGames(res.data);
     } catch (err) {
-      console.error("Erreur lors du chargement des jeux:", err);
+      console.error("Erreur:", err);
     } finally {
       setLoading(false);
     }
@@ -62,156 +58,117 @@ const Accueil = ({ onGameClick }) => {
       },
       searchTerm ? 500 : 0,
     );
-
     return () => clearTimeout(delay);
   }, [searchTerm, params]);
 
   const controlStyle = {
-    backgroundColor: "#1a1a3a",
+    backgroundColor: "#1e1e38",
     color: "white",
-    border: "1px solid rgba(255,255,255,0.2)",
-    borderRadius: "8px",
-    padding: "8px 10px",
+    border: "1px solid #334155",
+    borderRadius: "20px",
+    padding: "5px 15px",
     outline: "none",
     cursor: "pointer",
     fontSize: "0.85rem",
-    height: "40px",
+    height: "35px",
   };
 
   return (
     <div style={{ width: "100%" }}>
-      <header style={{ marginBottom: "40px" }}>
-        <h2 style={{ fontSize: "2.5rem", margin: "0 0 5px 0", color: "white" }}>
-          {t("homeTitle")}
-        </h2>
-        <p
-          style={{ color: "#94a3b8", fontSize: "1.1rem", marginBottom: "25px" }}
-        >
-          {t("homeSubtitle")}
-        </p>
-
-        {/* BARRE DE RECHERCHE ET FILTRES */}
-        <div
+      <header style={{ marginBottom: "30px" }}>
+        <h2
           style={{
-            display: "flex",
-            alignItems: "center",
-            width: "100%",
-            backgroundColor: "rgba(255,255,255,0.03)",
-            padding: "10px",
-            borderRadius: "12px",
+            fontSize: "2.2rem",
+            color: "white",
+            marginBottom: "10px",
+            fontWeight: "bold",
           }}
         >
-          {/* Recherche avec MARGE à DROITE pour l'espace */}
-          <input
-            type="text"
-            placeholder={t("Recherche") || "Jeu..."}
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            style={{
-              flex: "1",
-              minWidth: "80px",
-              marginRight: "30px", // L'espace entre la barre et les tris est ici
-              padding: "0 15px",
-              borderRadius: "8px",
-              border: "1px solid rgba(255,255,255,0.2)",
-              backgroundColor: "#1a1a3a",
-              color: "white",
-              outline: "none",
-              fontSize: "0.9rem",
-              height: "40px",
-            }}
-          />
+          Tendances mondiales
+        </h2>
+        <p style={{ color: "#94a3b8", marginBottom: "25px" }}>
+          Tout le contenu SUPCONTENT à portée de clic.
+        </p>
 
-          {/* GROUPE DES TRIS (collés entre eux par le gap de 8px) */}
-          <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
-            <select
-              value={params.genre}
-              onChange={(e) => setParams({ ...params, genre: e.target.value })}
-              style={{ ...controlStyle, width: "110px" }}
-            >
-              <option value="">Genres</option>
-              <option value="4">Combat</option>
-              <option value="5">Shooter</option>
-              <option value="12">RPG</option>
-              <option value="15">Stratégie</option>
-              <option value="31">Aventure</option>
-            </select>
+        <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
+          <select
+            value={params.genre}
+            onChange={(e) => setParams({ ...params, genre: e.target.value })}
+            style={controlStyle}
+          >
+            <option value="">Genres</option>
+            <option value="4">Combat</option>
+            <option value="5">Shooter</option>
+            <option value="12">RPG</option>
+            <option value="31">Aventure</option>
+          </select>
 
-            <select
-              value={params.platform}
-              onChange={(e) =>
-                setParams({ ...params, platform: e.target.value })
-              }
-              style={{ ...controlStyle, width: "120px" }}
-            >
-              <option value="">Plateformes</option>
-              <option value="6">PC</option>
-              <option value="48">PS4</option>
-              <option value="167">PS5</option>
-              <option value="130">Switch</option>
-            </select>
+          <select
+            value={params.platform}
+            onChange={(e) => setParams({ ...params, platform: e.target.value })}
+            style={controlStyle}
+          >
+            <option value="">Toutes Plateformes</option>
+            <option value="6">PC (Windows)</option>
+            <option value="48">PlayStation 4</option>
+            <option value="167">PlayStation 5</option>
+            <option value="49">Xbox One</option>
+            <option value="169">Xbox Series X|S</option>
+            <option value="130">Nintendo Switch</option>
+          </select>
 
-            <select
-              value={params.sortBy}
-              onChange={(e) => setParams({ ...params, sortBy: e.target.value })}
-              style={{ ...controlStyle, width: "90px" }}
-            >
-              <option value="total_rating">Note</option>
-              <option value="name">Nom</option>
-              <option value="first_release_date">Date</option>
-            </select>
+          <select
+            value={params.sortBy}
+            onChange={(e) => setParams({ ...params, sortBy: e.target.value })}
+            style={controlStyle}
+          >
+            <option value="total_rating">Note</option>
+            <option value="name">Nom</option>
+            <option value="first_release_date">Date de sortie</option>
+          </select>
 
-            <button
-              onClick={() =>
-                setParams({
-                  ...params,
-                  sortOrder: params.sortOrder === "asc" ? "desc" : "asc",
-                })
-              }
-              style={{ ...controlStyle, width: "120px", fontSize: "0.75rem" }}
-            >
-              {params.sortOrder === "asc" ? "↑ Croissant" : "↓ Décroissant"}
-            </button>
-          </div>
+          <button
+            onClick={() =>
+              setParams({
+                ...params,
+                sortOrder: params.sortOrder === "asc" ? "desc" : "asc",
+              })
+            }
+            style={controlStyle}
+          >
+            {params.sortOrder === "asc" ? "↑ Croissant" : "↓ Décroissant"}
+          </button>
         </div>
       </header>
 
-      {/* Grille de jeux */}
       <div
         style={{
           display: "grid",
-          gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))",
-          gap: "30px",
+          gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))",
+          gap: "25px",
         }}
       >
         {loading ? (
-          <p style={{ color: "white" }}>Chargement...</p>
-        ) : games.length > 0 ? (
+          <p>Chargement...</p>
+        ) : (
           games.map((game) => (
             <div
               key={game.id}
-              className="game-card"
               onClick={() => onGameClick(game.id)}
-              style={{
-                backgroundColor: "#252545",
-                borderRadius: "20px",
-                overflow: "hidden",
-                border: "1px solid rgba(255,255,255,0.1)",
-                transition: "0.3s",
-                cursor: "pointer",
-              }}
+              className="game-card"
+              style={cardStyle}
             >
               <img
                 src={getImageUrl(game)}
                 alt={game.name}
-                style={{ width: "100%", height: "380px", objectFit: "cover" }}
+                style={{ width: "100%", height: "350px", objectFit: "cover" }}
               />
-              <div style={{ padding: "20px" }}>
+              <div style={{ padding: "15px" }}>
                 <h3
                   style={{
-                    fontSize: "18px",
-                    margin: "0 0 10px 0",
                     color: "white",
+                    margin: "0 0 8px 0",
+                    fontSize: "1rem",
                   }}
                 >
                   {game.name}
@@ -223,34 +180,36 @@ const Accueil = ({ onGameClick }) => {
                     alignItems: "center",
                   }}
                 >
-                  {game.total_rating ? (
-                    <p
-                      style={{
-                        color: "#b208b4",
-                        fontWeight: "bold",
-                        margin: 0,
-                      }}
-                    >
-                      ⭐ {(game.total_rating / 20).toFixed(1)} / 5
-                    </p>
-                  ) : (
-                    <span style={{ color: "#64748b" }}>N/A</span>
-                  )}
-                  {game.first_release_date && (
-                    <span style={{ fontSize: "0.8rem", color: "#94a3b8" }}>
-                      {new Date(game.first_release_date * 1000).getFullYear()}
-                    </span>
-                  )}
+                  <span
+                    style={{
+                      color: "#b208b4",
+                      fontWeight: "bold",
+                      fontSize: "0.9rem",
+                    }}
+                  >
+                    ⭐ {(game.total_rating / 20).toFixed(1)} / 5
+                  </span>
+                  <span style={{ color: "#64748b", fontSize: "0.8rem" }}>
+                    {game.first_release_date
+                      ? new Date(game.first_release_date * 1000).getFullYear()
+                      : ""}
+                  </span>
                 </div>
               </div>
             </div>
           ))
-        ) : (
-          <p style={{ color: "#94a3b8" }}>Aucun jeu trouvé.</p>
         )}
       </div>
     </div>
   );
+};
+
+const cardStyle = {
+  backgroundColor: "#1e1e38",
+  borderRadius: "15px",
+  overflow: "hidden",
+  cursor: "pointer",
+  border: "1px solid #334155",
 };
 
 export default Accueil;
