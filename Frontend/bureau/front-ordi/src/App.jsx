@@ -4,7 +4,7 @@ import Login from "./pages/Login";
 import Register from "./pages/Register";
 import Utilisateur from "./pages/utilisateur";
 import Jeu from "./pages/Jeu";
-import Messagerie from "./pages/Messagerie"; // Import de la nouvelle page
+import Messagerie from "./pages/messagerie"; // Import de la nouvelle page
 import "../Style/Styles.css";
 import "./Langue/i18n";
 
@@ -52,13 +52,16 @@ const App = () => {
                 </svg>
               </div>
 
-              {/* Nouveau bouton Messages visible si connecté */}
+              {/* BOUTON MESSAGERIE (AVION EN PAPIER) */}
               {user && (
                 <button
-                  style={styles.msgBtn}
+                  className="msg-nav-btn"
                   onClick={() => setCurrentPage("messagerie")}
                 >
-                  ✉️
+                  <svg viewBox="0 0 24 24" className="msg-nav-icon">
+                    <line x1="22" y1="2" x2="11" y2="13"></line>
+                    <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                  </svg>
                 </button>
               )}
 
@@ -147,7 +150,6 @@ const App = () => {
             }}
           />
         )}
-        {/* Rendu de la page de messagerie */}
         {currentPage === "messagerie" && <Messagerie user={user} />}
       </main>
     </div>
@@ -185,16 +187,6 @@ const styles = {
     borderRadius: "8px",
     fontWeight: "bold",
     cursor: "pointer",
-  },
-  // Style pour le petit bouton icône message
-  msgBtn: {
-    background: "#1e293b",
-    color: "white",
-    border: "1px solid #334155",
-    padding: "10px",
-    borderRadius: "8px",
-    cursor: "pointer",
-    fontSize: "1.2rem",
   },
   searchOverlay: {
     display: "flex",

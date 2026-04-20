@@ -5,84 +5,45 @@ import "../../Style/Styles.css";
 const Messagerie = ({ user }) => {
   const [contacts, setContacts] = useState([]);
   const [selectedContact, setSelectedContact] = useState(null);
-  const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState("");
+
+  // Cet objet stocke toutes les conversations : { "id_contact": [messages...] }
+  const [allConversations, setAllConversations] = useState({});
+
   const messagesEndRef = useRef(null);
 
-  // Scroll automatique vers le bas lors d'un nouveau message
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  };
-
+  // 1. Charger les contacts et les anciens messages au démarrage
   useEffect(() => {
-    scrollToBottom();
-  }, [messages]);
+    setContacts([
+      {
+        id: 101,
+        pseudo: "Gamer_X",
+        avatar: "https://api.dicebear.com/7.x/bottts/svg?seed=Gamer",
+      },
+      {
+        id: 102,
+        pseudo: "PixelArt",
+        avatar: "https://api.dicebear.com/7.x/bottts/svg?seed=Pixel",
+      },
+    ]);
 
-  // Charger la liste des amis (ceux qu'on suit)
-  useEffect(() => {
-    const fetchContacts = async () => {
-      if (!user?.id) return;
-      try {
-        // Remplace par ton endpoint réel qui récupère les abonnements
-        const res = await axios.get(
-          `http://localhost:3000/api/user/following/${user.id}`,
-        );
-        setContacts(res.data);
-      } catch (err) {
-        console.error("Erreur contacts:", err);
-        // Mock data pour test si serveur déconnecté
-        setContacts([
-          {
-            id: 101,
-            pseudo: "GamerPro",
-            avatar: "https://api.dicebear.com/7.x/bottts/svg?seed=Gamer",
-          },
-          {
-            id: 102,
-            pseudo: "LuckyPlayer",
-            avatar: "https://api.dicebear.com/7.x/bottts/svg?seed=Lucky",
-          },
-        ]);
-      }
-    };
-    fetchContacts();
+    // Charger les messages sauvegardés dans le navigateur
+    const savedChats = localStorage.getItem(`chats_${user?.email}`);
+    if (savedChats) {
+      setAllConversations(JSON.parse(savedChats));
+    }
   }, [user]);
 
-  // Charger les messages quand on sélectionne un contact
+  // 2. Scroll automatique vers le bas à chaque nouveau message
   useEffect(() => {
-    if (selectedContact) {
-      const fetchMessages = async () => {
-        try {
-          const res = await axios.get(
-            `http://localhost:3000/api/messages/${user.id}/${selectedContact.id}`,
-          );
-          setMessages(res.data);
-        } catch (err) {
-          setMessages([
-            {
-              id: 1,
-              senderId: selectedContact.id,
-              text: `Salut ! Prêt pour une partie ?`,
-              time: "10:00",
-            },
-            {
-              id: 2,
-              senderId: user.id,
-              text: `Carrément, j'arrive !`,
-              time: "10:05",
-            },
-          ]);
-        }
-      };
-      fetchMessages();
-    }
-  }, [selectedContact, user.id]);
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [selectedContact, allConversations]);
 
   const handleSendMessage = (e) => {
     e.preventDefault();
     if (!newMessage.trim() || !selectedContact) return;
 
-    const msgObj = {
+    const msg = {
       id: Date.now(),
       senderId: user.id,
       text: newMessage,
@@ -92,35 +53,45 @@ const Messagerie = ({ user }) => {
       }),
     };
 
-    setMessages([...messages, msgObj]);
+    // MISE À JOUR DE LA CONVERSATION SPÉCIFIQUE
+    const contactId = selectedContact.id;
+    const updatedConversations = {
+      ...allConversations,
+      [contactId]: [...(allConversations[contactId] || []), msg],
+    };
+
+    setAllConversations(updatedConversations);
     setNewMessage("");
 
-    // Logique API pour sauvegarder le message
-    // axios.post('http://localhost:3000/api/messages/send', { from: user.id, to: selectedContact.id, text: newMessage });
+    // Sauvegarde locale (pour simuler une base de données)
+    localStorage.setItem(
+      `chats_${user?.email}`,
+      JSON.stringify(updatedConversations),
+    );
   };
+
+  // On récupère uniquement les messages de la personne sélectionnée
+  const currentMessages = selectedContact
+    ? allConversations[selectedContact.id] || []
+    : [];
 
   return (
     <div className="chat-page-container">
       <div className="chat-layout">
-        {/* COLONNE GAUCHE : LISTE DES CONTACTS */}
         <div className="chat-sidebar">
           <div className="sidebar-header">
-            <h3>Discussions</h3>
+            <h3>Messages</h3>
           </div>
           <div className="contacts-list">
-            {contacts.map((contact) => (
+            {contacts.map((c) => (
               <div
-                key={contact.id}
-                className={`contact-item ${selectedContact?.id === contact.id ? "active" : ""}`}
-                onClick={() => setSelectedContact(contact)}
+                key={c.id}
+                className={`contact-item ${selectedContact?.id === c.id ? "active" : ""}`}
+                onClick={() => setSelectedContact(c)}
               >
-                <img
-                  src={contact.avatar}
-                  alt="Avatar"
-                  className="contact-avatar"
-                />
+                <img src={c.avatar} alt="" className="contact-avatar" />
                 <div className="contact-info">
-                  <span className="contact-name">{contact.pseudo}</span>
+                  <span className="contact-name">{c.pseudo}</span>
                   <span className="contact-status">En ligne</span>
                 </div>
               </div>
@@ -128,47 +99,50 @@ const Messagerie = ({ user }) => {
           </div>
         </div>
 
-        {/* COLONNE DROITE : ZONE DE CHAT */}
         <div className="chat-main">
           {selectedContact ? (
             <>
               <div className="chat-header">
-                <img
-                  src={selectedContact.avatar}
-                  alt=""
-                  className="contact-avatar-small"
-                />
                 <h4>{selectedContact.pseudo}</h4>
               </div>
-
               <div className="chat-messages">
-                {messages.map((msg) => (
+                {currentMessages.map((m) => (
                   <div
-                    key={msg.id}
-                    className={`message-bubble ${msg.senderId === user.id ? "me" : "them"}`}
+                    key={m.id}
+                    className={`message-bubble ${m.senderId === user.id ? "me" : "them"}`}
                   >
-                    <p>{msg.text}</p>
-                    <span className="message-time">{msg.time}</span>
+                    <p>{m.text}</p>
+                    <span className="chat-time">{m.time}</span>
                   </div>
                 ))}
                 <div ref={messagesEndRef} />
               </div>
-
               <form className="chat-input-area" onSubmit={handleSendMessage}>
                 <input
                   type="text"
-                  placeholder="Écrivez votre message..."
                   value={newMessage}
                   onChange={(e) => setNewMessage(e.target.value)}
+                  placeholder="Écrivez..."
                 />
                 <button type="submit" className="btn-send">
-                  ➤
+                  {/* Icône avion en papier comme demandé */}
+                  <svg
+                    viewBox="0 0 24 24"
+                    width="20"
+                    height="20"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                  >
+                    <line x1="22" y1="2" x2="11" y2="13"></line>
+                    <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                  </svg>
                 </button>
               </form>
             </>
           ) : (
             <div className="chat-empty-state">
-              <p>Sélectionnez un ami pour commencer à discuter</p>
+              Sélectionne un ami pour discuter
             </div>
           )}
         </div>

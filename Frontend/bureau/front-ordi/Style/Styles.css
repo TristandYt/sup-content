@@ -1180,3 +1180,54 @@
   background-color: #2e2e4d;
   border-radius: 10px;
 }
+/* Animation de l'avion dans la navbar */
+.msg-nav-btn {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  transition: transform 0.2s ease;
+}
+
+.msg-nav-icon {
+  width: 24px;
+  height: 24px;
+  stroke: white;
+  stroke-width: 2;
+  fill: none;
+  transition: stroke 0.2s ease;
+}
+
+.msg-nav-btn:hover {
+  transform: scale(1.1); /* S'agrandit un peu au survol */
+}
+
+.msg-nav-btn:hover .msg-nav-icon {
+  stroke: #b208b4; /* Devient violet au survol */
+}
+.message-bubble.me {
+  align-self: flex-end;
+  background: #b208b4; /* Ton violet */
+  color: white;
+  border-radius: 15px 15px 0 15px;
+}
+
+.message-bubble.them {
+  align-self: flex-start;
+  background: #2e2e4d;
+  color: white;
+  border-radius: 15px 15px 15px 0;
+}
+
+.chat-time {
+  font-size: 0.7rem;
+  opacity: 0.6;
+  display: block;
+  margin-top: 5px;
+  text-align: right;
+}
+
+.btn-send:hover {
+  transform: scale(1.1);
+  color: #b208b4;
+}
