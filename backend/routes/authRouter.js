@@ -7,12 +7,15 @@ const validateRequest = require('../middlewares/validateRequest');
 const authController = require('../controllers/AuthController');
 
 /* --------- import schema zod --------- */
-const { registerSchema, loginSchema } = require('../validators/authValidator');
+const { registerSchema, loginSchema, socialLoginSchema } = require('../validators/authValidator');
 
-/* --------- Register --------- */
+/* --------- register --------- */
 router.post('/register', validateRequest(registerSchema), authController.register);
 
-/* --------- Login --------- */
+/* --------- login --------- */
 router.post('/login', validateRequest(loginSchema), authController.login);
+
+/* --------- social login (google/facebook) --------- */
+router.post('/social', validateRequest(socialLoginSchema), authController.socialLogin);
 
 module.exports = router;

@@ -6,7 +6,8 @@ const { getIgdbToken } = require('../services/igdbAuth');
 
 
 const router = express.Router();
-const db = admin.firestore();
+const getDb = () => admin.apps.length ? admin.firestore() : null; // le temps qu'on a pas la db firebase
+//const db = admin.firestore();
 
 const IGDB_BASE_URL = 'https://api.igdb.com/v4';
 
@@ -20,6 +21,16 @@ const getIgdbHeaders = async () => {
         'Content-Type': 'text/plain' // IGDB utilise du texte brut pour ses requetes
     };
 };
+
+router.get('/popular', async (req, res) => {
+    try {
+        const { sortBy, order } = req.query;
+        const games = await igdb.getPopularGames(sortBy, order);
+        res.json(games);
+    } catch (error) {
+        res.status(500).json({ error: "Erreur IGDB Populaires" });
+    }
+});
 
 // route de recherche (barre de recherche du front)
 router.get('/search', async (req, res) => {
@@ -50,8 +61,12 @@ router.get('/:id', async (req, res) => {
 
     try {
         // cherche le jeu dans notre base firestore locale
-        const gameRef = db.collection('games').doc(gameId); // L'ID du document sera l'ID IGDB
-        const doc = await gameRef.get();
+        // const gameRef = db.collection('games').doc(gameId); // L'ID du document sera l'ID IGDB // pareil on remettra apres
+        const doc = await gameRef.get(); // same
+        const db = getDb();
+        if (!db) throw new Error("Base de données non initialisée");
+
+        const gameRef = db.collection('games').doc(gameId);
 
         if (doc.exists) {
             console.log(`CACHE HIT : Le jeu ${gameId} a été trouvé dans Firebase !`);
