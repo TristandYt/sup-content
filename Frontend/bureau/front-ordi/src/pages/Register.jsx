@@ -26,7 +26,6 @@ const Register = ({ onSwitch }) => {
     const { pseudo, email, pass, confirm } = formData;
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-    // Utilisation des clés exactes de ton fichier de traduction
     if (!pseudo || !email || !pass || !confirm) return t("error_fields_empty");
     if (!emailRegex.test(email)) return t("placeholder_email");
     if (pass.length < 8) return "8 characters min.";
@@ -45,9 +44,12 @@ const Register = ({ onSwitch }) => {
     setIsLoading(true);
 
     try {
+      // Simulation de l'appel API (remplace par ton fetch/axios plus tard)
       console.log("Envoi des données :", formData);
       await new Promise((resolve) => setTimeout(resolve, 1500));
-      alert("Success!");
+
+      // Une fois l'inscription réussie, on switch vers la page Login
+      onSwitch();
     } catch (err) {
       setError("Error");
     } finally {
@@ -157,7 +159,7 @@ const Register = ({ onSwitch }) => {
             marginBottom: "10px",
           }}
         >
-          {error && error}
+          {error}
         </div>
 
         <div className="form-group">
@@ -274,13 +276,13 @@ const Register = ({ onSwitch }) => {
         </div>
 
         <p className="footer-text">
-          {i18n.language === "fr" ? "Déjà inscrit ?" : "Already registered?"}{" "}
+          {t("already_registered")}{" "}
           <span
             onClick={!isLoading ? onSwitch : null}
             className="link-highlight"
             style={{ cursor: "pointer" }}
           >
-            {i18n.language === "fr" ? "Se connecter" : "Login"}
+            {t("login_link")}
           </span>
         </p>
       </div>
