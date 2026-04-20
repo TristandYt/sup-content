@@ -6,6 +6,7 @@ import "../../Style/Styles.css";
 const Profile = ({ user, onLoginSuccess, onLogout }) => {
   const { t, i18n } = useTranslation();
 
+  // profileData représente les données de la page affichée
   const [profileData, setProfileData] = useState({
     id: user?.id || "",
     pseudo: user?.pseudo || "Joueur",
@@ -17,10 +18,15 @@ const Profile = ({ user, onLoginSuccess, onLogout }) => {
 
   const [favorites, setFavorites] = useState([]);
   const [filter, setFilter] = useState("Tous");
-  const [isFollowing, setIsFollowing] = useState(false); // État pour le bouton follow
+  const [isFollowing, setIsFollowing] = useState(false);
+
+  // Vérification : Est-ce mon propre compte ?
+  // On compare l'ID de l'utilisateur connecté (user) à l'ID du profil affiché (profileData)
+  const isOwnProfile = !profileData.id || user?.id === profileData.id;
 
   useEffect(() => {
     if (user) {
+      // Si aucune donnée de profil externe n'est chargée, on affiche par défaut l'user connecté
       setProfileData((prev) => ({ ...prev, ...user }));
 
       const localKey = `library_${user.email}`;
@@ -28,19 +34,18 @@ const Profile = ({ user, onLoginSuccess, onLogout }) => {
       setFavorites(savedLocal);
 
       fetchLibrary(user.id, user.email);
-      checkIfFollowing(user.id); // Optionnel : vérifier si on suit déjà cet ID
     }
   }, [user]);
 
-  // --- LOGIQUE FOLLOW ---
+  // --- LOGIQUE FOLLOW (Uniquement pour les autres) ---
   const handleFollow = async () => {
     if (!user?.id) {
       alert("Connectez-vous pour suivre des joueurs !");
       return;
     }
+    if (isOwnProfile) return; // Sécurité supplémentaire
 
     try {
-      // On envoie qui suit (followerId) et qui est suivi (followingId)
       await axios.post(`http://localhost:3000/api/user/follow`, {
         followerId: user.id,
         followingId: profileData.id,
@@ -52,12 +57,13 @@ const Profile = ({ user, onLoginSuccess, onLogout }) => {
     }
   };
 
-  const checkIfFollowing = async (myId) => {
-    // Logique à implémenter si ton backend permet de vérifier le statut
-    // try { const res = await axios.get(...); setIsFollowing(res.data.isFollowing); } catch {}
+  // --- LOGIQUE MESSAGE (Uniquement pour les autres) ---
+  const handleSendMessage = () => {
+    if (isOwnProfile) return;
+    // Logique de redirection vers ta future page de chat
+    alert(`Ouverture de la discussion avec ${profileData.pseudo}`);
   };
 
-  // --- RESTE DE TES FONCTIONS ---
   const fetchLibrary = async (userId, userEmail) => {
     if (!userId || userId === "undefined") return;
     try {
@@ -83,6 +89,7 @@ const Profile = ({ user, onLoginSuccess, onLogout }) => {
   };
 
   const handleAvatarChange = (e) => {
+    if (!isOwnProfile) return;
     const file = e.target.files[0];
     if (file && file.type.startsWith("image/")) {
       const reader = new FileReader();
@@ -108,6 +115,7 @@ const Profile = ({ user, onLoginSuccess, onLogout }) => {
   };
 
   const handleUpdateStatus = async (gameId, newStatus) => {
+    if (!isOwnProfile) return; // On ne peut pas changer le statut des jeux d'un ami
     const updated = favorites.map((f) =>
       f.id === gameId ? { ...f, status: newStatus } : f,
     );
@@ -128,7 +136,9 @@ const Profile = ({ user, onLoginSuccess, onLogout }) => {
   return (
     <div className="user-page-container">
       <div className="profile-card-vertical">
-        <h2 className="profile-main-title">{t("profileTitle")}</h2>
+        <h2 className="profile-main-title">
+          {isOwnProfile ? t("profileTitle") : `Profil de ${profileData.pseudo}`}
+        </h2>
 
         <div className="avatar-section-centered">
           <div className="avatar-wrapper-v2">
@@ -137,27 +147,43 @@ const Profile = ({ user, onLoginSuccess, onLogout }) => {
               alt="Avatar"
               className="avatar-img-v2"
             />
-            <label htmlFor="avatar-input" className="edit-badge-v2">
-              ✏️
-              <input
-                id="avatar-input"
-                type="file"
-                accept="image/*"
-                hidden
-                onChange={handleAvatarChange}
-              />
-            </label>
+            {isOwnProfile && (
+              <label htmlFor="avatar-input" className="edit-badge-v2">
+                ✏️
+                <input
+                  id="avatar-input"
+                  type="file"
+                  accept="image/*"
+                  hidden
+                  onChange={handleAvatarChange}
+                />
+              </label>
+            )}
           </div>
           <p className="identified-text">{t("identifiedAs")}</p>
           <h3 className="pseudo-v2">{profileData.pseudo}</h3>
 
-          {/* NOUVEAU : Bouton Follow (visible uniquement si on regarde le profil de quelqu'un d'autre) */}
-          <button
-            className={`btn-follow ${isFollowing ? "following" : ""}`}
-            onClick={handleFollow}
-          >
-            {isFollowing ? "Abonné" : "Suivre"}
-          </button>
+          {/* BOUTONS SOCIAUX : Affichés seulement si ce n'est PAS mon profil */}
+          {!isOwnProfile && (
+            <div
+              className="profile-social-actions"
+              style={{ display: "flex", gap: "10px", marginTop: "15px" }}
+            >
+              <button
+                className={`btn-follow ${isFollowing ? "following" : ""}`}
+                onClick={handleFollow}
+              >
+                {isFollowing ? "Abonné" : "Suivre"}
+              </button>
+              <button
+                className="btn-save-v2"
+                onClick={handleSendMessage}
+                style={{ backgroundColor: "#4a90e2" }}
+              >
+                ✉️ Message
+              </button>
+            </div>
+          )}
         </div>
 
         <div className="profile-form-v2">
@@ -168,41 +194,50 @@ const Profile = ({ user, onLoginSuccess, onLogout }) => {
             value={profileData.bio}
             onChange={handleChange}
             placeholder={t("placeholderBio")}
+            disabled={!isOwnProfile}
           />
 
-          <label className="label-text-v2">{t("langLabel")}</label>
-          <select
-            name="lang"
-            className="input-field-v2 select-field-v2"
-            value={i18n.language}
-            onChange={handleChange}
-          >
-            <option value="fr">Français 🇫🇷</option>
-            <option value="en">English 🇬🇧</option>
-          </select>
+          {isOwnProfile && (
+            <>
+              <label className="label-text-v2">{t("langLabel")}</label>
+              <select
+                name="lang"
+                className="input-field-v2 select-field-v2"
+                value={i18n.language}
+                onChange={handleChange}
+              >
+                <option value="fr">Français 🇫🇷</option>
+                <option value="en">English 🇬🇧</option>
+              </select>
 
-          <label className="label-text-v2">{t("emailLabel")}</label>
-          <input
-            className="input-field-v2 input-disabled-v2"
-            value={profileData.email}
-            disabled
-          />
+              <label className="label-text-v2">{t("emailLabel")}</label>
+              <input
+                className="input-field-v2 input-disabled-v2"
+                value={profileData.email}
+                disabled
+              />
 
-          <div className="profile-actions-v2">
-            <button className="btn-save-v2" onClick={handleUpdate}>
-              {t("btnUpdate")}
-            </button>
-            <button className="btn-logout-v2" onClick={onLogout}>
-              {t("btnLogout")}
-            </button>
-          </div>
+              <div className="profile-actions-v2">
+                <button className="btn-save-v2" onClick={handleUpdate}>
+                  {t("btnUpdate")}
+                </button>
+                <button className="btn-logout-v2" onClick={onLogout}>
+                  {t("btnLogout")}
+                </button>
+              </div>
+            </>
+          )}
         </div>
       </div>
 
-      {/* SECTION BIBLIOTHÈQUE */}
       <div className="library-section">
         <div className="library-header-compact">
-          <h2>Ma Bibliothèque ({favorites.length})</h2>
+          <h2>
+            {isOwnProfile
+              ? "Ma Bibliothèque"
+              : `Bibliothèque de ${profileData.pseudo}`}{" "}
+            ({favorites.length})
+          </h2>
           <div className="filter-pill-box">
             {["Tous", "A faire", "En cours", "Fini"].map((s) => (
               <button
@@ -218,7 +253,7 @@ const Profile = ({ user, onLoginSuccess, onLogout }) => {
 
         {favorites.length === 0 ? (
           <div className="empty-library">
-            <p>Votre bibliothèque est vide.</p>
+            <p>Aucun jeu dans la bibliothèque.</p>
           </div>
         ) : (
           <div className="library-grid">
@@ -239,6 +274,7 @@ const Profile = ({ user, onLoginSuccess, onLogout }) => {
                       onChange={(e) =>
                         handleUpdateStatus(game.id, e.target.value)
                       }
+                      disabled={!isOwnProfile}
                     >
                       <option value="A faire">À faire</option>
                       <option value="En cours">En cours</option>

@@ -4,6 +4,7 @@ import Login from "./pages/Login";
 import Register from "./pages/Register";
 import Utilisateur from "./pages/utilisateur";
 import Jeu from "./pages/Jeu";
+import Messagerie from "./pages/Messagerie"; // Import de la nouvelle page
 import "../Style/Styles.css";
 import "./Langue/i18n";
 
@@ -27,7 +28,6 @@ const App = () => {
 
   return (
     <div style={styles.appContainer}>
-      {/* NAVBAR CORRIGÉE (FOND SOMBRE) */}
       <nav style={styles.navbar}>
         {!showSearch ? (
           <>
@@ -51,6 +51,17 @@ const App = () => {
                   <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
                 </svg>
               </div>
+
+              {/* Nouveau bouton Messages visible si connecté */}
+              {user && (
+                <button
+                  style={styles.msgBtn}
+                  onClick={() => setCurrentPage("messagerie")}
+                >
+                  ✉️
+                </button>
+              )}
+
               <button
                 style={styles.navBtn}
                 onClick={() => setCurrentPage(user ? "utilisateur" : "login")}
@@ -115,6 +126,7 @@ const App = () => {
           <Jeu
             gameId={selectedGameId}
             onBack={() => setCurrentPage("accueil")}
+            user={user}
           />
         )}
         {currentPage === "login" && (
@@ -127,8 +139,16 @@ const App = () => {
           <Register onSwitch={() => setCurrentPage("login")} />
         )}
         {currentPage === "utilisateur" && (
-          <Utilisateur user={user} onLogout={() => setUser(null)} />
+          <Utilisateur
+            user={user}
+            onLogout={() => {
+              setUser(null);
+              setCurrentPage("accueil");
+            }}
+          />
         )}
+        {/* Rendu de la page de messagerie */}
+        {currentPage === "messagerie" && <Messagerie user={user} />}
       </main>
     </div>
   );
@@ -165,6 +185,16 @@ const styles = {
     borderRadius: "8px",
     fontWeight: "bold",
     cursor: "pointer",
+  },
+  // Style pour le petit bouton icône message
+  msgBtn: {
+    background: "#1e293b",
+    color: "white",
+    border: "1px solid #334155",
+    padding: "10px",
+    borderRadius: "8px",
+    cursor: "pointer",
+    fontSize: "1.2rem",
   },
   searchOverlay: {
     display: "flex",

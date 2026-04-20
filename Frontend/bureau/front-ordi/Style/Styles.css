@@ -957,3 +957,226 @@
   font-size: 0.9rem;
   color: #888;
 }
+/* =============================================
+   MESSAGERIE / CHAT STYLES
+   ============================================= */
+
+.chat-page-container {
+  padding: 20px;
+  height: calc(
+    100vh - 100px
+  ); /* Ajuste selon la hauteur de ta barre de navigation */
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.chat-layout {
+  display: flex;
+  background-color: #1a1a2e; /* Fond sombre assorti à ton thème */
+  border-radius: 15px;
+  overflow: hidden;
+  height: 100%;
+  border: 1px solid #2e2e4d;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+}
+
+/* --- COLONNE GAUCHE : SIDEBAR --- */
+.chat-sidebar {
+  width: 300px;
+  background-color: #161625;
+  border-right: 1px solid #2e2e4d;
+  display: flex;
+  flex-direction: column;
+}
+
+.sidebar-header {
+  padding: 20px;
+  background-color: #1e1e38;
+  border-bottom: 1px solid #2e2e4d;
+}
+
+.sidebar-header h3 {
+  color: white;
+  margin: 0;
+  font-size: 1.2rem;
+}
+
+.contacts-list {
+  flex: 1;
+  overflow-y: auto;
+}
+
+.contact-item {
+  display: flex;
+  align-items: center;
+  padding: 15px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border-bottom: 1px solid #1f1f35;
+}
+
+.contact-item:hover {
+  background-color: #252545;
+}
+
+.contact-item.active {
+  background-color: #2e2e4d;
+  border-left: 4px solid #b208b4; /* Ton accent violet */
+}
+
+.contact-avatar {
+  width: 45px;
+  height: 45px;
+  border-radius: 50%;
+  margin-right: 12px;
+  border: 2px solid #2e2e4d;
+}
+
+.contact-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.contact-name {
+  color: white;
+  font-weight: bold;
+  font-size: 0.95rem;
+}
+
+.contact-status {
+  color: #4caf50; /* Vert pour "En ligne" */
+  font-size: 0.75rem;
+}
+
+/* --- COLONNE DROITE : FENÊTRE DE CHAT --- */
+.chat-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  background: radial-gradient(circle at center, #1e1e38 0%, #161625 100%);
+}
+
+.chat-header {
+  padding: 15px 20px;
+  background-color: #1e1e38;
+  display: flex;
+  align-items: center;
+  border-bottom: 1px solid #2e2e4d;
+}
+
+.contact-avatar-small {
+  width: 35px;
+  height: 35px;
+  border-radius: 50%;
+  margin-right: 10px;
+}
+
+.chat-header h4 {
+  color: white;
+  margin: 0;
+}
+
+/* ZONE DES MESSAGES */
+.chat-messages {
+  flex: 1;
+  padding: 20px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.message-bubble {
+  max-width: 70%;
+  padding: 12px 16px;
+  border-radius: 15px;
+  position: relative;
+  font-size: 0.95rem;
+  line-height: 1.4;
+}
+
+.message-bubble.me {
+  align-self: flex-end;
+  background-color: #b208b4; /* Violet utilisateur */
+  color: white;
+  border-bottom-right-radius: 2px;
+}
+
+.message-bubble.them {
+  align-self: flex-start;
+  background-color: #2e2e4d; /* Gris-bleu ami */
+  color: #e2e8f0;
+  border-bottom-left-radius: 2px;
+}
+
+.message-time {
+  display: block;
+  font-size: 0.7rem;
+  margin-top: 5px;
+  opacity: 0.7;
+  text-align: right;
+}
+
+/* ZONE DE SAISIE */
+.chat-input-area {
+  padding: 20px;
+  background-color: #1e1e38;
+  display: flex;
+  gap: 10px;
+  border-top: 1px solid #2e2e4d;
+}
+
+.chat-input-area input {
+  flex: 1;
+  background-color: #161625;
+  border: 1px solid #2e2e4d;
+  padding: 12px 15px;
+  border-radius: 25px;
+  color: white;
+  outline: none;
+}
+
+.chat-input-area input:focus {
+  border-color: #b208b4;
+}
+
+.btn-send {
+  background-color: #b208b4;
+  color: white;
+  border: none;
+  width: 45px;
+  height: 45px;
+  border-radius: 50%;
+  cursor: pointer;
+  transition: transform 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.btn-send:hover {
+  transform: scale(1.1);
+  background-color: #d10bd4;
+}
+
+/* ÉTAT VIDE */
+.chat-empty-state {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #64748b;
+  font-style: italic;
+}
+
+/* SCROLLBAR PERSONNALISÉE (Optionnel pour le look gamer) */
+.chat-messages::-webkit-scrollbar,
+.contacts-list::-webkit-scrollbar {
+  width: 6px;
+}
+
+.chat-messages::-webkit-scrollbar-thumb,
+.contacts-list::-webkit-scrollbar-thumb {
+  background-color: #2e2e4d;
+  border-radius: 10px;
+}
