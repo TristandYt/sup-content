@@ -9,10 +9,10 @@ const listController = require('../controllers/listController');
 
 router.use(auth);
 
-router.post('/status', listController.updateGameStatus);
-router.put('/status', listController.updateGameStatus);
-router.get('/library', listController.getMyLibrary);
-router.get('/library/:gameId', listController.getGameFromLibrary);
-router.delete('/library/:gameId', listController.removeGameFromLibrary);
+router.post('/status',listController.updateGameStatus);
+router.put('/status',listController.updateGameStatus);
+router.get('/library',listController.getMyLibrary);
+router.get('/library/:gameId',listController.getGameFromLibrary);
+router.delete('/library/:gameId',listController.removeGameFromLibrary);
 
 module.exports = router;

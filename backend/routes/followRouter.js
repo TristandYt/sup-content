@@ -9,8 +9,9 @@ const followController = require('../controllers/followController');
 
 router.use(auth);
 
-router.post('/:userId', followController.followUser);
-router.delete('/:userId', followController.unfollowUser);
-router.get('/me/following', followController.getMyFollowing);
+router.post('/:userId',followController.followUser);
+router.delete('/:userId',followController.unfollowUser);
+router.get('/me/following',followController.getMyFollowing);
+router.get('/me/followers',followController.getMyFollowers);
 
 module.exports = router;

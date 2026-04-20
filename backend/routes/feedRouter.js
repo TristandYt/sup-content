@@ -8,6 +8,6 @@ const auth = require('../middlewares/auth');
 const feedController = require('../controllers/feedController');
 
 router.use(auth);
-router.get('/', feedController.getNewsFeed);
+router.get('/',feedController.getNewsFeed);
 
 module.exports = router;

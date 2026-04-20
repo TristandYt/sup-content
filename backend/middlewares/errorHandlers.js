@@ -1,4 +1,3 @@
-// gere les erreurs
 const errorHandler = (err, req, res, next) => {
     console.error(err.stack);
 

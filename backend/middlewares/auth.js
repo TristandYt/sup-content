@@ -5,7 +5,7 @@
 const { auth } = require('../Services/Firebase');
 
 const authMiddleware = async (req, res, next) => {
-    // req.headers est un objet, on utilise des crochets ou req.header()
+
     const authHeader = req.headers['authorization'];
     const token = authHeader && authHeader.split(' ')[1];
 
@@ -14,10 +14,10 @@ const authMiddleware = async (req, res, next) => {
     }
 
     try {
-        // Firebase vérifie si le token est valide et non expiré
+        
         const decodedToken = await auth.verifyIdToken(token);
         
-        // On attache l'UID Firebase à la requête pour les autres contrôleurs
+        
         req.user = { id: decodedToken.uid };
         
         next();

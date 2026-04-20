@@ -1,6 +1,6 @@
 /*
  * Backend Express principal.
- * Configure le serveur, les middleware, les routes et le gestionnaire d'erreurs.
+ * Port 3000 (mappé depuis docker-compose → hôte:3000)
  */
 const express = require('express');
 const cors = require('cors');
@@ -8,35 +8,42 @@ const dotenv = require('dotenv');
 
 dotenv.config();
 
-const { admin, db, auth } = require('./Services/Firebase');
+require('./Services/Firebase');
 
 const app = express();
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 3000;
 
 app.use(cors());
 app.use(express.json());
 
-// Routes
-const authRoutes = require('./Routes/authRouter');
-const gameRoutes = require('./Routes/games');
-const userRoutes = require('./Routes/usersRouter');
-const listRoutes = require('./Routes/listRouter');
-const reviewRoutes = require('./Routes/reviewRouter');
-const followRoutes = require('./Routes/followRouter');
-const feedRoutes = require('./Routes/feedRouter');
-const errorHandler = require("./middlewares/errorHandlers");
+const authMiddleware          = require('./middlewares/auth');
+const ensureFirestoreProfile  = require('./middlewares/ensureFirestoreProfile');
+const errorHandler            = require('./middlewares/errorHandlers');
 
-app.use('/api/auth', authRoutes);
+const authRoutes         = require('./Routes/authRouter');
+const gameRoutes         = require('./Routes/games');
+const userRoutes         = require('./Routes/usersRouter');
+const listRoutes         = require('./Routes/listRouter');
+const reviewRoutes       = require('./Routes/reviewRouter');
+const followRoutes       = require('./Routes/followRouter');
+const feedRoutes         = require('./Routes/feedRouter');
+const conversationRoutes = require('./Routes/conversationRouter');
+
+// Routes publiques (pas d'auth globale)
+app.use('/api/auth',  authRoutes);
 app.use('/api/games', gameRoutes);
-app.use('/api/users', userRoutes);
-app.use('/api/lists', listRoutes);
-app.use('/api/reviews', reviewRoutes);
-app.use('/api/follows', followRoutes);
-app.use('/api/feeds', feedRoutes);
 
-// middleware
+// Routes avec auth — ensureFirestoreProfile garantit que le profil Firestore
+// existe même après un premier login OAuth2 (Google, GitHub, Facebook)
+app.use('/api/users',         authMiddleware, ensureFirestoreProfile, userRoutes);
+app.use('/api/lists',         authMiddleware, ensureFirestoreProfile, listRoutes);
+app.use('/api/reviews',       authMiddleware, ensureFirestoreProfile, reviewRoutes);
+app.use('/api/follows',       authMiddleware, ensureFirestoreProfile, followRoutes);
+app.use('/api/feeds',         authMiddleware, ensureFirestoreProfile, feedRoutes);
+app.use('/api/conversations', authMiddleware, ensureFirestoreProfile, conversationRoutes);
+
 app.use(errorHandler);
 
 app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+    console.log(`Server running on port ${PORT}`);
 });
