@@ -153,7 +153,7 @@ beforeAll(async () => {
         });
 
         // 5. GAMES_CACHE (nommée 'games' dans ton code)
-        await db.collection('games').doc(gameId).set({
+        await db.collection('games_cache').doc(gameId).set({
             name: 'Trine',
             total_rating: 79.5,
             cover: { image_id: 'co1r76' },
