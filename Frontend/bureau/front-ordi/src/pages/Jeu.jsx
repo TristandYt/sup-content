@@ -16,29 +16,21 @@ const Jeu = ({ gameId, onBack, user }) => {
     const fetchDetails = async () => {
       try {
         setLoading(true);
-
-        // 1. Récupération des détails du jeu
-        // Le backend renvoie directement l'objet gameData
         const res = await axios.get(
           `http://localhost:3000/api/games/details/${gameId}`,
         );
 
         if (res.data) {
-          const gameData = res.data;
-          setGame(gameData);
-
-          // 2. Vérification des Favoris dans le localStorage
+          setGame(res.data);
           if (user) {
             const localLib =
               JSON.parse(localStorage.getItem(`library_${user.email}`)) || [];
-            // Utilisation de String() pour comparer les IDs de types différents (nombre vs chaîne)
             setIsFavorite(
               localLib.some((item) => String(item.id) === String(gameId)),
             );
           }
         }
 
-        // 3. Récupération des commentaires
         const resComments = await axios.get(
           `http://localhost:3000/api/comments/${gameId}`,
         );
@@ -55,13 +47,11 @@ const Jeu = ({ gameId, onBack, user }) => {
 
   const toggleFavorite = async () => {
     if (!user) {
-      alert("Vous devez être connecté pour ajouter un favori.");
+      alert("Connectez-vous pour ajouter un favori.");
       return;
     }
-
     const storageKey = `library_${user.email}`;
     const imageUrl = `https://images.igdb.com/igdb/image/upload/t_cover_big/${game.cover?.image_id}.jpg`;
-
     const gameData = {
       id: gameId,
       name: game.name,
@@ -89,23 +79,12 @@ const Jeu = ({ gameId, onBack, user }) => {
       }
       setIsFavorite(!isFavorite);
     } catch (err) {
-      console.error("Erreur API, bascule en mode local uniquement", err);
-      let local = JSON.parse(localStorage.getItem(storageKey)) || [];
-      if (isFavorite) {
-        local = local.filter((i) => String(i.id) !== String(gameId));
-      } else {
-        local.push(gameData);
-      }
-      localStorage.setItem(storageKey, JSON.stringify(local));
       setIsFavorite(!isFavorite);
     }
   };
 
   const handleSaveComment = async () => {
-    if (!newComment.trim() || rating === 0) {
-      alert("Merci d'ajouter un texte et une note !");
-      return;
-    }
+    if (!newComment.trim() || rating === 0) return;
     try {
       const commentData = {
         gameId,
@@ -121,117 +100,217 @@ const Jeu = ({ gameId, onBack, user }) => {
       setRating(0);
       setShowCommentBox(false);
     } catch (err) {
-      alert("Erreur lors de l'envoi du commentaire.");
+      alert("Erreur d'envoi");
     }
   };
 
-  if (loading) return <div className="game-details-page">Chargement...</div>;
-  if (!game) return <div className="game-details-page">Jeu introuvable.</div>;
+  if (loading)
+    return (
+      <div className="app-container">
+        <div className="loading-container">
+          <div className="loading-spinner"></div>
+        </div>
+      </div>
+    );
 
   return (
-    <div className="game-details-page">
-      <button onClick={onBack} className="btn-back">
-        ← Retour
-      </button>
+    <div className="app-container">
+      <div className="hero-gradient"></div>
 
-      <div className="game-main-container">
-        <div className="game-sidebar">
-          <img
-            src={`https://images.igdb.com/igdb/image/upload/t_cover_big/${game.cover?.image_id}.jpg`}
-            alt={game.name}
-            className="game-cover-img"
-          />
-          <div className="game-meta-under-cover">
-            <p>
-              <strong>Genres:</strong>{" "}
-              {game.genres?.map((g) => g.name).join(", ") || "N/A"}
-            </p>
-            <p>
-              <strong>Plateformes:</strong>{" "}
-              {game.platforms?.map((p) => p.name).join(", ") || "N/A"}
-            </p>
-          </div>
-        </div>
+      <div className="main-content-wrapper">
+        <button
+          onClick={onBack}
+          className="category-btn"
+          style={{
+            marginBottom: "2rem",
+            display: "flex",
+            alignItems: "center",
+            gap: "8px",
+          }}
+        >
+          ← Retour à la navigation
+        </button>
 
-        <div className="game-info-content">
-          <div className="game-title-row">
-            <h1>{game.name}</h1>
-            <button
-              onClick={toggleFavorite}
-              className={`minimal-heart-btn ${isFavorite ? "active" : ""}`}
-            >
-              <svg viewBox="0 0 32 32">
-                <path d="M16 28.5L4.5 17C1.9 14.4 1.9 10.1 4.5 7.5C7.1 4.9 11.4 4.9 14 7.5L16 9.5L18 7.5C20.6 4.9 24.9 4.9 27.5 7.5C30.1 10.1 30.1 14.4 27.5 17L16 28.5Z" />
-              </svg>
-            </button>
-          </div>
-
-          <p className="rating-text">
-            ⭐ {game.total_rating ? (game.total_rating / 20).toFixed(1) : "N/A"}{" "}
-            / 5 (IGDB)
-          </p>
-          <h3 className="section-subtitle">Résumé</h3>
-          <p className="summary-text">
-            {game.summary || "Aucun résumé disponible."}
-          </p>
-
-          <div className="comments-section">
-            <div className="comments-header">
-              <h3>Avis des joueurs ({comments.length})</h3>
-              <button
-                className="btn-open-comment"
-                onClick={() => setShowCommentBox(!showCommentBox)}
-              >
-                {showCommentBox ? "Annuler" : "Noter ce jeu"}
-              </button>
-            </div>
-
-            {showCommentBox && (
-              <div className="comment-input-area">
-                <div className="star-rating-selector">
-                  {[1, 2, 3, 4, 5].map((star) => (
-                    <span
-                      key={star}
-                      className={`star-icon ${(hoverRating || rating) >= star ? "filled" : ""}`}
-                      onClick={() => setRating(star)}
-                      onMouseEnter={() => setHoverRating(star)}
-                      onMouseLeave={() => setHoverRating(0)}
-                    >
-                      ★
-                    </span>
-                  ))}
-                  <span className="rating-label">{rating}/5</span>
-                </div>
-                <textarea
-                  value={newComment}
-                  onChange={(e) => setNewComment(e.target.value)}
-                  placeholder="Votre avis sur ce titre..."
+        <div className="game-details-layout">
+          {/* COLONNE GAUCHE : IMAGE ET META */}
+          <div className="game-sidebar-modern">
+            <div className="game-card-modern" style={{ cursor: "default" }}>
+              <div className="game-image-container">
+                <img
+                  src={`https://images.igdb.com/igdb/image/upload/t_cover_big/${game.cover?.image_id}.jpg`}
+                  alt={game.name}
+                  className="game-image"
                 />
+                <div className="rating-badge">
+                  <span className="rating-star">⭐</span>
+                  <span className="rating-value">
+                    {(game.total_rating / 20).toFixed(1)}
+                  </span>
+                </div>
+              </div>
+              <div className="game-content">
                 <button
-                  onClick={handleSaveComment}
-                  className="save-comment-btn"
+                  onClick={toggleFavorite}
+                  className={`nav-user-btn ${isFavorite ? "" : "category-btn"}`}
+                  style={{
+                    width: "100%",
+                    justifyContent: "center",
+                    background: isFavorite ? "#ef4444" : "",
+                  }}
                 >
-                  Publier
+                  {isFavorite
+                    ? "❤️ Dans la collection"
+                    : "🤍 Ajouter aux favoris"}
                 </button>
               </div>
-            )}
+            </div>
 
-            <div className="comments-list">
-              {comments.map((c, index) => (
-                <div key={index} className="comment-item">
-                  <div className="comment-header-info">
-                    <span className="comment-rating">
-                      {"★".repeat(c.rating)}
-                      {"☆".repeat(5 - c.rating)}
-                    </span>
-                    <span className="comment-user">
-                      par {c.pseudo || "Anonyme"}
-                    </span>
+            <div className="filters-section" style={{ marginTop: "1.5rem" }}>
+              <h4
+                className="game-genre"
+                style={{
+                  display: "block",
+                  marginBottom: "1rem",
+                  textAlign: "center",
+                }}
+              >
+                Informations
+              </h4>
+              <div
+                style={{
+                  color: "#9ca3af",
+                  fontSize: "0.9rem",
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: "10px",
+                }}
+              >
+                <p>
+                  <strong>Genres:</strong>{" "}
+                  {game.genres?.map((g) => g.name).join(", ")}
+                </p>
+                <p>
+                  <strong>Plateformes:</strong>{" "}
+                  {game.platforms?.map((p) => p.name).join(", ")}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* COLONNE DROITE : INFOS ET COMMENTAIRES */}
+          <div className="game-main-info">
+            <h1 className="hero-title">{game.name}</h1>
+
+            <div className="section-header">
+              <h3 className="section-title">Résumé</h3>
+            </div>
+            <p
+              className="hero-subtitle"
+              style={{ color: "#e2e8f0", marginBottom: "3rem" }}
+            >
+              {game.summary || "Aucun résumé disponible."}
+            </p>
+
+            <div className="comments-section-modern">
+              <div className="section-header">
+                <h3 className="section-title">Avis des joueurs</h3>
+                <span className="section-count">{comments.length}</span>
+                <button
+                  className="category-btn active sort-btn"
+                  onClick={() => setShowCommentBox(!showCommentBox)}
+                >
+                  {showCommentBox ? "Annuler" : "Noter le jeu"}
+                </button>
+              </div>
+
+              {showCommentBox && (
+                <div
+                  className="game-card-modern"
+                  style={{
+                    padding: "1.5rem",
+                    marginBottom: "2rem",
+                    cursor: "default",
+                  }}
+                >
+                  <div
+                    className="filters-container"
+                    style={{ marginBottom: "1rem" }}
+                  >
+                    {[1, 2, 3, 4, 5].map((star) => (
+                      <span
+                        key={star}
+                        style={{
+                          fontSize: "1.5rem",
+                          cursor: "pointer",
+                          color:
+                            (hoverRating || rating) >= star
+                              ? "#c084fc"
+                              : "#334155",
+                        }}
+                        onClick={() => setRating(star)}
+                        onMouseEnter={() => setHoverRating(star)}
+                        onMouseLeave={() => setHoverRating(0)}
+                      >
+                        ★
+                      </span>
+                    ))}
                   </div>
-                  <p className="comment-body">{c.text}</p>
-                  <span className="comment-date">Le {c.date}</span>
+                  <textarea
+                    className="filter-select"
+                    style={{
+                      width: "100%",
+                      minHeight: "100px",
+                      marginBottom: "1rem",
+                      paddingTop: "10px",
+                    }}
+                    value={newComment}
+                    onChange={(e) => setNewComment(e.target.value)}
+                    placeholder="Partagez votre expérience sur ce titre..."
+                  />
+                  <button
+                    onClick={handleSaveComment}
+                    className="nav-user-btn"
+                    style={{ width: "100%", justifyContent: "center" }}
+                  >
+                    Publier mon avis
+                  </button>
                 </div>
-              ))}
+              )}
+
+              <div className="comments-list-modern">
+                {comments.map((c, index) => (
+                  <div
+                    key={index}
+                    className="game-card-modern"
+                    style={{
+                      padding: "1rem",
+                      marginBottom: "1rem",
+                      background: "rgba(255,255,255,0.02)",
+                      cursor: "default",
+                    }}
+                  >
+                    <div
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        marginBottom: "0.5rem",
+                      }}
+                    >
+                      <span className="game-genre">{"★".repeat(c.rating)}</span>
+                      <span className="game-year">Le {c.date}</span>
+                    </div>
+                    <p style={{ margin: "0.5rem 0", color: "#cbd5e1" }}>
+                      {c.text}
+                    </p>
+                    <div
+                      className="game-title"
+                      style={{ fontSize: "0.85rem", color: "#9333ea" }}
+                    >
+                      — {c.pseudo}
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
         </div>
