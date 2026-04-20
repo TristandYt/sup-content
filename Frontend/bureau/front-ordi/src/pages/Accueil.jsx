@@ -8,12 +8,21 @@ const Accueil = ({ onGameClick, searchTerm }) => {
   const { t } = useTranslation();
   const [games, setGames] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [activeCategory, setActiveCategory] = useState("Tous");
   const [params, setParams] = useState({
     sortBy: "total_rating",
     sortOrder: "desc",
     genre: "",
     platform: "",
   });
+
+  const categories = [
+    { label: "Tous", value: "" },
+    { label: "Combat", value: "4" },
+    { label: "Shooter", value: "5" },
+    { label: "RPG", value: "12" },
+    { label: "Aventure", value: "31" },
+  ];
 
   const getImageUrl = (game) => {
     if (game.cover && game.cover.image_id) {
@@ -61,70 +70,65 @@ const Accueil = ({ onGameClick, searchTerm }) => {
     return () => clearTimeout(delay);
   }, [searchTerm, params]);
 
-  const controlStyle = {
-    backgroundColor: "#1e1e38",
-    color: "white",
-    border: "1px solid #334155",
-    borderRadius: "20px",
-    padding: "5px 15px",
-    outline: "none",
-    cursor: "pointer",
-    fontSize: "0.85rem",
-    height: "35px",
+  const handleCategoryChange = (value) => {
+    setActiveCategory(
+      categories.find((c) => c.value === value)?.label || "Tous",
+    );
+    setParams({ ...params, genre: value });
   };
 
   return (
-    <div style={{ width: "100%" }}>
-      <header style={{ marginBottom: "30px" }}>
-        <h2
-          style={{
-            fontSize: "2.2rem",
-            color: "white",
-            marginBottom: "10px",
-            fontWeight: "bold",
-          }}
-        >
-          Tendances mondiales
-        </h2>
-        <p style={{ color: "#94a3b8", marginBottom: "25px" }}>
-          Tout le contenu SUPCONTENT à portée de clic.
-        </p>
+    <div className="accueil-container">
+      {/* Hero Section */}
+      <div className="hero-section">
+        <div className="hero-gradient"></div>
+        <div className="hero-content">
+          <h2 className="hero-title">Découvrez les meilleurs jeux</h2>
+          <p className="hero-subtitle">
+            Tout le contenu SUPCONTENT à portée de clic. Explorez, filtrez et
+            trouvez votre prochain jeu préféré.
+          </p>
+        </div>
+      </div>
 
-        <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
-          <select
-            value={params.genre}
-            onChange={(e) => setParams({ ...params, genre: e.target.value })}
-            style={controlStyle}
+      {/* Categories Navigation */}
+      <div className="categories-nav">
+        {categories.map((category) => (
+          <button
+            key={category.value}
+            onClick={() => handleCategoryChange(category.value)}
+            className={`category-btn ${activeCategory === category.label ? "active" : ""}`}
           >
-            <option value="">Genres</option>
-            <option value="4">Combat</option>
-            <option value="5">Shooter</option>
-            <option value="12">RPG</option>
-            <option value="31">Aventure</option>
-          </select>
+            {category.label}
+          </button>
+        ))}
+      </div>
 
+      {/* Filters Section */}
+      <div className="filters-section">
+        <div className="filters-container">
           <select
             value={params.platform}
             onChange={(e) => setParams({ ...params, platform: e.target.value })}
-            style={controlStyle}
+            className="filter-select"
           >
-            <option value="">Toutes Plateformes</option>
-            <option value="6">PC (Windows)</option>
-            <option value="48">PlayStation 4</option>
-            <option value="167">PlayStation 5</option>
-            <option value="49">Xbox One</option>
-            <option value="169">Xbox Series X|S</option>
-            <option value="130">Nintendo Switch</option>
+            <option value="">🎮 Toutes Plateformes</option>
+            <option value="6">💻 PC (Windows)</option>
+            <option value="48">🎮 PlayStation 4</option>
+            <option value="167">🎮 PlayStation 5</option>
+            <option value="49">🎮 Xbox One</option>
+            <option value="169">🎮 Xbox Series X|S</option>
+            <option value="130">🎮 Nintendo Switch</option>
           </select>
 
           <select
             value={params.sortBy}
             onChange={(e) => setParams({ ...params, sortBy: e.target.value })}
-            style={controlStyle}
+            className="filter-select"
           >
-            <option value="total_rating">Note</option>
-            <option value="name">Nom</option>
-            <option value="first_release_date">Date de sortie</option>
+            <option value="total_rating">⭐ Note</option>
+            <option value="name">📝 Nom</option>
+            <option value="first_release_date">📅 Date de sortie</option>
           </select>
 
           <button
@@ -134,82 +138,85 @@ const Accueil = ({ onGameClick, searchTerm }) => {
                 sortOrder: params.sortOrder === "asc" ? "desc" : "asc",
               })
             }
-            style={controlStyle}
+            className="filter-select sort-btn"
           >
             {params.sortOrder === "asc" ? "↑ Croissant" : "↓ Décroissant"}
           </button>
         </div>
-      </header>
+      </div>
 
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))",
-          gap: "25px",
-        }}
-      >
-        {loading ? (
-          <p>Chargement...</p>
-        ) : (
-          games.map((game) => (
+      {/* Section Title */}
+      <div className="section-header">
+        <div className="section-icon">🔥</div>
+        <h3 className="section-title">
+          {searchTerm
+            ? `Résultats pour "${searchTerm}"`
+            : "Tendances mondiales"}
+        </h3>
+        <div className="section-count">{games.length} jeux</div>
+      </div>
+
+      {/* Games Grid */}
+      {loading ? (
+        <div className="loading-container">
+          <div className="loading-spinner"></div>
+          <p className="loading-text">Chargement des jeux...</p>
+        </div>
+      ) : games.length === 0 ? (
+        <div className="empty-state">
+          <div className="empty-icon">🎮</div>
+          <h3 className="empty-title">Aucun jeu trouvé</h3>
+          <p className="empty-text">
+            Essayez de modifier vos filtres ou votre recherche
+          </p>
+        </div>
+      ) : (
+        <div className="games-grid">
+          {games.map((game) => (
             <div
               key={game.id}
               onClick={() => onGameClick(game.id)}
-              className="game-card"
-              style={cardStyle}
+              className="game-card-modern"
             >
-              <img
-                src={getImageUrl(game)}
-                alt={game.name}
-                style={{ width: "100%", height: "350px", objectFit: "cover" }}
-              />
-              <div style={{ padding: "15px" }}>
-                <h3
-                  style={{
-                    color: "white",
-                    margin: "0 0 8px 0",
-                    fontSize: "1rem",
-                  }}
-                >
-                  {game.name}
-                </h3>
-                <div
-                  style={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "center",
-                  }}
-                >
-                  <span
-                    style={{
-                      color: "#b208b4",
-                      fontWeight: "bold",
-                      fontSize: "0.9rem",
-                    }}
-                  >
-                    ⭐ {(game.total_rating / 20).toFixed(1)} / 5
-                  </span>
-                  <span style={{ color: "#64748b", fontSize: "0.8rem" }}>
+              <div className="game-image-container">
+                <img
+                  src={getImageUrl(game)}
+                  alt={game.name}
+                  className="game-image"
+                />
+                <div className="game-overlay"></div>
+
+                {/* Rating Badge */}
+                {game.total_rating && (
+                  <div className="rating-badge">
+                    <span className="rating-star">⭐</span>
+                    <span className="rating-value">
+                      {(game.total_rating / 20).toFixed(1)}
+                    </span>
+                  </div>
+                )}
+              </div>
+
+              <div className="game-content">
+                <h3 className="game-title">{game.name}</h3>
+
+                <div className="game-meta">
+                  <span className="game-year">
                     {game.first_release_date
                       ? new Date(game.first_release_date * 1000).getFullYear()
-                      : ""}
+                      : "TBA"}
                   </span>
+                  {game.genres && game.genres.length > 0 && (
+                    <span className="game-genre">{game.genres[0].name}</span>
+                  )}
                 </div>
               </div>
             </div>
-          ))
-        )}
-      </div>
+          ))}
+        </div>
+      )}
     </div>
   );
-};
-
-const cardStyle = {
-  backgroundColor: "#1e1e38",
-  borderRadius: "15px",
-  overflow: "hidden",
-  cursor: "pointer",
-  border: "1px solid #334155",
 };
 
 export default Accueil;
