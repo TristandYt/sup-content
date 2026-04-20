@@ -6,6 +6,7 @@
  *   { followerId, followingId, createdAt }
  */
 const { admin, db } = require('../Services/Firebase');
+const Logger = require('../Services/Logger');
 
 /*
  * POST /api/follows/:userId
@@ -37,6 +38,9 @@ exports.followUser = async (req, res, next) => {
             createdAt: admin.firestore.FieldValue.serverTimestamp(),
         });
 
+        // Logger le follow
+        await Logger.log('user_followed', followerId, { followingId });
+
         res.status(201).json({ success: true, msg: 'Vous suivez maintenant cet utilisateur' });
     } catch (error) {
         next(error);
@@ -59,6 +63,10 @@ exports.unfollowUser = async (req, res, next) => {
         }
 
         await db.collection('follows').doc(followId).delete();
+
+        // Logger l'unfollow
+        await Logger.log('user_unfollowed', followerId, { followingId });
+
         res.json({ success: true, msg: 'Vous ne suivez plus cet utilisateur' });
     } catch (error) {
         next(error);

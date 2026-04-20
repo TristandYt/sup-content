@@ -8,6 +8,7 @@
  * Statuts valides : to_play | playing | finished | dropped
  */
 const { admin, db } = require('../Services/Firebase');
+const Logger = require('../Services/Logger');
 
 const VALID_STATUSES = ['to_play', 'playing', 'finished', 'dropped'];
 
@@ -35,6 +36,9 @@ exports.updateGameStatus = async (req, res, next) => {
             status,
             updatedAt: admin.firestore.FieldValue.serverTimestamp(),
         }, { merge: true });
+
+        // Logger la mise à jour du statut dans la bibliothèque
+        await Logger.log('library_status_updated', userId, { gameId, status });
 
         res.json({ success: true, msg: `Statut mis à jour : ${status}` });
     } catch (error) {
@@ -89,6 +93,34 @@ exports.getGameFromLibrary = async (req, res, next) => {
         }
 
         res.json({ success: true, game: gameDoc.data() });
+    } catch (error) {
+        next(error);
+    }
+};
+
+/*
+ * DELETE /api/lists/library/:gameId
+ * Supprime un jeu de la bibliothèque de l'utilisateur.
+ */
+exports.removeFromLibrary = async (req, res, next) => {
+    try {
+        const userId = req.user.id;
+        const gameId = req.params.gameId.toString();
+
+        const gameRef = db.collection('users').doc(userId)
+            .collection('library').doc(gameId);
+
+        const gameDoc = await gameRef.get();
+        if (!gameDoc.exists) {
+            return res.status(404).json({ success: false, msg: 'Jeu introuvable dans la bibliothèque' });
+        }
+
+        await gameRef.delete();
+
+        // Logger la suppression de la bibliothèque
+        await Logger.log('library_game_removed', userId, { gameId });
+
+        res.json({ success: true, msg: 'Jeu retiré de la bibliothèque' });
     } catch (error) {
         next(error);
     }

@@ -3,6 +3,7 @@
  * Gère l'inscription via Firebase Auth et renvoie des tokens / profils.
  */
 const { admin, db, auth } = require('../Services/Firebase');
+const Logger = require('../Services/Logger');
 
 exports.register = async (req, res, next) => {
     try {
@@ -24,9 +25,13 @@ exports.register = async (req, res, next) => {
         await db.collection('users').doc(userRecord.uid).set({
             username: username,
             email: email,
+            role: 'user', // Rôle par défaut
             favorites: [], 
             createdAt: admin.firestore.FieldValue.serverTimestamp()
         });
+
+        // Logger l'inscription
+        await Logger.log('user_registered', userRecord.uid, { username, email });
 
         res.status(201).json({ 
             success: true, 

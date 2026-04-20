@@ -6,13 +6,12 @@
 const express = require('express');
 const router = express.Router();
 const auth = require('../middlewares/auth');
+const { isAdmin } = require('../middlewares/roleMiddleware');
 const userController = require('../controllers/userController');
 
-// Route publique — doit être déclarée AVANT router.use(auth)
 router.get('/:userId/profile', userController.getPublicProfile);
 
-router.use(auth);
-
+router.use(auth); // Toutes les routes suivantes nécessitent une authentification
 router.get('/profile',userController.getProfile);
 router.put('/profile',userController.updateProfile);
 router.put('/password',userController.updatePassword);
@@ -21,5 +20,7 @@ router.delete('/account',userController.deleteAccount);
 router.get('/favorites',userController.getFavorites);
 router.post('/favorites',userController.addFavorite);
 router.delete('/favorites/:gameId',userController.removeFavorite);
+router.get('/logs', isAdmin, userController.getLogs);
+router.post('/promote/:userId', isAdmin, userController.promoteUser);
 
 module.exports = router;

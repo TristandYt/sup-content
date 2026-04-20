@@ -6,6 +6,7 @@
  *   { userId, gameId, rating, text, updatedAt }
  */
 const { admin, db } = require('../Services/Firebase');
+const Logger = require('../Services/Logger');
 
 const REVIEWS_PAGE_SIZE = 20;
 
@@ -33,6 +34,9 @@ exports.addOrUpdateReview = async (req, res, next) => {
             text,
             updatedAt: admin.firestore.FieldValue.serverTimestamp(),
         }, { merge: true });
+
+        // Logger l'ajout/mise à jour de critique
+        await Logger.log('review_added_or_updated', userId, { gameId, rating, text: text ? 'present' : 'empty' });
 
         res.json({ success: true, msg: 'Critique enregistrée' });
     } catch (error) {
@@ -128,6 +132,10 @@ exports.deleteReview = async (req, res, next) => {
         }
 
         await db.collection('reviews').doc(reviewId).delete();
+
+        // Logger la suppression de critique
+        await Logger.log('review_deleted', userId, { gameId });
+
         res.json({ success: true, msg: 'Critique supprimée' });
     } catch (error) {
         next(error);

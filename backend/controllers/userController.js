@@ -5,6 +5,7 @@
  *   { username, email, bio, favorites[], createdAt, updatedAt }
  */
 const { admin, db, auth } = require('../Services/Firebase');
+const Logger = require('../Services/Logger');
 
 /*
  * GET /api/users/profile  (privé)
@@ -58,6 +59,10 @@ exports.updateProfile = async (req, res, next) => {
         if (bio !== undefined) updates.bio = bio;
 
         await db.collection('users').doc(userId).update(updates);
+
+        // Logger la mise à jour du profil
+        await Logger.log('profile_updated', userId, { updates: { username, bio } });
+
         res.json({ success: true, msg: 'Profil mis à jour' });
     } catch (error) {
         next(error);
@@ -78,6 +83,10 @@ exports.updatePassword = async (req, res, next) => {
         }
 
         await auth.updateUser(userId, { password: newPassword });
+
+        // Logger la mise à jour du mot de passe
+        await Logger.log('password_updated', userId, {});
+
         res.json({ success: true, msg: 'Mot de passe mis à jour' });
     } catch (error) {
         next(error);
@@ -103,6 +112,9 @@ exports.updateEmail = async (req, res, next) => {
             updatedAt: admin.firestore.FieldValue.serverTimestamp(),
         });
 
+        // Logger la mise à jour de l'email
+        await Logger.log('email_updated', userId, { newEmail });
+
         res.json({ success: true, msg: 'Email mis à jour' });
     } catch (error) {
         next(error);
@@ -117,6 +129,10 @@ exports.deleteAccount = async (req, res, next) => {
         const userId = req.user.id;
         await auth.deleteUser(userId);
         await db.collection('users').doc(userId).delete();
+
+        // Logger la suppression du compte
+        await Logger.log('account_deleted', userId, {});
+
         res.json({ success: true, msg: 'Compte supprimé' });
     } catch (error) {
         next(error);
@@ -143,6 +159,9 @@ exports.addFavorite = async (req, res, next) => {
             updatedAt: admin.firestore.FieldValue.serverTimestamp(),
         });
 
+        // Logger l'ajout aux favoris
+        await Logger.log('favorite_added', userId, { gameId, gameName });
+
         res.json({ success: true, msg: 'Jeu ajouté aux favoris' });
     } catch (error) {
         next(error);
@@ -166,6 +185,9 @@ exports.removeFavorite = async (req, res, next) => {
             updatedAt: admin.firestore.FieldValue.serverTimestamp(),
         });
 
+        // Logger la suppression des favoris
+        await Logger.log('favorite_removed', userId, { gameId });
+
         res.json({ success: true, msg: 'Favori retiré' });
     } catch (error) {
         next(error);
@@ -181,6 +203,46 @@ exports.getFavorites = async (req, res, next) => {
         const doc = await db.collection('users').doc(userId).get();
         const favorites = doc.data().favorites || [];
         res.json({ success: true, total: favorites.length, favorites });
+    } catch (error) {
+        next(error);
+    }
+};
+
+/*
+ * GET /api/users/logs (Admin seulement)
+ */
+exports.getLogs = async (req, res, next) => {
+    try {
+        const limit = parseInt(req.query.limit) || 100;
+        const logs = await Logger.getLogs(limit);
+        res.json({ success: true, logs });
+    } catch (error) {
+        next(error);
+    }
+};
+
+/*
+ * POST /api/users/promote/:userId (Admin seulement)
+ * Body : { role: 'admin' }
+ */
+exports.promoteUser = async (req, res, next) => {
+    try {
+        const { userId } = req.params;
+        const { role } = req.body;
+
+        if (role !== 'admin') {
+            return res.status(400).json({ success: false, msg: 'Rôle invalide' });
+        }
+
+        await db.collection('users').doc(userId).update({
+            role: 'admin',
+            updatedAt: admin.firestore.FieldValue.serverTimestamp()
+        });
+
+        // Logger la promotion
+        await Logger.log('user_promoted', req.user.id, { promotedUserId: userId, newRole: 'admin' });
+
+        res.json({ success: true, msg: 'Utilisateur promu administrateur' });
     } catch (error) {
         next(error);
     }

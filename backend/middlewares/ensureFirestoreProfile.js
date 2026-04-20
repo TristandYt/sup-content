@@ -20,25 +20,30 @@ const ensureFirestoreProfile = async (req, res, next) => {
         const userRef = db.collection('users').doc(userId);
         const userDoc = await userRef.get();
 
-        if (userDoc.exists) return next();
-        
-        const firebaseUser = await admin.auth().getUser(userId);
-        const rawName = firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'user';
-        const baseUsername = rawName.replace(/\s+/g, '_').toLowerCase();
-        let username = baseUsername;
-        const existing = await db.collection('users').where('username', '==', username).get();
-        if (!existing.empty) {
-            username = `${baseUsername}_${Date.now().toString().slice(-4)}`;
+        if (!userDoc.exists) {
+            // Créer le profil si inexistant
+            const firebaseUser = await admin.auth().getUser(userId);
+            const rawName = firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'user';
+            const baseUsername = rawName.replace(/\s+/g, '_').toLowerCase();
+            let username = baseUsername;
+            const existing = await db.collection('users').where('username', '==', username).get();
+            if (!existing.empty) {
+                username = `${baseUsername}_${Date.now().toString().slice(-4)}`;
+            }
+
+            await userRef.set({
+                username,
+                email: firebaseUser.email || '',
+                bio: '',
+                role: 'user', // Rôle par défaut
+                favorites: [],
+                createdAt: admin.firestore.FieldValue.serverTimestamp(),
+                updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+            });
         }
 
-        await userRef.set({
-            username,
-            email: firebaseUser.email || '',
-            bio: '',
-            favorites: [],
-            createdAt: admin.firestore.FieldValue.serverTimestamp(),
-            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-        });
+        const updatedDoc = await userRef.get();
+        req.user.profile = updatedDoc.data();
 
         next();
     } catch (error) {

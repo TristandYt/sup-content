@@ -10,6 +10,7 @@
  *   pour éviter les doublons A_B / B_A.
  */
 const { admin, db } = require('../Services/Firebase');
+const Logger = require('../Services/Logger');
 
 const buildConversationId = (idA, idB) => [idA, idB].sort().join('_');
 
@@ -90,6 +91,10 @@ exports.getOrCreateConversation = async (req, res, next) => {
         };
 
         await convRef.set(newConversation);
+
+        // Logger la création de conversation
+        await Logger.log('conversation_created', userId, { targetUserId, conversationId });
+
         res.status(201).json({ success: true, created: true, conversation: { id: conversationId, ...newConversation } });
     } catch (error) {
         next(error);
@@ -173,6 +178,10 @@ exports.sendMessage = async (req, res, next) => {
         });
 
         await batch.commit();
+
+        // Logger l'envoi de message
+        await Logger.log('message_sent', userId, { conversationId, messageId: messageRef.id, hasText: !!text.trim(), attachmentsCount: attachments.length });
+
         res.status(201).json({ success: true, msg: 'Message envoyé', messageId: messageRef.id });
     } catch (error) {
         next(error);
@@ -208,6 +217,9 @@ exports.markAsRead = async (req, res, next) => {
         await messageRef.update({
             readBy: admin.firestore.FieldValue.arrayUnion(userId),
         });
+
+        // Logger le marquage comme lu
+        await Logger.log('message_read', userId, { conversationId, messageId });
 
         res.json({ success: true, msg: 'Message marqué comme lu' });
     } catch (error) {

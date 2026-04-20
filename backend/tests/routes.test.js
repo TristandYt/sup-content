@@ -104,12 +104,11 @@ beforeAll(async () => {
     const gameId = '1020';
 
     try {
-        // 🔥 ÉTAPE 1 : NETTOYAGE COMPLET (Efface tout avant d'écrire)
         await axios.delete(`http://${firestoreHost}/emulator/v1/projects/${projectId}/databases/(default)/documents`);
         await axios.delete(`http://${authHost}/emulator/v1/projects/${projectId}/accounts`);
-        console.log("✅ Base de données et comptes Auth nettoyés.");
+        console.log("Base de données et comptes Auth nettoyés.");
 
-        // 🔥 ÉTAPE 2 : CRÉATION DU COMPTE AUTH (Pour les tests de compte)
+        // CRÉATION DU COMPTE AUTH 
         await admin.auth().createUser({
             uid: aliceId,
             email: 'alice@example.com',
@@ -117,9 +116,8 @@ beforeAll(async () => {
             displayName: 'alice_plays'
         });
 
-        // 🔥 ÉTAPE 3 : PEUPLEMENT SELON LE SCHÉMA ERD
         
-        // 1. USERS
+        // USERS
         await db.collection('users').doc(aliceId).set({
             username: 'alice_plays',
             email: 'alice@example.com',
@@ -129,14 +127,14 @@ beforeAll(async () => {
             updatedAt: admin.firestore.FieldValue.serverTimestamp()
         });
 
-        // 2. LIBRARY (sous-collection de users)
+        // LIBRARY (sous-collection de users)
         await db.collection('users').doc(aliceId).collection('library').doc(gameId).set({
             gameId: gameId,
             status: 'playing',
             updatedAt: admin.firestore.FieldValue.serverTimestamp()
         });
 
-        // 3. REVIEWS
+        // REVIEWS
         await db.collection('reviews').doc(`${aliceId}_${gameId}`).set({
             userId: aliceId,
             gameId: gameId,
@@ -145,14 +143,14 @@ beforeAll(async () => {
             updatedAt: admin.firestore.FieldValue.serverTimestamp()
         });
 
-        // 4. FOLLOWS
+        // FOLLOWS
         await db.collection('follows').doc(`${aliceId}_${bobId}`).set({
             followerId: aliceId,
             followingId: bobId,
             createdAt: admin.firestore.FieldValue.serverTimestamp()
         });
 
-        // 5. GAMES_CACHE (nommée 'games' dans ton code)
+        // GAMES_CACHE (nommée 'games' dans ton code)
         await db.collection('games_cache').doc(gameId).set({
             name: 'Trine',
             total_rating: 79.5,
@@ -160,7 +158,7 @@ beforeAll(async () => {
             supcontent_cached_at: admin.firestore.FieldValue.serverTimestamp()
         });
 
-        // 6. CONVERSATIONS
+        // CONVERSATIONS
         const convId = [aliceId, bobId].sort().join('_');
         await db.collection('conversations').doc(convId).set({
             participants: [aliceId, bobId],
@@ -178,7 +176,7 @@ beforeAll(async () => {
             createdAt: admin.firestore.FieldValue.serverTimestamp()
         });
 
-        console.log("🚀 Toutes les tables du schéma ont été peuplées.");
+        console.log("Toutes les tables du schéma ont été peuplées.");
     } catch (e) {
         console.error("Erreur lors de la préparation :", e.message);
     }
@@ -241,7 +239,7 @@ describe('POST /api/auth/login', () => {
             password: 'Password1!',
         });
         expect(res.status).toBe(200);
-        expect(res.body.success).toBe(false); // Intentionnel
+        expect(res.body.success).toBe(false); 
     });
 });
 
@@ -385,7 +383,7 @@ describe('POST /api/lists/status', () => {
         const res = await request(app)
             .post('/api/lists/status')
             .set(AUTH_HEADER)
-            .send({ gameId: '1020', status: 'en_cours' }); // invalide
+            .send({ gameId: '1020', status: 'en_cours' }); 
         expect(res.status).toBe(400);
     });
 
@@ -417,12 +415,27 @@ describe('GET /api/lists/library', () => {
     });
 });
 
-// À ajouter dans le bloc "TESTS BIBLIOTHÈQUE"
 describe('GET /api/lists/library/:gameId', () => {
     it('200 — retourne le statut d\'un jeu précis', async () => {
         const res = await request(app).get('/api/lists/library/1020').set(AUTH_HEADER);
         expect(res.status).toBe(200);
         expect(res.body.game.gameId).toBe('1020');
+    });
+});
+
+describe('DELETE /api/lists/library/:gameId', () => {
+    it('200 — supprime un jeu de la bibliothèque', async () => {
+        const res = await request(app)
+            .delete('/api/lists/library/1020')
+            .set(AUTH_HEADER);
+        expect(res.status).toBe(200);
+    });
+
+    it('404 — rejette si jeu inexistant dans la bibliothèque', async () => {
+        const res = await request(app)
+            .delete('/api/lists/library/9999')
+            .set(AUTH_HEADER);
+        expect(res.status).toBe(404);
     });
 });
 
@@ -494,6 +507,22 @@ describe('PUT/api/reviews', () => {
             .set(AUTH_HEADER)
             .send({ rating: 5, text: 'Finalement, c\'est un chef-d\'œuvre.' });
         expect(res.status).toBe(200);
+    });
+});
+
+describe('DELETE /api/reviews/:gameId', () => {
+    it('200 — supprime une review existante', async () => {
+        const res = await request(app)
+            .delete('/api/reviews/1020')
+            .set(AUTH_HEADER);
+        expect(res.status).toBe(200);
+    });
+
+    it('404 — rejette si review inexistante', async () => {
+        const res = await request(app)
+            .delete('/api/reviews/9999')
+            .set(AUTH_HEADER);
+        expect(res.status).toBe(404);
     });
 });
 
