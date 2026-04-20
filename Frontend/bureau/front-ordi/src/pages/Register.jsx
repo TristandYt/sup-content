@@ -15,10 +15,6 @@ const Register = ({ onSwitch }) => {
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
-  const changeLanguage = (lng) => {
-    i18n.changeLanguage(lng);
-  };
-
   const handleChange = (e) =>
     setFormData({ ...formData, [e.target.name]: e.target.value });
 
@@ -44,11 +40,8 @@ const Register = ({ onSwitch }) => {
     setIsLoading(true);
 
     try {
-      // Simulation de l'appel API (remplace par ton fetch/axios plus tard)
-      console.log("Envoi des données :", formData);
+      // Simulation API
       await new Promise((resolve) => setTimeout(resolve, 1500));
-
-      // Une fois l'inscription réussie, on switch vers la page Login
       onSwitch();
     } catch (err) {
       setError("Error");
@@ -57,230 +50,277 @@ const Register = ({ onSwitch }) => {
     }
   };
 
-  const handleSocialRegister = (platform) => {
-    console.log(`Auth ${platform}...`);
-  };
-
-  const EyeIcon = ({ open }) =>
-    open ? (
-      <svg
-        xmlns="http://www.w3.org/2000/svg"
-        width="20"
-        height="20"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      >
-        <path d="M17.94 17.94A10.07 10.07 0 0 1 12 19c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
-        <line x1="1" y1="1" x2="23" y2="23"></line>
-      </svg>
-    ) : (
-      <svg
-        xmlns="http://www.w3.org/2000/svg"
-        width="20"
-        height="20"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      >
-        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
-        <circle cx="12" cy="12" r="3"></circle>
-      </svg>
-    );
-
   return (
-    <div className="container">
-      <div className="card" style={{ position: "relative" }}>
-        {/* SÉLECTEUR DE LANGUE */}
+    <div
+      className="app-container"
+      style={{
+        display: "flex",
+        justifyContent: "center",
+        alignItems: "center",
+        padding: "2rem",
+      }}
+    >
+      <div className="hero-gradient"></div>
+
+      <div
+        className="game-card-modern"
+        style={{
+          width: "100%",
+          maxWidth: "480px",
+          padding: "2.5rem",
+          cursor: "default",
+        }}
+      >
+        {/* Sélecteur de langue haut droite */}
         <div
           style={{
-            position: "absolute",
-            top: "20px",
-            right: "20px",
             display: "flex",
-            gap: "8px",
-            zIndex: 10,
+            justifyContent: "flex-end",
+            gap: "10px",
+            marginBottom: "1rem",
           }}
         >
           <button
-            onClick={() => changeLanguage("fr")}
-            style={{
-              background: "none",
-              border: "none",
-              cursor: "pointer",
-              padding: 0,
-            }}
+            className={`category-btn ${i18n.language === "fr" ? "active" : ""}`}
+            style={{ padding: "4px 12px" }}
+            onClick={() => i18n.changeLanguage("fr")}
           >
-            <img
-              src="https://flagcdn.com/w40/fr.png"
-              width="22"
-              alt="FR"
-              style={{
-                opacity: i18n.language === "fr" ? 1 : 0.3,
-                borderRadius: "2px",
-              }}
-            />
+            FR
           </button>
           <button
-            onClick={() => changeLanguage("en")}
-            style={{
-              background: "none",
-              border: "none",
-              cursor: "pointer",
-              padding: 0,
-            }}
+            className={`category-btn ${i18n.language === "en" ? "active" : ""}`}
+            style={{ padding: "4px 12px" }}
+            onClick={() => i18n.changeLanguage("en")}
           >
-            <img
-              src="https://flagcdn.com/w40/gb.png"
-              width="22"
-              alt="EN"
-              style={{
-                opacity: i18n.language === "en" ? 1 : 0.3,
-                borderRadius: "2px",
-              }}
-            />
+            EN
           </button>
         </div>
 
-        <h2 className="title">{t("signup_title")}</h2>
-
-        <div
-          className="error-msg"
-          style={{
-            minHeight: "20px",
-            color: "#ff4d4d",
-            fontSize: "0.9rem",
-            marginBottom: "10px",
-          }}
-        >
-          {error}
+        <div style={{ textAlign: "center", marginBottom: "2rem" }}>
+          <h2
+            className="hero-title"
+            style={{ fontSize: "2.2rem", marginBottom: "0.5rem" }}
+          >
+            {t("signup_title")}
+          </h2>
+          <p className="hero-subtitle">Créez votre profil de joueur</p>
         </div>
 
-        <div className="form-group">
-          <label className="label-text">{t("label_pseudo")}</label>
-          <input
-            name="pseudo"
-            className="input-field"
-            placeholder={t("placeholder_pseudo")}
-            onChange={handleChange}
-            disabled={isLoading}
-          />
+        {error && (
+          <div
+            className="section-count"
+            style={{
+              display: "block",
+              textAlign: "center",
+              marginBottom: "1.5rem",
+              background: "rgba(239, 68, 68, 0.15)",
+              color: "#f87171",
+              width: "100%",
+            }}
+          >
+            {error}
+          </div>
+        )}
 
-          <label className="label-text">{t("label_email")}</label>
-          <input
-            name="email"
-            type="email"
-            className="input-field"
-            placeholder={t("placeholder_email")}
-            onChange={handleChange}
-            disabled={isLoading}
-          />
-
-          <label className="label-text">{t("label_password")}</label>
-          <div className="password-container">
+        <div className="filters-section">
+          <div style={{ marginBottom: "1.25rem" }}>
+            <label
+              className="game-genre"
+              style={{ display: "inline-block", marginBottom: "0.5rem" }}
+            >
+              {t("label_pseudo")}
+            </label>
             <input
-              name="pass"
-              type={showPass ? "text" : "password"}
-              className="input-field"
-              placeholder="••••••••"
+              name="pseudo"
+              className="filter-select"
+              style={{ width: "100%" }}
+              placeholder={t("placeholder_pseudo")}
               onChange={handleChange}
               disabled={isLoading}
             />
-            <button
-              onClick={() => setShowPass(!showPass)}
-              className="eye-button"
-              type="button"
-            >
-              <EyeIcon open={showPass} />
-            </button>
           </div>
 
-          <label className="label-text">{t("label_confirm_password")}</label>
-          <div className="password-container">
+          <div style={{ marginBottom: "1.25rem" }}>
+            <label
+              className="game-genre"
+              style={{ display: "inline-block", marginBottom: "0.5rem" }}
+            >
+              {t("label_email")}
+            </label>
             <input
-              name="confirm"
-              type={showConfirm ? "text" : "password"}
-              className="input-field"
-              placeholder="••••••••"
+              name="email"
+              type="email"
+              className="filter-select"
+              style={{ width: "100%" }}
+              placeholder={t("placeholder_email")}
               onChange={handleChange}
               disabled={isLoading}
             />
-            <button
-              onClick={() => setShowConfirm(!showConfirm)}
-              className="eye-button"
-              type="button"
+          </div>
+
+          <div style={{ marginBottom: "1.25rem" }}>
+            <label
+              className="game-genre"
+              style={{ display: "inline-block", marginBottom: "0.5rem" }}
             >
-              <EyeIcon open={showConfirm} />
-            </button>
+              {t("label_password")}
+            </label>
+            <div style={{ position: "relative" }}>
+              <input
+                name="pass"
+                type={showPass ? "text" : "password"}
+                className="filter-select"
+                style={{ width: "100%" }}
+                placeholder="••••••••"
+                onChange={handleChange}
+                disabled={isLoading}
+              />
+              <button
+                onClick={() => setShowPass(!showPass)}
+                style={{
+                  position: "absolute",
+                  right: "12px",
+                  top: "50%",
+                  transform: "translateY(-50%)",
+                  background: "none",
+                  border: "none",
+                  cursor: "pointer",
+                  fontSize: "1.2rem",
+                  opacity: 0.6,
+                }}
+                type="button"
+              >
+                {showPass ? "👁️" : "🙈"}
+              </button>
+            </div>
+          </div>
+
+          <div style={{ marginBottom: "2rem" }}>
+            <label
+              className="game-genre"
+              style={{ display: "inline-block", marginBottom: "0.5rem" }}
+            >
+              {t("label_confirm_password")}
+            </label>
+            <div style={{ position: "relative" }}>
+              <input
+                name="confirm"
+                type={showConfirm ? "text" : "password"}
+                className="filter-select"
+                style={{ width: "100%" }}
+                placeholder="••••••••"
+                onChange={handleChange}
+                disabled={isLoading}
+              />
+              <button
+                onClick={() => setShowConfirm(!showConfirm)}
+                style={{
+                  position: "absolute",
+                  right: "12px",
+                  top: "50%",
+                  transform: "translateY(-50%)",
+                  background: "none",
+                  border: "none",
+                  cursor: "pointer",
+                  fontSize: "1.2rem",
+                  opacity: 0.6,
+                }}
+                type="button"
+              >
+                {showConfirm ? "👁️" : "🙈"}
+              </button>
+            </div>
           </div>
         </div>
 
         <button
           onClick={handleRegister}
-          className={`btn-main ${isLoading ? "btn-disabled" : ""}`}
+          className={`category-btn active`}
+          style={{
+            width: "100%",
+            padding: "1rem",
+            fontSize: "1rem",
+            marginBottom: "1.5rem",
+          }}
           disabled={isLoading}
         >
-          {isLoading ? "..." : t("button_signup")}
+          {isLoading ? t("loading") : t("button_signup")}
         </button>
 
-        <div className="divider">
-          <div className="divider-line"></div>
-          <span className="divider-text">{t("divider_signup")}</span>
-          <div className="divider-line"></div>
+        <div
+          style={{ display: "flex", alignItems: "center", margin: "1.5rem 0" }}
+        >
+          <div
+            style={{
+              flex: 1,
+              height: "1px",
+              background: "rgba(255,255,255,0.1)",
+            }}
+          ></div>
+          <span
+            style={{ padding: "0 15px", color: "#64748b", fontSize: "0.85rem" }}
+          >
+            OU CONTINUER AVEC
+          </span>
+          <div
+            style={{
+              flex: 1,
+              height: "1px",
+              background: "rgba(255,255,255,0.1)",
+            }}
+          ></div>
         </div>
 
-        <div className="social-group">
+        <div style={{ display: "flex", gap: "1rem", justifyContent: "center" }}>
           <button
-            onClick={() => handleSocialRegister("Google")}
-            className="social-btn"
-            title="Google"
-            disabled={isLoading}
+            className="nav-icon-btn"
+            style={{
+              border: "1px solid rgba(255,255,255,0.1)",
+              width: "50px",
+              height: "50px",
+            }}
           >
             <img
               src="https://www.svgrepo.com/show/475656/google-color.svg"
-              width="22"
+              width="24"
               alt="Google"
             />
           </button>
           <button
-            onClick={() => handleSocialRegister("GitHub")}
-            className="social-btn"
-            title="GitHub"
-            disabled={isLoading}
+            className="nav-icon-btn"
+            style={{
+              border: "1px solid rgba(255,255,255,0.1)",
+              width: "50px",
+              height: "50px",
+            }}
           >
             <img
               src="https://www.svgrepo.com/show/512317/github-142.svg"
-              width="22"
+              width="24"
               alt="GitHub"
               style={{ filter: "invert(1)" }}
             />
           </button>
-          <button
-            onClick={() => handleSocialRegister("Facebook")}
-            className="social-btn"
-            title="Facebook"
-            disabled={isLoading}
-          >
-            <img
-              src="https://www.svgrepo.com/show/448224/facebook.svg"
-              width="26"
-              alt="Facebook"
-            />
-          </button>
         </div>
 
-        <p className="footer-text">
+        <p
+          className="hero-subtitle"
+          style={{
+            textAlign: "center",
+            marginTop: "2rem",
+            fontSize: "0.95rem",
+          }}
+        >
           {t("already_registered")}{" "}
           <span
             onClick={!isLoading ? onSwitch : null}
-            className="link-highlight"
-            style={{ cursor: "pointer" }}
+            className="game-title"
+            style={{
+              fontSize: "0.95rem",
+              cursor: "pointer",
+              textDecoration: "underline",
+              color: "#c084fc",
+            }}
           >
             {t("login_link")}
           </span>
