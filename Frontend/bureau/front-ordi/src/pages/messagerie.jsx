@@ -1,18 +1,17 @@
 import React, { useState, useEffect, useRef } from "react";
-import axios from "axios";
 import "../../Style/Styles.css";
 
 const Messagerie = ({ user }) => {
   const [contacts, setContacts] = useState([]);
   const [selectedContact, setSelectedContact] = useState(null);
   const [newMessage, setNewMessage] = useState("");
-
-  // Cet objet stocke toutes les conversations : { "id_contact": [messages...] }
   const [allConversations, setAllConversations] = useState({});
+
+  // État pour gérer l'affichage du menu d'options sur un message
+  const [activeMenu, setActiveMenu] = useState(null);
 
   const messagesEndRef = useRef(null);
 
-  // 1. Charger les contacts et les anciens messages au démarrage
   useEffect(() => {
     setContacts([
       {
@@ -27,17 +26,20 @@ const Messagerie = ({ user }) => {
       },
     ]);
 
-    // Charger les messages sauvegardés dans le navigateur
     const savedChats = localStorage.getItem(`chats_${user?.email}`);
     if (savedChats) {
       setAllConversations(JSON.parse(savedChats));
     }
   }, [user]);
 
-  // 2. Scroll automatique vers le bas à chaque nouveau message
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [selectedContact, allConversations]);
+
+  const saveAndSetConversations = (updated) => {
+    setAllConversations(updated);
+    localStorage.setItem(`chats_${user?.email}`, JSON.stringify(updated));
+  };
 
   const handleSendMessage = (e) => {
     e.preventDefault();
@@ -53,24 +55,49 @@ const Messagerie = ({ user }) => {
       }),
     };
 
-    // MISE À JOUR DE LA CONVERSATION SPÉCIFIQUE
     const contactId = selectedContact.id;
-    const updatedConversations = {
+    const updated = {
       ...allConversations,
       [contactId]: [...(allConversations[contactId] || []), msg],
     };
-
-    setAllConversations(updatedConversations);
+    saveAndSetConversations(updated);
     setNewMessage("");
-
-    // Sauvegarde locale (pour simuler une base de données)
-    localStorage.setItem(
-      `chats_${user?.email}`,
-      JSON.stringify(updatedConversations),
-    );
   };
 
-  // On récupère uniquement les messages de la personne sélectionnée
+  // --- NOUVELLES FONCTIONS : SUPPRIMER ET MODIFIER ---
+
+  const deleteMessage = (messageId) => {
+    const contactId = selectedContact.id;
+    const updatedMessages = allConversations[contactId].filter(
+      (m) => m.id !== messageId,
+    );
+    const updatedConversations = {
+      ...allConversations,
+      [contactId]: updatedMessages,
+    };
+    saveAndSetConversations(updatedConversations);
+    setActiveMenu(null);
+  };
+
+  const editMessage = (messageId) => {
+    const contactId = selectedContact.id;
+    const msgToEdit = allConversations[contactId].find(
+      (m) => m.id === messageId,
+    );
+    const newText = prompt("Modifier votre message :", msgToEdit.text);
+
+    if (newText && newText.trim() !== "") {
+      const updatedMessages = allConversations[contactId].map((m) =>
+        m.id === messageId ? { ...m, text: newText } : m,
+      );
+      saveAndSetConversations({
+        ...allConversations,
+        [contactId]: updatedMessages,
+      });
+    }
+    setActiveMenu(null);
+  };
+
   const currentMessages = selectedContact
     ? allConversations[selectedContact.id] || []
     : [];
@@ -109,14 +136,45 @@ const Messagerie = ({ user }) => {
                 {currentMessages.map((m) => (
                   <div
                     key={m.id}
-                    className={`message-bubble ${m.senderId === user.id ? "me" : "them"}`}
+                    className={`message-container ${m.senderId === user.id ? "me" : "them"}`}
                   >
-                    <p>{m.text}</p>
-                    <span className="chat-time">{m.time}</span>
+                    <div className="message-bubble">
+                      <p>{m.text}</p>
+                      <div className="message-footer">
+                        <span className="chat-time">{m.time}</span>
+                        {/* Menu trois points uniquement pour mes messages */}
+                        {m.senderId === user.id && (
+                          <div className="message-options">
+                            <button
+                              className="dots-btn"
+                              onClick={() =>
+                                setActiveMenu(activeMenu === m.id ? null : m.id)
+                              }
+                            >
+                              ⋮
+                            </button>
+                            {activeMenu === m.id && (
+                              <div className="options-menu">
+                                <button onClick={() => editMessage(m.id)}>
+                                  Modifier
+                                </button>
+                                <button
+                                  onClick={() => deleteMessage(m.id)}
+                                  className="delete-opt"
+                                >
+                                  Supprimer
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    </div>
                   </div>
                 ))}
                 <div ref={messagesEndRef} />
               </div>
+
               <form className="chat-input-area" onSubmit={handleSendMessage}>
                 <input
                   type="text"
@@ -124,12 +182,11 @@ const Messagerie = ({ user }) => {
                   onChange={(e) => setNewMessage(e.target.value)}
                   placeholder="Écrivez..."
                 />
-                <button type="submit" className="btn-send">
-                  {/* Icône avion en papier comme demandé */}
+                <button type="submit" className="btn-send-large">
                   <svg
                     viewBox="0 0 24 24"
-                    width="20"
-                    height="20"
+                    width="28"
+                    height="28"
                     fill="none"
                     stroke="currentColor"
                     strokeWidth="2"
