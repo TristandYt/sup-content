@@ -19,11 +19,25 @@ const Messagerie = ({ user }) => {
         id: 101,
         pseudo: "Gamer_X",
         avatar: "https://api.dicebear.com/7.x/bottts/svg?seed=Gamer",
+        status: "online",
       },
       {
         id: 102,
         pseudo: "PixelArt",
         avatar: "https://api.dicebear.com/7.x/bottts/svg?seed=Pixel",
+        status: "online",
+      },
+      {
+        id: 103,
+        pseudo: "ProPlayer",
+        avatar: "https://api.dicebear.com/7.x/bottts/svg?seed=Pro",
+        status: "offline",
+      },
+      {
+        id: 104,
+        pseudo: "NinjaGamer",
+        avatar: "https://api.dicebear.com/7.x/bottts/svg?seed=Ninja",
+        status: "online",
       },
     ]);
 
@@ -101,145 +115,277 @@ const Messagerie = ({ user }) => {
     : [];
 
   return (
-    <div className="app-container">
-      {/* Effet visuel d'arrière-plan */}
-      <div className="hero-gradient"></div>
+    <div className="messaging-container">
+      <div className="messaging-gradient"></div>
 
-      <div className="chat-page-container">
-        <div className="chat-layout">
-          {/* SIDEBAR : LISTE DES CONTACTS */}
-          <div className="chat-sidebar">
-            <div className="sidebar-header">
-              <h3
-                className="hero-title"
-                style={{ fontSize: "1.5rem", textAlign: "left" }}
+      <div className="messaging-layout">
+        {/* SIDEBAR : LISTE DES CONTACTS */}
+        <aside className="messaging-sidebar">
+          <div className="messaging-sidebar-header">
+            <div className="messaging-header-content">
+              <div className="messaging-icon">💬</div>
+              <h3 className="messaging-title">Messages</h3>
+            </div>
+            <button className="messaging-new-btn" title="Nouveau message">
+              <svg
+                width="20"
+                height="20"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
               >
-                Messages
-              </h3>
-            </div>
-            <div className="contacts-list">
-              {contacts.map((c) => (
-                <div
-                  key={c.id}
-                  className={`contact-item ${selectedContact?.id === c.id ? "active" : ""}`}
-                  onClick={() => setSelectedContact(c)}
-                >
-                  <img src={c.avatar} alt="" className="contact-avatar" />
-                  <div className="contact-info">
-                    <span className="contact-name">{c.pseudo}</span>
-                    <span className="contact-status">● En ligne</span>
-                  </div>
-                </div>
-              ))}
-            </div>
+                <path d="M12 5v14M5 12h14" />
+              </svg>
+            </button>
           </div>
 
-          {/* MAIN : ZONE DE CHAT */}
-          <div className="chat-main">
-            {selectedContact ? (
-              <>
-                <div className="chat-header">
-                  <h4 className="game-title" style={{ margin: 0 }}>
-                    {selectedContact.pseudo}
-                  </h4>
-                </div>
-
-                <div className="chat-messages">
-                  {currentMessages.map((m) => (
-                    <div
-                      key={m.id}
-                      className={`message-container ${m.senderId === user.id ? "me" : "them"}`}
-                    >
-                      <div className="message-bubble">
-                        <p style={{ margin: 0 }}>{m.text}</p>
-                        <div className="message-footer">
-                          <span className="chat-time">{m.time}</span>
-
-                          {/* Menu d'options pour l'utilisateur actuel */}
-                          {m.senderId === user.id && (
-                            <div className="message-options">
-                              <button
-                                className="dots-btn"
-                                onClick={() =>
-                                  setActiveMenu(
-                                    activeMenu === m.id ? null : m.id,
-                                  )
-                                }
-                              >
-                                ⋮
-                              </button>
-                              {activeMenu === m.id && (
-                                <div className="options-menu">
-                                  <button onClick={() => editMessage(m.id)}>
-                                    Modifier
-                                  </button>
-                                  <button
-                                    onClick={() => deleteMessage(m.id)}
-                                    className="delete-opt"
-                                  >
-                                    Supprimer
-                                  </button>
-                                </div>
-                              )}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                  <div ref={messagesEndRef} />
-                </div>
-
-                {/* ZONE DE SAISIE */}
-                <form className="chat-input-area" onSubmit={handleSendMessage}>
-                  <input
-                    type="text"
-                    className="search-input-modern"
-                    style={{
-                      background: "rgba(255,255,255,0.05)",
-                      padding: "12px 20px",
-                      borderRadius: "25px",
-                      border: "1px solid rgba(255,255,255,0.1)",
-                    }}
-                    value={newMessage}
-                    onChange={(e) => setNewMessage(e.target.value)}
-                    placeholder="Écrivez votre message..."
+          <div className="messaging-contacts-list">
+            {contacts.map((c) => (
+              <div
+                key={c.id}
+                className={`messaging-contact-item ${selectedContact?.id === c.id ? "active" : ""}`}
+                onClick={() => setSelectedContact(c)}
+              >
+                <div className="messaging-contact-avatar-wrapper">
+                  <img
+                    src={c.avatar}
+                    alt={c.pseudo}
+                    className="messaging-contact-avatar"
                   />
-                  <button type="submit" className="btn-send-large">
+                  <span
+                    className={`messaging-status-dot ${c.status === "online" ? "online" : "offline"}`}
+                  ></span>
+                </div>
+                <div className="messaging-contact-info">
+                  <span className="messaging-contact-name">{c.pseudo}</span>
+                  <span className="messaging-contact-status">
+                    {c.status === "online" ? "En ligne" : "Hors ligne"}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </aside>
+
+        {/* MAIN : ZONE DE CHAT */}
+        <main className="messaging-main">
+          {selectedContact ? (
+            <>
+              {/* En-tête du chat */}
+              <div className="messaging-chat-header">
+                <div className="messaging-chat-header-info">
+                  <img
+                    src={selectedContact.avatar}
+                    alt={selectedContact.pseudo}
+                    className="messaging-header-avatar"
+                  />
+                  <div>
+                    <h4 className="messaging-header-name">
+                      {selectedContact.pseudo}
+                    </h4>
+                    <span className="messaging-header-status">
+                      {selectedContact.status === "online"
+                        ? "● En ligne"
+                        : "○ Hors ligne"}
+                    </span>
+                  </div>
+                </div>
+                <div className="messaging-chat-actions">
+                  <button className="messaging-action-btn" title="Rechercher">
                     <svg
+                      width="20"
+                      height="20"
                       viewBox="0 0 24 24"
-                      width="24"
-                      height="24"
                       fill="none"
                       stroke="currentColor"
                       strokeWidth="2"
                     >
-                      <line x1="22" y1="2" x2="11" y2="13"></line>
-                      <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                      <circle cx="11" cy="11" r="8"></circle>
+                      <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
                     </svg>
                   </button>
-                </form>
-              </>
-            ) : (
-              <div className="chat-empty-state">
-                <div style={{ textAlign: "center" }}>
-                  <div
-                    style={{
-                      fontSize: "3rem",
-                      marginBottom: "1rem",
-                      opacity: 0.3,
-                    }}
+                  <button
+                    className="messaging-action-btn"
+                    title="Plus d'options"
                   >
-                    💬
-                  </div>
-                  <p className="hero-subtitle">
-                    Sélectionnez une conversation pour commencer
-                  </p>
+                    <svg
+                      width="20"
+                      height="20"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                    >
+                      <circle cx="12" cy="12" r="1"></circle>
+                      <circle cx="12" cy="5" r="1"></circle>
+                      <circle cx="12" cy="19" r="1"></circle>
+                    </svg>
+                  </button>
                 </div>
               </div>
-            )}
-          </div>
-        </div>
+
+              {/* Zone des messages */}
+              <div className="messaging-messages-area">
+                {currentMessages.length === 0 ? (
+                  <div className="messaging-no-messages">
+                    <div className="messaging-no-messages-icon">💬</div>
+                    <p className="messaging-no-messages-text">
+                      Aucun message pour le moment
+                    </p>
+                    <p className="messaging-no-messages-subtext">
+                      Envoyez un message pour démarrer la conversation
+                    </p>
+                  </div>
+                ) : (
+                  <>
+                    {currentMessages.map((m) => (
+                      <div
+                        key={m.id}
+                        className={`messaging-message ${m.senderId === user.id ? "sent" : "received"}`}
+                      >
+                        {m.senderId !== user.id && (
+                          <img
+                            src={selectedContact.avatar}
+                            alt=""
+                            className="messaging-message-avatar"
+                          />
+                        )}
+                        <div className="messaging-message-content">
+                          <div className="messaging-message-bubble">
+                            <p className="messaging-message-text">{m.text}</p>
+                          </div>
+                          <div className="messaging-message-footer">
+                            <span className="messaging-message-time">
+                              {m.time}
+                            </span>
+                            {m.senderId === user.id && (
+                              <div className="messaging-message-options">
+                                <button
+                                  className="messaging-options-btn"
+                                  onClick={() =>
+                                    setActiveMenu(
+                                      activeMenu === m.id ? null : m.id,
+                                    )
+                                  }
+                                >
+                                  <svg
+                                    width="16"
+                                    height="16"
+                                    viewBox="0 0 24 24"
+                                    fill="currentColor"
+                                  >
+                                    <circle cx="12" cy="12" r="2"></circle>
+                                    <circle cx="12" cy="5" r="2"></circle>
+                                    <circle cx="12" cy="19" r="2"></circle>
+                                  </svg>
+                                </button>
+                                {activeMenu === m.id && (
+                                  <div className="messaging-options-menu">
+                                    <button
+                                      onClick={() => editMessage(m.id)}
+                                      className="messaging-option-item"
+                                    >
+                                      <svg
+                                        width="16"
+                                        height="16"
+                                        viewBox="0 0 24 24"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        strokeWidth="2"
+                                      >
+                                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                                        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                                      </svg>
+                                      Modifier
+                                    </button>
+                                    <button
+                                      onClick={() => deleteMessage(m.id)}
+                                      className="messaging-option-item delete"
+                                    >
+                                      <svg
+                                        width="16"
+                                        height="16"
+                                        viewBox="0 0 24 24"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        strokeWidth="2"
+                                      >
+                                        <polyline points="3 6 5 6 21 6"></polyline>
+                                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                                      </svg>
+                                      Supprimer
+                                    </button>
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                    <div ref={messagesEndRef} />
+                  </>
+                )}
+              </div>
+
+              {/* Zone de saisie */}
+              <form
+                className="messaging-input-area"
+                onSubmit={handleSendMessage}
+              >
+                <button type="button" className="messaging-attach-btn">
+                  <svg
+                    width="20"
+                    height="20"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                  >
+                    <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"></path>
+                  </svg>
+                </button>
+                <input
+                  type="text"
+                  className="messaging-input"
+                  value={newMessage}
+                  onChange={(e) => setNewMessage(e.target.value)}
+                  placeholder="Écrivez votre message..."
+                />
+                <button
+                  type="submit"
+                  className="messaging-send-btn"
+                  disabled={!newMessage.trim()}
+                >
+                  <svg
+                    width="20"
+                    height="20"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                  >
+                    <line x1="22" y1="2" x2="11" y2="13"></line>
+                    <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                  </svg>
+                </button>
+              </form>
+            </>
+          ) : (
+            <div className="messaging-empty-state">
+              <div className="messaging-empty-content">
+                <div className="messaging-empty-icon">💬</div>
+                <h3 className="messaging-empty-title">
+                  Sélectionnez une conversation
+                </h3>
+                <p className="messaging-empty-text">
+                  Choisissez un contact dans la liste pour commencer à discuter
+                </p>
+              </div>
+            </div>
+          )}
+        </main>
       </div>
     </div>
   );
