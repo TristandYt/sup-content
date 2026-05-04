@@ -133,7 +133,7 @@ const Login = ({ onSwitch, onLoginSuccess }) => {
             <input
               className="filter-select"
               style={{ width: "100%", minWidth: "auto" }}
-              placeholder="Ex: kiki@mail.com"
+              placeholder="Ex: exemple@mail.com"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handleLogin()}
