@@ -10,6 +10,7 @@ const { isAdmin } = require("../middlewares/roleMiddleware");
 const userController = require("../controllers/userController");
 
 router.get("/:userId/profile", userController.getPublicProfile);
+router.get("/search", userController.searchUsers);
 
 router.use(auth); // Toutes les routes suivantes nécessitent une authentification
 router.get("/profile", userController.getProfile);

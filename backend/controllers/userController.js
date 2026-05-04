@@ -264,3 +264,37 @@ exports.promoteUser = async (req, res, next) => {
     next(error);
   }
 };
+
+/*
+ * GET /api/users/search?q=...
+ * Recherche des utilisateurs par préfixe sur le username.
+ */
+exports.searchUsers = async (req, res, next) => {
+  try {
+    const { q } = req.query;
+    if (!q || q.trim() === "") return res.json([]);
+
+    const queryText = q.trim();
+
+    // Note: Firestore est sensible à la casse.
+    // 'A' n'est pas égal à 'a'.
+
+    const snapshot = await db
+      .collection("users")
+      .where("username", ">=", queryText)
+      .where("username", "<=", queryText + "\uf8ff")
+      .limit(20)
+      .get();
+
+    const users = snapshot.docs.map((doc) => ({
+      uid: doc.id,
+      pseudo: doc.data().username, // On renvoie 'pseudo' pour coller au Front
+      avatar: doc.data().avatar || null,
+      bio: doc.data().bio || "",
+    }));
+
+    res.json(users);
+  } catch (error) {
+    next(error);
+  }
+};
