@@ -25,13 +25,13 @@ class IGDBService {
       this.accessToken = response.data.access_token;
       return this.accessToken;
     } catch (error) {
-      console.error("❌ Erreur d'authentification Twitch:", error.message);
+      console.error("Erreur d'authentification Twitch:", error.message);
       throw new Error("Impossible de récupérer le token IGDB");
     }
   }
 
   /**
-   * Méthode générique POST pour IGDB
+   * Méthode POST à IGDB
    */
   async request(endpoint, query) {
     try {
@@ -48,42 +48,34 @@ class IGDBService {
       });
       return response.data;
     } catch (error) {
-      // Si le token est expiré (401), on le réinitialise pour la prochaine tentative
+      //token est expiré (401)
       if (error.response && error.response.status === 401) {
         this.accessToken = null;
       }
-      console.error(`❌ Erreur IGDB (${endpoint}):`, error.message);
+      console.error(`Erreur IGDB (${endpoint}):`, error.message);
       throw error;
     }
   }
 
   /**
-   * Recherche de jeux par titre avec filtres
+   * Recherche de jeux par titre
    */
-  async searchGames(title, filters = {}) {
-    const { genre, platform } = filters;
-
-    // Construction dynamique de la clause where
-    let whereConditions = [];
-    if (genre) whereConditions.push(`genres = ${genre}`);
-    if (platform) whereConditions.push(`platforms = ${platform}`);
-
-    const whereClause =
-      whereConditions.length > 0 ? `where ${whereConditions.join(" & ")};` : "";
-
+  async searchGames(title) {
+    // On récupère le nom, l'ID de l'image (cover), la note et le résumé
     const query = `
             fields name, cover.image_id, total_rating, summary, first_release_date;
-            ${title ? `search "${title}";` : ""}
-            ${whereClause}
+            search "${title}";
             limit 40;
         `;
     return this.request("games", query);
   }
 
   /**
-   * Récupère les jeux les mieux notés
+   * Récupère les jeux les mieux notés (pour la page d'accueil)
+   * Ajout de paramètres pour le tri global
    */
   async getPopularGames(sortBy = "total_rating", order = "desc") {
+    // Validation simple pour éviter les erreurs de syntaxe IGDB
     const field = ["name", "total_rating", "first_release_date"].includes(
       sortBy,
     )
