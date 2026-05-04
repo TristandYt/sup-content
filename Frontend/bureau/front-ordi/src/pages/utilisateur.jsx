@@ -1,14 +1,22 @@
 import React, { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import axios from "axios";
+import { auth } from "../Service/firebase";
 import "../../Style/Styles.css";
+
+const authAxios = async () => {
+  const token = await auth.currentUser?.getIdToken(true);
+  return axios.create({
+    baseURL: "http://localhost:3000/api",
+    headers: { Authorization: `Bearer ${token}` },
+  });
+};
 
 const Profile = ({ user, onLoginSuccess, onLogout }) => {
   const { t, i18n } = useTranslation();
 
   const [profileData, setProfileData] = useState({
-    id: user?.id || "",
-    pseudo: user?.pseudo || "Joueur",
+    pseudo: user?.pseudo || user?.displayName || "Joueur",
     email: user?.email || "",
     bio: user?.bio || "",
     avatar:
@@ -17,48 +25,50 @@ const Profile = ({ user, onLoginSuccess, onLogout }) => {
 
   const [favorites, setFavorites] = useState([]);
   const [filter, setFilter] = useState("Tous");
-  const [isFollowing, setIsFollowing] = useState(false);
-
-  const isOwnProfile = !profileData.id || user?.id === profileData.id;
+  const [saveStatus, setSaveStatus] = useState("");
 
   useEffect(() => {
     if (user) {
-      setProfileData((prev) => ({ ...prev, ...user }));
-      const localKey = `library_${user.email}`;
-      const savedLocal = JSON.parse(localStorage.getItem(localKey)) || [];
-      setFavorites(savedLocal);
-      fetchLibrary(user.id, user.email);
+      setProfileData((prev) => ({
+        ...prev,
+        pseudo: user.pseudo || user.displayName || prev.pseudo,
+        email: user.email || prev.email,
+        bio: user.bio || prev.bio,
+      }));
+      fetchLibrary();
     }
   }, [user]);
 
-  const handleFollow = async () => {
-    if (!user?.id) {
-      alert("Connectez-vous !");
-      return;
-    }
+  // ─── FETCH FAVORIS ────────────────────────────────────────────────────────
+  // Retourne : { favorites: [{gameId, gameName, gameCover}] }
+  const fetchLibrary = async () => {
     try {
-      await axios.post(`http://localhost:3000/api/user/follow`, {
-        followerId: user.id,
-        followingId: profileData.id,
-      });
-      setIsFollowing(true);
+      const api = await authAxios();
+      const res = await api.get(`/users/favorites`);
+      const favs = res.data?.favorites || [];
+      setFavorites(favs);
     } catch (err) {
-      alert("Erreur de suivi.");
+      console.warn("Bibliothèque : erreur.", err.message);
     }
   };
 
-  const fetchLibrary = async (userId, userEmail) => {
-    if (!userId || userId === "undefined") return;
+  // ─── MISE À JOUR PROFIL ───────────────────────────────────────────────────
+  // Body attendu : { username?, bio? }
+  const handleUpdate = async () => {
+    setSaveStatus("saving");
     try {
-      const res = await axios.get(
-        `http://localhost:3000/api/user/favorites/${userId}`,
-      );
-      if (res.data) {
-        setFavorites(res.data);
-        localStorage.setItem(`library_${userEmail}`, JSON.stringify(res.data));
-      }
+      const api = await authAxios();
+      await api.put("/users/profile", {
+        username: profileData.pseudo,
+        bio: profileData.bio,
+      });
+      if (onLoginSuccess) onLoginSuccess(profileData);
+      setSaveStatus("saved");
+      setTimeout(() => setSaveStatus(""), 2000);
     } catch (err) {
-      console.warn("Mode local activé.");
+      console.error("Erreur update profil", err);
+      setSaveStatus("error");
+      setTimeout(() => setSaveStatus(""), 2000);
     }
   };
 
@@ -69,7 +79,6 @@ const Profile = ({ user, onLoginSuccess, onLogout }) => {
   };
 
   const handleAvatarChange = (e) => {
-    if (!isOwnProfile) return;
     const file = e.target.files[0];
     if (file && file.type.startsWith("image/")) {
       const reader = new FileReader();
@@ -79,44 +88,19 @@ const Profile = ({ user, onLoginSuccess, onLogout }) => {
     }
   };
 
-  const handleUpdate = async () => {
-    try {
-      await axios.put(`http://localhost:3000/api/user/update`, {
-        userId: user.id,
-        bio: profileData.bio,
-        avatar: profileData.avatar,
-      });
-      if (onLoginSuccess) onLoginSuccess(profileData);
-      alert(t("alertSuccess"));
-    } catch (err) {
-      alert("Erreur serveur.");
-    }
-  };
-
-  const handleUpdateStatus = async (gameId, newStatus) => {
-    if (!isOwnProfile) return;
-    const updated = favorites.map((f) =>
-      f.id === gameId ? { ...f, status: newStatus } : f,
-    );
-    setFavorites(updated);
-    localStorage.setItem(`library_${user.email}`, JSON.stringify(updated));
-    try {
-      await axios.put(`http://localhost:3000/api/user/favorites/status`, {
-        userId: user.id,
-        gameId,
-        status: newStatus,
-      });
-    } catch (err) {
-      console.error("Sync error");
-    }
-  };
+  const saveLabel = {
+    saving: "Sauvegarde...",
+    saved: "✅ Sauvegardé !",
+    error: "❌ Erreur",
+    "": t("btnUpdate"),
+  }[saveStatus];
 
   return (
     <div className="app-container">
       <div className="hero-gradient"></div>
 
       <div className="main-content-wrapper profile-layout">
-        {/* SECTION GAUCHE : CARTE PROFIL */}
+        {/* SECTION GAUCHE */}
         <div className="profile-sidebar">
           <div
             className="game-card-modern profile-main-card"
@@ -129,18 +113,16 @@ const Profile = ({ user, onLoginSuccess, onLogout }) => {
                   alt="Avatar"
                   className="avatar-img-v2"
                 />
-                {isOwnProfile && (
-                  <label htmlFor="avatar-input" className="edit-badge-v2">
-                    ✏️{" "}
-                    <input
-                      id="avatar-input"
-                      type="file"
-                      accept="image/*"
-                      hidden
-                      onChange={handleAvatarChange}
-                    />
-                  </label>
-                )}
+                <label htmlFor="avatar-input" className="edit-badge-v2">
+                  ✏️
+                  <input
+                    id="avatar-input"
+                    type="file"
+                    accept="image/*"
+                    hidden
+                    onChange={handleAvatarChange}
+                  />
+                </label>
               </div>
               <h3
                 className="hero-title"
@@ -148,35 +130,8 @@ const Profile = ({ user, onLoginSuccess, onLogout }) => {
               >
                 {profileData.pseudo}
               </h3>
-              <p className="game-year">
-                {isOwnProfile ? t("identifiedAs") : "Joueur vérifié"}
-              </p>
+              <p className="game-year">{t("identifiedAs")}</p>
             </div>
-
-            {!isOwnProfile && (
-              <div
-                className="profile-social-actions"
-                style={{ display: "flex", gap: "10px", marginTop: "20px" }}
-              >
-                <button
-                  className={`nav-user-btn ${isFollowing ? "" : "category-btn"}`}
-                  onClick={handleFollow}
-                  style={{ flex: 1, justifyContent: "center" }}
-                >
-                  {isFollowing ? "Abonné" : "Suivre"}
-                </button>
-                <button
-                  className="nav-user-btn"
-                  style={{
-                    background: "rgba(255,255,255,0.05)",
-                    flex: 1,
-                    justifyContent: "center",
-                  }}
-                >
-                  ✉️ Message
-                </button>
-              </div>
-            )}
 
             <div className="profile-form-modern" style={{ marginTop: "25px" }}>
               <label
@@ -197,59 +152,58 @@ const Profile = ({ user, onLoginSuccess, onLogout }) => {
                 value={profileData.bio}
                 onChange={handleChange}
                 placeholder={t("placeholderBio")}
-                disabled={!isOwnProfile}
               />
 
-              {isOwnProfile && (
-                <>
-                  <label
-                    className="game-genre"
-                    style={{ display: "block", margin: "20px 0 8px 0" }}
-                  >
-                    {t("langLabel")}
-                  </label>
-                  <select
-                    name="lang"
-                    className="filter-select"
-                    style={{ width: "100%" }}
-                    value={i18n.language}
-                    onChange={handleChange}
-                  >
-                    <option value="fr">Français 🇫🇷</option>
-                    <option value="en">English 🇬🇧</option>
-                  </select>
+              <label
+                className="game-genre"
+                style={{ display: "block", margin: "20px 0 8px 0" }}
+              >
+                {t("langLabel")}
+              </label>
+              <select
+                name="lang"
+                className="filter-select"
+                style={{ width: "100%" }}
+                value={i18n.language}
+                onChange={handleChange}
+              >
+                <option value="fr">Français 🇫🇷</option>
+                <option value="en">English 🇬🇧</option>
+              </select>
 
-                  <div
-                    className="profile-actions-buttons"
-                    style={{
-                      marginTop: "30px",
-                      display: "flex",
-                      flexDirection: "column",
-                      gap: "10px",
-                    }}
-                  >
-                    <button
-                      className="nav-user-btn"
-                      style={{ width: "100%", justifyContent: "center" }}
-                      onClick={handleUpdate}
-                    >
-                      {t("btnUpdate")}
-                    </button>
-                    <button
-                      className="category-btn"
-                      style={{
-                        width: "100%",
-                        justifyContent: "center",
-                        borderColor: "#ef4444",
-                        color: "#ef4444",
-                      }}
-                      onClick={onLogout}
-                    >
-                      {t("btnLogout")}
-                    </button>
-                  </div>
-                </>
-              )}
+              <div
+                style={{
+                  marginTop: "30px",
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: "10px",
+                }}
+              >
+                <button
+                  className="nav-user-btn"
+                  style={{
+                    width: "100%",
+                    justifyContent: "center",
+                    opacity: saveStatus === "saving" ? 0.7 : 1,
+                  }}
+                  onClick={handleUpdate}
+                  disabled={saveStatus === "saving"}
+                >
+                  {saveLabel}
+                </button>
+                <button
+                  className="category-btn"
+                  style={{
+                    width: "100%",
+                    justifyContent: "center",
+                    borderColor: "#ef4444",
+                    color: "#ef4444",
+                  }}
+                  onClick={onLogout}
+                >
+                  {t("btnLogout")}
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -257,9 +211,7 @@ const Profile = ({ user, onLoginSuccess, onLogout }) => {
         {/* SECTION DROITE : BIBLIOTHÈQUE */}
         <div className="profile-content">
           <div className="section-header" style={{ marginBottom: "20px" }}>
-            <h2 className="section-title">
-              {isOwnProfile ? "Ma Collection" : `Jeux de ${profileData.pseudo}`}
-            </h2>
+            <h2 className="section-title">Ma Collection</h2>
             <span className="section-count">{favorites.length}</span>
           </div>
 
@@ -288,56 +240,26 @@ const Profile = ({ user, onLoginSuccess, onLogout }) => {
             </div>
           ) : (
             <div className="game-grid">
-              {favorites
-                .filter((g) => filter === "Tous" || g.status === filter)
-                .map((game) => (
-                  <div key={game.id} className="game-card-modern">
-                    <div className="game-image-container">
-                      <img
-                        src={game.image_url}
-                        alt={game.name}
-                        className="game-image"
-                      />
-                      <div
-                        className="rating-badge"
-                        style={{ top: "10px", right: "10px" }}
-                      >
-                        <span
-                          className="rating-value"
-                          style={{ fontSize: "0.7rem" }}
-                        >
-                          {game.status || "A faire"}
-                        </span>
-                      </div>
-                    </div>
-                    <div className="game-content">
-                      <h4
-                        className="game-title"
-                        style={{ fontSize: "1rem", marginBottom: "10px" }}
-                      >
-                        {game.name}
-                      </h4>
-                      {isOwnProfile && (
-                        <select
-                          className="filter-select"
-                          style={{
-                            width: "100%",
-                            fontSize: "0.8rem",
-                            padding: "5px",
-                          }}
-                          value={game.status || "A faire"}
-                          onChange={(e) =>
-                            handleUpdateStatus(game.id, e.target.value)
-                          }
-                        >
-                          <option value="A faire">À faire</option>
-                          <option value="En cours">En cours</option>
-                          <option value="Fini">Fini</option>
-                        </select>
-                      )}
-                    </div>
+              {/* Le backend stocke {gameId, gameName, gameCover} — pas de status */}
+              {favorites.map((game) => (
+                <div key={game.gameId} className="game-card-modern">
+                  <div className="game-image-container">
+                    <img
+                      src={game.gameCover}
+                      alt={game.gameName}
+                      className="game-image"
+                    />
                   </div>
-                ))}
+                  <div className="game-content">
+                    <h4
+                      className="game-title"
+                      style={{ fontSize: "1rem", marginBottom: "10px" }}
+                    >
+                      {game.gameName}
+                    </h4>
+                  </div>
+                </div>
+              ))}
             </div>
           )}
         </div>

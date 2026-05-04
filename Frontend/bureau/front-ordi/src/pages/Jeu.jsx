@@ -1,6 +1,15 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
+import { auth } from "../Service/firebase";
 import "../../Style/Styles.css";
+
+const authAxios = async () => {
+  const token = await auth.currentUser?.getIdToken(true);
+  return axios.create({
+    baseURL: "http://localhost:3000/api",
+    headers: { Authorization: `Bearer ${token}` },
+  });
+};
 
 const Jeu = ({ gameId, onBack, user }) => {
   const [game, setGame] = useState(null);
@@ -11,30 +20,40 @@ const Jeu = ({ gameId, onBack, user }) => {
   const [hoverRating, setHoverRating] = useState(0);
   const [comments, setComments] = useState([]);
   const [showCommentBox, setShowCommentBox] = useState(false);
+  const [favLoading, setFavLoading] = useState(false);
 
   useEffect(() => {
     const fetchDetails = async () => {
       try {
         setLoading(true);
+        const api = await authAxios();
+
+        // Détails du jeu (pas besoin d'auth)
         const res = await axios.get(
           `http://localhost:3000/api/games/details/${gameId}`,
         );
-
         if (res.data) {
           setGame(res.data);
-          if (user) {
-            const localLib =
-              JSON.parse(localStorage.getItem(`library_${user.email}`)) || [];
-            setIsFavorite(
-              localLib.some((item) => String(item.id) === String(gameId)),
-            );
+
+          // Vérifie si déjà en favori côté serveur
+          if (auth.currentUser) {
+            try {
+              const favRes = await api.get(`/users/favorites`);
+              const favs = favRes.data?.favorites || [];
+              setIsFavorite(
+                favs.some((f) => String(f.gameId) === String(gameId)),
+              );
+            } catch (_) {}
           }
         }
 
-        const resComments = await axios.get(
-          `http://localhost:3000/api/comments/${gameId}`,
-        );
-        setComments(resComments.data);
+        // Commentaires
+        try {
+          const resComments = await axios.get(
+            `http://localhost:3000/api/comments/${gameId}`,
+          );
+          setComments(resComments.data || []);
+        } catch (_) {}
       } catch (err) {
         console.error("Erreur de chargement:", err);
       } finally {
@@ -43,43 +62,43 @@ const Jeu = ({ gameId, onBack, user }) => {
     };
 
     if (gameId) fetchDetails();
-  }, [gameId, user]);
+  }, [gameId]);
 
   const toggleFavorite = async () => {
-    if (!user) {
+    if (!auth.currentUser) {
       alert("Connectez-vous pour ajouter un favori.");
       return;
     }
-    const storageKey = `library_${user.email}`;
-    const imageUrl = `https://images.igdb.com/igdb/image/upload/t_cover_big/${game.cover?.image_id}.jpg`;
-    const gameData = {
-      id: gameId,
-      name: game.name,
-      image_url: imageUrl,
-      status: "A faire",
-    };
+
+    setFavLoading(true);
 
     try {
+      const api = await authAxios();
+
       if (isFavorite) {
-        await axios.delete(
-          `http://localhost:3000/api/user/favorites/${user.id}/${gameId}`,
-        );
-        const local = JSON.parse(localStorage.getItem(storageKey)) || [];
-        localStorage.setItem(
-          storageKey,
-          JSON.stringify(local.filter((i) => String(i.id) !== String(gameId))),
-        );
+        // DELETE /api/users/favorites/:gameId
+        await api.delete(`/users/favorites/${gameId}`);
+        setIsFavorite(false);
       } else {
-        await axios.post(`http://localhost:3000/api/user/favorites`, {
-          userId: user.id,
-          ...gameData,
+        // POST /api/users/favorites
+        // Body attendu par le backend : { gameId, gameName, gameCover }
+        const gameCover = game.cover?.image_id
+          ? `https://images.igdb.com/igdb/image/upload/t_cover_big/${game.cover.image_id}.jpg`
+          : "";
+
+        await api.post(`/users/favorites`, {
+          gameId: String(gameId),
+          gameName: game.name,
+          gameCover: gameCover,
         });
-        const local = JSON.parse(localStorage.getItem(storageKey)) || [];
-        localStorage.setItem(storageKey, JSON.stringify([...local, gameData]));
+        setIsFavorite(true);
       }
-      setIsFavorite(!isFavorite);
     } catch (err) {
-      setIsFavorite(!isFavorite);
+      console.error("Status:", err.response?.status);
+      console.error("Message:", err.response?.data);
+      alert("Erreur lors de la mise à jour des favoris.");
+    } finally {
+      setFavLoading(false);
     }
   };
 
@@ -88,10 +107,10 @@ const Jeu = ({ gameId, onBack, user }) => {
     try {
       const commentData = {
         gameId,
-        userId: user?.id,
-        pseudo: user?.pseudo || "Anonyme",
+        userId: auth.currentUser?.uid,
+        pseudo: user?.pseudo || user?.displayName || "Anonyme",
         text: newComment,
-        rating: rating,
+        rating,
         date: new Date().toLocaleDateString(),
       };
       await axios.post(`http://localhost:3000/api/comments`, commentData);
@@ -132,7 +151,7 @@ const Jeu = ({ gameId, onBack, user }) => {
         </button>
 
         <div className="game-details-layout">
-          {/* COLONNE GAUCHE : IMAGE ET META */}
+          {/* COLONNE GAUCHE */}
           <div className="game-sidebar-modern">
             <div className="game-card-modern" style={{ cursor: "default" }}>
               <div className="game-image-container">
@@ -151,16 +170,21 @@ const Jeu = ({ gameId, onBack, user }) => {
               <div className="game-content">
                 <button
                   onClick={toggleFavorite}
+                  disabled={favLoading}
                   className={`nav-user-btn ${isFavorite ? "" : "category-btn"}`}
                   style={{
                     width: "100%",
                     justifyContent: "center",
                     background: isFavorite ? "#ef4444" : "",
+                    opacity: favLoading ? 0.7 : 1,
+                    cursor: favLoading ? "not-allowed" : "pointer",
                   }}
                 >
-                  {isFavorite
-                    ? "❤️ Dans la collection"
-                    : "🤍 Ajouter aux favoris"}
+                  {favLoading
+                    ? "..."
+                    : isFavorite
+                      ? "❤️ Dans la collection"
+                      : "🤍 Ajouter aux favoris"}
                 </button>
               </div>
             </div>
@@ -197,7 +221,7 @@ const Jeu = ({ gameId, onBack, user }) => {
             </div>
           </div>
 
-          {/* COLONNE DROITE : INFOS ET COMMENTAIRES */}
+          {/* COLONNE DROITE */}
           <div className="game-main-info">
             <h1 className="hero-title">{game.name}</h1>
 

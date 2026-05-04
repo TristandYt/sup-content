@@ -34,17 +34,16 @@ const Accueil = ({ onGameClick, searchTerm }) => {
   const fetchGames = async () => {
     setLoading(true);
     try {
-      const isSearching =
-        (searchTerm && searchTerm.trim() !== "") ||
-        params.genre ||
-        params.platform;
-      const endpoint = isSearching ? "search" : "popular";
+      // CORRECTION : /search uniquement si un terme de recherche est saisi.
+      // genre et platform sont passés aux deux endpoints.
+      const hasSearchTerm = searchTerm && searchTerm.trim() !== "";
+      const endpoint = hasSearchTerm ? "search" : "popular";
 
       const res = await axios.get(
         `http://localhost:3000/api/games/${endpoint}`,
         {
           params: {
-            q: searchTerm,
+            ...(hasSearchTerm && { q: searchTerm.trim() }),
             genre: params.genre,
             platform: params.platform,
             sortBy: params.sortBy,
@@ -54,7 +53,7 @@ const Accueil = ({ onGameClick, searchTerm }) => {
       );
       setGames(res.data);
     } catch (err) {
-      console.error("Erreur:", err);
+      console.error("Erreur fetchGames:", err);
     } finally {
       setLoading(false);
     }
@@ -74,7 +73,7 @@ const Accueil = ({ onGameClick, searchTerm }) => {
     setActiveCategory(
       categories.find((c) => c.value === value)?.label || "Tous",
     );
-    setParams({ ...params, genre: value });
+    setParams((prev) => ({ ...prev, genre: value }));
   };
 
   return (
@@ -97,7 +96,9 @@ const Accueil = ({ onGameClick, searchTerm }) => {
           <button
             key={category.value}
             onClick={() => handleCategoryChange(category.value)}
-            className={`category-btn ${activeCategory === category.label ? "active" : ""}`}
+            className={`category-btn ${
+              activeCategory === category.label ? "active" : ""
+            }`}
           >
             {category.label}
           </button>
@@ -109,7 +110,9 @@ const Accueil = ({ onGameClick, searchTerm }) => {
         <div className="filters-container">
           <select
             value={params.platform}
-            onChange={(e) => setParams({ ...params, platform: e.target.value })}
+            onChange={(e) =>
+              setParams((prev) => ({ ...prev, platform: e.target.value }))
+            }
             className="filter-select"
           >
             <option value="">🎮 Toutes Plateformes</option>
@@ -123,7 +126,9 @@ const Accueil = ({ onGameClick, searchTerm }) => {
 
           <select
             value={params.sortBy}
-            onChange={(e) => setParams({ ...params, sortBy: e.target.value })}
+            onChange={(e) =>
+              setParams((prev) => ({ ...prev, sortBy: e.target.value }))
+            }
             className="filter-select"
           >
             <option value="total_rating">⭐ Note</option>
@@ -133,10 +138,10 @@ const Accueil = ({ onGameClick, searchTerm }) => {
 
           <button
             onClick={() =>
-              setParams({
-                ...params,
-                sortOrder: params.sortOrder === "asc" ? "desc" : "asc",
-              })
+              setParams((prev) => ({
+                ...prev,
+                sortOrder: prev.sortOrder === "asc" ? "desc" : "asc",
+              }))
             }
             className="filter-select sort-btn"
           >
