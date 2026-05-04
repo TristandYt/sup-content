@@ -1,5 +1,8 @@
+// src/pages/Register.jsx
 import React, { useState } from "react";
 import { useTranslation } from "react-i18next";
+import { createUserWithEmailAndPassword, updateProfile } from "firebase/auth";
+import { auth } from "../Service/firebase";
 import "../../Style/Styles.css";
 
 const Register = ({ onSwitch }) => {
@@ -18,13 +21,20 @@ const Register = ({ onSwitch }) => {
   const handleChange = (e) =>
     setFormData({ ...formData, [e.target.name]: e.target.value });
 
+  const FIREBASE_ERRORS = {
+    "auth/email-already-in-use": "Un compte existe déjà avec cet email.",
+    "auth/invalid-email": "Adresse email invalide.",
+    "auth/weak-password": "Mot de passe trop faible (8 caractères min.).",
+    "auth/too-many-requests": "Trop de tentatives. Réessaie plus tard.",
+  };
+
   const validateForm = () => {
     const { pseudo, email, pass, confirm } = formData;
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
     if (!pseudo || !email || !pass || !confirm) return t("error_fields_empty");
     if (!emailRegex.test(email)) return t("placeholder_email");
-    if (pass.length < 8) return "8 characters min.";
+    if (pass.length < 8) return "8 caractères minimum.";
     if (pass !== confirm) return t("error_password_match");
     return null;
   };
@@ -40,11 +50,28 @@ const Register = ({ onSwitch }) => {
     setIsLoading(true);
 
     try {
-      // Simulation API
-      await new Promise((resolve) => setTimeout(resolve, 1500));
+      // 1. Créer le compte Firebase
+      const userCredential = await createUserWithEmailAndPassword(
+        auth,
+        formData.email,
+        formData.pass,
+      );
+
+      // 2. Mettre à jour le pseudo dans le profil Firebase
+      await updateProfile(userCredential.user, {
+        displayName: formData.pseudo,
+      });
+
+      // 3. Stocker le token
+      const idToken = await userCredential.user.getIdToken();
+      localStorage.setItem("authToken", idToken);
+
+      // 4. Rediriger vers le login
       onSwitch();
     } catch (err) {
-      setError("Error");
+      setError(
+        FIREBASE_ERRORS[err.code] || "Erreur lors de la création du compte.",
+      );
     } finally {
       setIsLoading(false);
     }
@@ -71,7 +98,7 @@ const Register = ({ onSwitch }) => {
           cursor: "default",
         }}
       >
-        {/* Sélecteur de langue haut droite */}
+        {/* Sélecteur de langue */}
         <div
           style={{
             display: "flex",
@@ -235,7 +262,7 @@ const Register = ({ onSwitch }) => {
 
         <button
           onClick={handleRegister}
-          className={`category-btn active`}
+          className="category-btn active"
           style={{
             width: "100%",
             padding: "1rem",

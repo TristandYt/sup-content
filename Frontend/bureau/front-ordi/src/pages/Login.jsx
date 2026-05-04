@@ -1,25 +1,55 @@
+// src/pages/Login.jsx
 import React, { useState } from "react";
 import { useTranslation } from "react-i18next";
+import { signInWithEmailAndPassword } from "firebase/auth";
+import { auth } from "../Service/firebase";
 import "../../Style/Styles.css";
 
 const Login = ({ onSwitch, onLoginSuccess }) => {
   const { t, i18n } = useTranslation();
-  const [email, setEmail] = useState("kiki@kiki.com");
-  const [password, setPassword] = useState("kikiki");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [showPass, setShowPass] = useState(false);
   const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  const handleLogin = () => {
+  const FIREBASE_ERRORS = {
+    "auth/user-not-found": "Aucun compte trouvé pour cet email.",
+    "auth/wrong-password": "Mot de passe incorrect.",
+    "auth/invalid-email": "Adresse email invalide.",
+    "auth/invalid-credential": "Email ou mot de passe incorrect.",
+    "auth/too-many-requests": "Trop de tentatives. Réessaie plus tard.",
+  };
+
+  const handleLogin = async () => {
     if (!email.trim() || !password.trim()) {
       setError(t("error_missing_info"));
-    } else {
-      setError("");
+      return;
+    }
+
+    setError("");
+    setLoading(true);
+
+    try {
+      const userCredential = await signInWithEmailAndPassword(
+        auth,
+        email,
+        password,
+      );
+      const idToken = await userCredential.user.getIdToken();
+      localStorage.setItem("authToken", idToken);
+
       if (typeof onLoginSuccess === "function") {
         onLoginSuccess({
-          pseudo: email.includes("@") ? email.split("@")[0] : email,
-          email: email,
+          pseudo: userCredential.user.displayName || email.split("@")[0],
+          email: userCredential.user.email,
+          uid: userCredential.user.uid,
         });
       }
+    } catch (err) {
+      setError(FIREBASE_ERRORS[err.code] || "Erreur de connexion.");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -34,7 +64,6 @@ const Login = ({ onSwitch, onLoginSuccess }) => {
     >
       <div className="hero-gradient"></div>
 
-      {/* On utilise la structure game-card-modern pour le formulaire */}
       <div
         className="game-card-modern"
         style={{
@@ -44,7 +73,7 @@ const Login = ({ onSwitch, onLoginSuccess }) => {
           cursor: "default",
         }}
       >
-        {/* Langues utilisant le style des boutons de catégorie */}
+        {/* Sélecteur de langue */}
         <div
           className="categories-nav"
           style={{ justifyContent: "flex-end", marginBottom: "1rem" }}
@@ -63,6 +92,7 @@ const Login = ({ onSwitch, onLoginSuccess }) => {
           </button>
         </div>
 
+        {/* Titre */}
         <div
           className="hero-content"
           style={{ padding: 0, textAlign: "center" }}
@@ -75,6 +105,7 @@ const Login = ({ onSwitch, onLoginSuccess }) => {
           </p>
         </div>
 
+        {/* Message d'erreur */}
         {error && (
           <div
             className="section-count"
@@ -90,6 +121,7 @@ const Login = ({ onSwitch, onLoginSuccess }) => {
           </div>
         )}
 
+        {/* Champs du formulaire */}
         <div className="filters-section">
           <div style={{ marginBottom: "1.5rem" }}>
             <label
@@ -104,6 +136,7 @@ const Login = ({ onSwitch, onLoginSuccess }) => {
               placeholder="Ex: kiki@mail.com"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && handleLogin()}
             />
           </div>
 
@@ -144,16 +177,24 @@ const Login = ({ onSwitch, onLoginSuccess }) => {
           </div>
         </div>
 
+        {/* Bouton connexion */}
         <button
           onClick={handleLogin}
+          disabled={loading}
           className="category-btn active"
-          style={{ width: "100%", padding: "1rem", fontSize: "1rem" }}
+          style={{
+            width: "100%",
+            padding: "1rem",
+            fontSize: "1rem",
+            opacity: loading ? 0.7 : 1,
+            cursor: loading ? "not-allowed" : "pointer",
+          }}
         >
-          {t("button_submit")}
+          {loading ? "Connexion..." : t("button_submit")}
         </button>
 
+        {/* Séparateur */}
         <div
-          className="divider"
           style={{ display: "flex", alignItems: "center", margin: "1.5rem 0" }}
         >
           <div
@@ -177,6 +218,7 @@ const Login = ({ onSwitch, onLoginSuccess }) => {
           ></div>
         </div>
 
+        {/* Connexion sociale */}
         <div style={{ display: "flex", gap: "1rem", justifyContent: "center" }}>
           <button
             className="game-card-modern"
@@ -190,7 +232,7 @@ const Login = ({ onSwitch, onLoginSuccess }) => {
             <img
               src="https://www.svgrepo.com/show/475656/google-color.svg"
               width="20"
-              alt="G"
+              alt="Google"
             />
           </button>
           <button
@@ -205,12 +247,13 @@ const Login = ({ onSwitch, onLoginSuccess }) => {
             <img
               src="https://www.svgrepo.com/show/512317/github-142.svg"
               width="20"
-              alt="GH"
+              alt="GitHub"
               style={{ filter: "invert(1)" }}
             />
           </button>
         </div>
 
+        {/* Lien vers Register */}
         <p
           className="hero-subtitle"
           style={{ textAlign: "center", marginTop: "2rem", fontSize: "0.9rem" }}
