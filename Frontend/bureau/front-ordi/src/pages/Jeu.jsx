@@ -11,7 +11,7 @@ const authAxios = async () => {
   });
 };
 
-const Jeu = ({ gameId, onBack, user }) => {
+const Jeu = ({ gameId, onBack, user, onFavoriteChange }) => {
   const [game, setGame] = useState(null);
   const [loading, setLoading] = useState(true);
   const [isFavorite, setIsFavorite] = useState(false);
@@ -26,28 +26,22 @@ const Jeu = ({ gameId, onBack, user }) => {
     const fetchDetails = async () => {
       try {
         setLoading(true);
-        const api = await authAxios();
 
-        // Détails du jeu (pas besoin d'auth)
         const res = await axios.get(
           `http://localhost:3000/api/games/details/${gameId}`,
         );
         if (res.data) {
           setGame(res.data);
 
-          // Vérifie si déjà en favori côté serveur
           if (auth.currentUser) {
             try {
-              const favRes = await api.get(`/users/favorites`);
-              const favs = favRes.data?.favorites || [];
-              setIsFavorite(
-                favs.some((f) => String(f.gameId) === String(gameId)),
-              );
+              const api = await authAxios();
+              const resLib = await api.get(`/lists/library/${gameId}`);
+              setIsFavorite(resLib.data?.success === true);
             } catch (_) {}
           }
         }
 
-        // Commentaires
         try {
           const resComments = await axios.get(
             `http://localhost:3000/api/comments/${gameId}`,
@@ -76,22 +70,22 @@ const Jeu = ({ gameId, onBack, user }) => {
       const api = await authAxios();
 
       if (isFavorite) {
-        // DELETE /api/users/favorites/:gameId
-        await api.delete(`/users/favorites/${gameId}`);
+        await api.delete(`/lists/library/${gameId}`);
         setIsFavorite(false);
+        onFavoriteChange?.();
       } else {
-        // POST /api/users/favorites
-        // Body attendu par le backend : { gameId, gameName, gameCover }
         const gameCover = game.cover?.image_id
           ? `https://images.igdb.com/igdb/image/upload/t_cover_big/${game.cover.image_id}.jpg`
           : "";
 
-        await api.post(`/users/favorites`, {
+        await api.post(`/lists/status`, {
           gameId: String(gameId),
+          status: "to_play",
           gameName: game.name,
           gameCover: gameCover,
         });
         setIsFavorite(true);
+        onFavoriteChange?.();
       }
     } catch (err) {
       console.error("Status:", err.response?.status);

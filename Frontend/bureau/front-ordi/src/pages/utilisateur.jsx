@@ -39,21 +39,49 @@ const Profile = ({ user, onLoginSuccess, onLogout }) => {
     }
   }, [user]);
 
-  // ─── FETCH FAVORIS ────────────────────────────────────────────────────────
-  // Retourne : { favorites: [{gameId, gameName, gameCover}] }
   const fetchLibrary = async () => {
     try {
       const api = await authAxios();
-      const res = await api.get(`/users/favorites`);
-      const favs = res.data?.favorites || [];
-      setFavorites(favs);
+      const res = await api.get(`/lists/library`);
+      const lib = res.data?.library || [];
+      setFavorites(lib);
     } catch (err) {
       console.warn("Bibliothèque : erreur.", err.message);
     }
   };
 
-  // ─── MISE À JOUR PROFIL ───────────────────────────────────────────────────
-  // Body attendu : { username?, bio? }
+  const handleStatusUpdate = async (gameId, newStatus, gameName, gameCover) => {
+    try {
+      const api = await authAxios();
+      await api.post("/lists/status", {
+        gameId: String(gameId),
+        status: newStatus,
+        gameName,
+        gameCover,
+      });
+      // Mise à jour de l'état local pour un changement instantané à l'écran
+      setFavorites((prev) =>
+        prev.map((g) =>
+          g.gameId === gameId ? { ...g, status: newStatus } : g,
+        ),
+      );
+    } catch (err) {
+      console.error("Erreur lors de la mise à jour du statut", err);
+    }
+  };
+
+  const statusMapping = {
+    to_play: "A faire",
+    playing: "En cours",
+    finished: "Fini",
+    dropped: "Abandonné",
+  };
+
+  const filteredGames = favorites.filter((game) => {
+    if (filter === "Tous") return true;
+    return statusMapping[game.status] === filter;
+  });
+
   const handleUpdate = async () => {
     setSaveStatus("saving");
     try {
@@ -212,7 +240,7 @@ const Profile = ({ user, onLoginSuccess, onLogout }) => {
         <div className="profile-content">
           <div className="section-header" style={{ marginBottom: "20px" }}>
             <h2 className="section-title">Ma Collection</h2>
-            <span className="section-count">{favorites.length}</span>
+            <span className="section-count">{filteredGames.length}</span>
           </div>
 
           <div className="filters-container" style={{ marginBottom: "30px" }}>
@@ -227,7 +255,7 @@ const Profile = ({ user, onLoginSuccess, onLogout }) => {
             ))}
           </div>
 
-          {favorites.length === 0 ? (
+          {filteredGames.length === 0 ? (
             <div
               className="game-card-modern"
               style={{
@@ -236,16 +264,22 @@ const Profile = ({ user, onLoginSuccess, onLogout }) => {
                 cursor: "default",
               }}
             >
-              <p className="hero-subtitle">La bibliothèque est vide...</p>
+              <p className="hero-subtitle">
+                {favorites.length === 0
+                  ? "La bibliothèque est vide..."
+                  : `Aucun jeu dans la catégorie "${filter}"`}
+              </p>
             </div>
           ) : (
             <div className="game-grid">
-              {/* Le backend stocke {gameId, gameName, gameCover} — pas de status */}
-              {favorites.map((game) => (
+              {filteredGames.map((game) => (
                 <div key={game.gameId} className="game-card-modern">
                   <div className="game-image-container">
                     <img
-                      src={game.gameCover}
+                      src={
+                        game.gameCover ||
+                        "https://via.placeholder.com/264x352?text=No+Cover"
+                      }
                       alt={game.gameName}
                       className="game-image"
                     />
@@ -257,6 +291,23 @@ const Profile = ({ user, onLoginSuccess, onLogout }) => {
                     >
                       {game.gameName}
                     </h4>
+                    <select
+                      className={`status-select ${statusMapping[game.status]?.toLowerCase().replace(" ", "-") || ""}`}
+                      value={game.status || "to_play"}
+                      onChange={(e) =>
+                        handleStatusUpdate(
+                          game.gameId,
+                          e.target.value,
+                          game.gameName,
+                          game.gameCover,
+                        )
+                      }
+                    >
+                      <option value="to_play">⏳ À faire</option>
+                      <option value="playing">🎮 En cours</option>
+                      <option value="finished">✅ Fini</option>
+                      <option value="dropped">❌ Abandonné</option>
+                    </select>
                   </div>
                 </div>
               ))}

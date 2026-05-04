@@ -16,7 +16,7 @@ services:
 
   # BACKEND (Node 22) - API & IGDB Logic
   backend:
-    build: 
+    build:
       context: ./backend
       dockerfile: Dockerfile
     image: supcontent-backend:1.0
@@ -33,6 +33,7 @@ services:
       - FIREBASE_AUTH_EMULATOR_HOST=database:9099
     depends_on:
       - database
+    restart: on-failure
     networks:
       - sup-network
 
@@ -49,7 +50,7 @@ services:
       - ./Frontend/bureau/front-ordi:/app
       - /app/node_modules
     environment:
-      - CHOKIDAR_USEPOLLING=true 
+      - CHOKIDAR_USEPOLLING=true
     depends_on:
       - backend
     networks:

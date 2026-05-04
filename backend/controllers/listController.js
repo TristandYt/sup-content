@@ -21,17 +21,15 @@ const VALID_STATUSES = ["to_play", "playing", "finished", "dropped"];
 exports.updateGameStatus = async (req, res, next) => {
   try {
     const userId = req.user.id;
-    const { gameId, status } = req.body;
+    const { gameId, status, gameName, gameCover } = req.body;
 
     if (!gameId)
       return res.status(400).json({ success: false, msg: "gameId manquant" });
     if (!VALID_STATUSES.includes(status)) {
-      return res
-        .status(400)
-        .json({
-          success: false,
-          msg: `Statut invalide. Valeurs acceptées : ${VALID_STATUSES.join(", ")}`,
-        });
+      return res.status(400).json({
+        success: false,
+        msg: `Statut invalide. Valeurs acceptées : ${VALID_STATUSES.join(", ")}`,
+      });
     }
 
     const gameRef = db
@@ -44,6 +42,8 @@ exports.updateGameStatus = async (req, res, next) => {
       {
         gameId: gameId.toString(),
         status,
+        gameName: gameName || null,
+        gameCover: gameCover || null,
         updatedAt: admin.firestore.FieldValue.serverTimestamp(),
       },
       { merge: true },
@@ -72,12 +72,10 @@ exports.getMyLibrary = async (req, res, next) => {
 
     if (status) {
       if (!VALID_STATUSES.includes(status)) {
-        return res
-          .status(400)
-          .json({
-            success: false,
-            msg: `Statut invalide. Valeurs acceptées : ${VALID_STATUSES.join(", ")}`,
-          });
+        return res.status(400).json({
+          success: false,
+          msg: `Statut invalide. Valeurs acceptées : ${VALID_STATUSES.join(", ")}`,
+        });
       }
       query = query.where("status", "==", status);
     }
@@ -148,35 +146,6 @@ exports.removeFromLibrary = async (req, res, next) => {
     // Logger la suppression de la bibliothèque
     await Logger.log("library_game_removed", userId, { gameId });
 
-    res.json({ success: true, msg: "Jeu retiré de la bibliothèque" });
-  } catch (error) {
-    next(error);
-  }
-};
-
-/*
- * DELETE /api/lists/library/:gameId
- * Supprime un jeu de la bibliothèque.
- */
-exports.removeGameFromLibrary = async (req, res, next) => {
-  try {
-    const userId = req.user.id;
-    const gameId = req.params.gameId.toString();
-
-    const gameRef = db
-      .collection("users")
-      .doc(userId)
-      .collection("library")
-      .doc(gameId);
-
-    const gameDoc = await gameRef.get();
-    if (!gameDoc.exists) {
-      return res
-        .status(404)
-        .json({ success: false, msg: "Jeu introuvable dans la bibliothèque" });
-    }
-
-    await gameRef.delete();
     res.json({ success: true, msg: "Jeu retiré de la bibliothèque" });
   } catch (error) {
     next(error);

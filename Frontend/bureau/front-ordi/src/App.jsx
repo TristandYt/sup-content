@@ -14,6 +14,7 @@ const App = () => {
   const [selectedGameId, setSelectedGameId] = useState(null);
   const [showSearch, setShowSearch] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
+  const [profileRefresh, setProfileRefresh] = useState(0);
 
   const handleLoginSuccess = (userData) => {
     setUser(userData);
@@ -25,14 +26,17 @@ const App = () => {
     setCurrentPage("jeu");
   };
 
+  const handleFavoriteChange = () => {
+    setProfileRefresh((n) => n + 1);
+  };
+
   return (
     <div className="app-container">
-      {/* Modern Gaming Navbar */}
+      {/* Navbar */}
       <nav className="modern-navbar">
         <div className="navbar-container">
           {!showSearch ? (
             <>
-              {/* Logo Section */}
               <div className="navbar-logo-section">
                 <div
                   className="logo-icon"
@@ -48,9 +52,7 @@ const App = () => {
                 </h1>
               </div>
 
-              {/* Navigation Actions */}
               <div className="navbar-actions">
-                {/* Search Icon */}
                 <button
                   className="nav-icon-btn"
                   onClick={() => setShowSearch(true)}
@@ -69,7 +71,6 @@ const App = () => {
                   </svg>
                 </button>
 
-                {/* Messagerie Button */}
                 {user && (
                   <button
                     className="nav-icon-btn"
@@ -91,7 +92,6 @@ const App = () => {
                   </button>
                 )}
 
-                {/* User/Login Button */}
                 <button
                   className="nav-user-btn"
                   onClick={() => setCurrentPage(user ? "utilisateur" : "login")}
@@ -132,7 +132,6 @@ const App = () => {
               </div>
             </>
           ) : (
-            /* Search Mode */
             <div className="navbar-search-mode">
               <div className="search-bar-wrapper">
                 <input
@@ -157,7 +156,6 @@ const App = () => {
                   </svg>
                 </div>
               </div>
-
               <button
                 className="search-close-btn"
                 onClick={() => {
@@ -182,7 +180,7 @@ const App = () => {
         </div>
       </nav>
 
-      {/* Main Content */}
+      {/* Pages */}
       <main className="main-content-wrapper">
         {currentPage === "accueil" && (
           <Accueil onGameClick={handleShowGame} searchTerm={searchTerm} />
@@ -192,6 +190,7 @@ const App = () => {
             gameId={selectedGameId}
             onBack={() => setCurrentPage("accueil")}
             user={user}
+            onFavoriteChange={handleFavoriteChange}
           />
         )}
         {currentPage === "login" && (
@@ -205,6 +204,7 @@ const App = () => {
         )}
         {currentPage === "utilisateur" && (
           <Utilisateur
+            key={profileRefresh}
             user={user}
             onLogout={() => {
               setUser(null);
