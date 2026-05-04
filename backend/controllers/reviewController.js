@@ -1,78 +1,167 @@
 /*
- * Contrôleur de critiques.
- * Gère l'ajout, la modification, la lecture et la suppression de reviews.
+ * Contrôleur critiques.
+ * Pagination cursor-based sur getGameReviews et getMyReviews.
+ *
+ * Modèle Firestore : reviews/{userId}_{gameId}
+ *   { userId, gameId, rating, text, updatedAt }
  */
-const { admin, db } = require('../Services/Firebase');
+const { admin, db } = require("../Services/Firebase");
+const Logger = require("../Services/Logger");
 
+const REVIEWS_PAGE_SIZE = 20;
+
+/*
+ * POST /api/reviews
+ * PUT  /api/reviews/:gameId
+ * Body : { gameId?, rating, text? }
+ */
 exports.addOrUpdateReview = async (req, res, next) => {
-    try {
-        const gameId = req.params.gameId || req.body.gameId;
-        const { rating, text } = req.body;
-        const userId = req.user.id;
+  try {
+    const userId = req.user.id;
+    const gameId = (req.params.gameId || req.body.gameId)?.toString();
+    const { rating, text = "" } = req.body;
 
-        if (!gameId || rating === undefined) return res.status(400).json({ success: false, msg: 'Jeu et note requis' });
-        if (rating < 1 || rating > 5) return res.status(400).json({ success: false, msg: 'La note doit être entre 1 et 5' });
+    if (!gameId)
+      return res.status(400).json({ success: false, msg: "gameId manquant" });
+    if (rating === undefined)
+      return res.status(400).json({ success: false, msg: "rating manquant" });
+    if (rating < 1 || rating > 5)
+      return res
+        .status(400)
+        .json({ success: false, msg: "La note doit être entre 1 et 5" });
 
-        const reviewId = `${userId}_${gameId.toString()}`;
-        
-        await db.collection('reviews').doc(reviewId).set({
-            userId,
-            gameId: gameId.toString(),
-            rating: Number(rating),
-            text: text || "",
-            updatedAt: admin.firestore.FieldValue.serverTimestamp()
-        }, { merge: true });
+    const reviewId = `${userId}_${gameId}`;
 
-        res.json({ success: true, msg: 'Critique enregistrée avec succès !' });
-    } catch (error) {
-        next(error);
-    }
+    await db
+      .collection("reviews")
+      .doc(reviewId)
+      .set(
+        {
+          userId,
+          gameId,
+          rating: Number(rating),
+          text,
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        },
+        { merge: true },
+      );
+
+    // Logger l'ajout/mise à jour de critique
+    await Logger.log("review_added_or_updated", userId, {
+      gameId,
+      rating,
+      text: text ? "present" : "empty",
+    });
+
+    res.json({ success: true, msg: "Critique enregistrée" });
+  } catch (error) {
+    next(error);
+  }
 };
 
+/*
+ * GET /api/reviews/me?cursor=<ISO date>
+ * Reviews de l'utilisateur connecté, paginées.
+ */
 exports.getMyReviews = async (req, res, next) => {
-    try {
-        const userId = req.user.id;
-        const reviewsSnapshot = await db.collection('reviews').where('userId', '==', userId).get();
+  try {
+    const userId = req.user.id;
+    const { cursor } = req.query;
 
-        const reviews = reviewsSnapshot.docs.map(doc => doc.data());
-        res.json({ success: true, reviews });
-    } catch (error) {
-        next(error);
-    }
+    let query = db
+      .collection("reviews")
+      .where("userId", "==", userId)
+      .orderBy("updatedAt", "desc");
+
+    if (cursor) query = query.startAfter(new Date(cursor));
+
+    query = query.limit(REVIEWS_PAGE_SIZE);
+
+    const snapshot = await query.get();
+    const reviews = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+
+    const lastDoc = snapshot.docs[snapshot.docs.length - 1];
+    const nextCursor = lastDoc
+      ? lastDoc.data().updatedAt?.toDate().toISOString()
+      : null;
+
+    res.json({ success: true, total: reviews.length, reviews, nextCursor });
+  } catch (error) {
+    next(error);
+  }
 };
 
+/*
+ * GET /api/reviews/game/:gameId?cursor=<ISO date>
+ * Reviews d'un jeu + note moyenne. Route publique. Paginée.
+ */
 exports.getGameReviews = async (req, res, next) => {
-    try {
-        const { gameId } = req.params;
-        const reviewsSnapshot = await db.collection('reviews').where('gameId', '==', gameId.toString()).get();
+  try {
+    const gameId = req.params.gameId.toString();
+    const { cursor } = req.query;
 
-        const reviews = [];
-        let totalRating = 0;
+    let query = db
+      .collection("reviews")
+      .where("gameId", "==", gameId)
+      .orderBy("updatedAt", "desc");
 
-        reviewsSnapshot.forEach(doc => {
-            const data = doc.data();
-            reviews.push(data);
-            totalRating += data.rating;
-        });
+    if (cursor) query = query.startAfter(new Date(cursor));
 
-        const averageRating = reviews.length > 0 ? (totalRating / reviews.length).toFixed(1) : null;
+    query = query.limit(REVIEWS_PAGE_SIZE);
 
-        res.json({ success: true, averageRating, totalReviews: reviews.length, reviews });
-    } catch (error) {
-        next(error);
-    }
+    const snapshot = await query.get();
+    const reviews = [];
+    let totalRating = 0;
+
+    snapshot.forEach((doc) => {
+      const data = doc.data();
+      reviews.push({ id: doc.id, ...data });
+      totalRating += data.rating;
+    });
+
+    const averageRating =
+      reviews.length > 0 ? (totalRating / reviews.length).toFixed(1) : null;
+
+    const lastDoc = snapshot.docs[snapshot.docs.length - 1];
+    const nextCursor = lastDoc
+      ? lastDoc.data().updatedAt?.toDate().toISOString()
+      : null;
+
+    res.json({
+      success: true,
+      averageRating,
+      totalReviews: reviews.length,
+      reviews,
+      nextCursor,
+    });
+  } catch (error) {
+    next(error);
+  }
 };
 
+/*
+ * DELETE /api/reviews/:gameId
+ */
 exports.deleteReview = async (req, res, next) => {
-    try {
-        const { gameId } = req.params;
-        const userId = req.user.id;
-        const reviewId = `${userId}_${gameId.toString()}`;
+  try {
+    const userId = req.user.id;
+    const gameId = req.params.gameId.toString();
+    const reviewId = `${userId}_${gameId}`;
 
-        await db.collection('reviews').doc(reviewId).delete();
-
-        res.json({ success: true, msg: 'Critique supprimée' });
-    } catch (error) {
-        next(error);
+    const reviewDoc = await db.collection("reviews").doc(reviewId).get();
+    if (!reviewDoc.exists) {
+      return res
+        .status(404)
+        .json({ success: false, msg: "Critique introuvable" });
     }
+
+    await db.collection("reviews").doc(reviewId).delete();
+
+    // Logger la suppression de critique
+    await Logger.log("review_deleted", userId, { gameId });
+
+    res.json({ success: true, msg: "Critique supprimée" });
+  } catch (error) {
+    next(error);
+  }
 };
