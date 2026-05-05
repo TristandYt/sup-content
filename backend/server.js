@@ -1,6 +1,6 @@
 /*
  * Backend Express principal.
- * Port 3000 (mappé depuis docker-compose → hôte:3000)
+ * Port 3000
  */
 const express = require('express');
 const cors = require('cors');
@@ -28,19 +28,29 @@ const reviewRoutes       = require('./Routes/reviewRouter');
 const followRoutes       = require('./Routes/followRouter');
 const feedRoutes         = require('./Routes/feedRouter');
 const conversationRoutes = require('./Routes/conversationRouter');
+const searchRoutes       = require('./Routes/searchRouter');
+const notificationRoutes = require('./Routes/notificationRouter');
+const moderationRoutes   = require('./Routes/moderationRouter');
+const interactionRoutes  = require('./Routes/interactionsRouter');
 
-// Routes publiques (pas d'auth globale)
-app.use('/api/auth',  authRoutes);
-app.use('/api/games', gameRoutes);
+// Routes publiques (pas d'auth globale ici)
+app.use('/api/auth',   authRoutes);
+app.use('/api/games',  gameRoutes);
+app.use('/api/search', searchRoutes);
 
-// Routes avec auth — ensureFirestoreProfile garantit que le profil Firestore
-// existe même après un premier login OAuth2 (Google, GitHub, Facebook)
+// /api/reviews : GET /game/:gameId est publique (géré dans le router lui-même)
+// On NE met PAS authMiddleware ici pour laisser le router gérer sa propre sécurité
+app.use('/api/reviews', reviewRoutes);
+
+// Routes avec auth
 app.use('/api/users',         authMiddleware, ensureFirestoreProfile, userRoutes);
 app.use('/api/lists',         authMiddleware, ensureFirestoreProfile, listRoutes);
-app.use('/api/reviews',       authMiddleware, ensureFirestoreProfile, reviewRoutes);
 app.use('/api/follows',       authMiddleware, ensureFirestoreProfile, followRoutes);
 app.use('/api/feeds',         authMiddleware, ensureFirestoreProfile, feedRoutes);
 app.use('/api/conversations', authMiddleware, ensureFirestoreProfile, conversationRoutes);
+app.use('/api/notifications', authMiddleware, ensureFirestoreProfile, notificationRoutes);
+app.use('/api/moderation',    authMiddleware, ensureFirestoreProfile, moderationRoutes);
+app.use('/api/interactions',  authMiddleware, ensureFirestoreProfile, interactionRoutes);
 
 app.use(errorHandler);
 

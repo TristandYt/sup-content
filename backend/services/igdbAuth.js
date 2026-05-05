@@ -1,11 +1,10 @@
-// services/igdbAuth.js
+// Gestion de l'authentification OAuth2 Twitch/IGDB
 const axios = require('axios');
 
 let accessToken = null;
 let tokenExpirationTime = null;
 
 const getIgdbToken = async () => {
-    // si on a un token et qu'il est encore valide --> on le réutilise
     if (accessToken && Date.now() < tokenExpirationTime) {
         return accessToken;
     }
@@ -20,8 +19,7 @@ const getIgdbToken = async () => {
         });
 
         accessToken = response.data.access_token;
-        // on calcule la date d'expiration (expires_in est en secondes)
-        tokenExpirationTime = Date.now() + (response.data.expires_in * 1000) - 60000; // Marge de 1 min
+        tokenExpirationTime = Date.now() + (response.data.expires_in * 1000) - 60000;
 
         return accessToken;
     } catch (error) {

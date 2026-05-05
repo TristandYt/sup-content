@@ -2,36 +2,168 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
+    // --- Fonctions utilitaires ---
+
     function isSignedIn() {
       return request.auth != null;
     }
 
+    function isOwner(userId) {
+      return request.auth.uid == userId;
+    }
+
+    function isAdmin() {
+      return isSignedIn() &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    function isBanned() {
+      return isSignedIn() &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isBanned == true;
+    }
+
+    function notBanned() {
+      return !isBanned();
+    }
+
+    function mutualFollow(userA, userB) {
+      return exists(/databases/$(database)/documents/follows/$(userA + '_' + userB)) &&
+             exists(/databases/$(database)/documents/follows/$(userB + '_' + userA));
+    }
+
+    // --- users ---
     match /users/{userId} {
       allow read: if isSignedIn();
-      allow create: if request.auth.uid == userId;
-      allow update, delete: if request.auth.uid == userId;
+      allow create: if isOwner(userId);
+      allow update: if isOwner(userId) || isAdmin();
+      allow delete: if isOwner(userId) || isAdmin();
+
+      // Bibliothèque personnelle (sous-collection)
+      match /library/{gameId} {
+        allow read, write: if isSignedIn() && isOwner(userId);
+      }
     }
 
-    match /users/{userId}/library/{gameId} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
-    }
-
-    match /reviews/{reviewId} {
-      allow read: if isSignedIn();
-      allow create: if request.auth.uid == request.resource.data.userId;
-      allow update, delete: if isSignedIn() && request.auth.uid == resource.data.userId;
-    }
-
-    match /follows/{followId} {
-      allow read: if isSignedIn();
-      allow create: if request.auth.uid == request.resource.data.followerId
-        && request.resource.data.followerId != request.resource.data.followingId;
-      allow delete: if isSignedIn() && request.auth.uid == resource.data.followerId;
-    }
-
+    // --- games (cache IGDB — lecture seule côté client) ---
     match /games/{gameId} {
       allow read: if isSignedIn();
       allow write: if false;
     }
+
+    // --- reviews ---
+    match /reviews/{reviewId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && notBanned() &&
+                       request.resource.data.userId == request.auth.uid;
+      allow update: if isSignedIn() &&
+                       (resource.data.userId == request.auth.uid || isAdmin());
+      allow delete: if isSignedIn() &&
+                       (resource.data.userId == request.auth.uid || isAdmin());
+
+      // Commentaires d'une critique (sous-collection)
+      match /comments/{commentId} {
+        allow read: if isSignedIn();
+        allow create: if isSignedIn() && notBanned() &&
+                         request.resource.data.userId == request.auth.uid;
+        allow update, delete: if isSignedIn() &&
+                                  resource.data.userId == request.auth.uid;
+      }
+    }
+
+    // --- follows ---
+    match /follows/{followId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && notBanned() &&
+                       request.resource.data.followerId == request.auth.uid &&
+                       request.resource.data.followerId != request.resource.data.followingId;
+      allow delete: if isSignedIn() &&
+                       resource.data.followerId == request.auth.uid;
+      allow update: if false;
+    }
+
+    // --- notifications ---
+    match /notifications/{notificationId} {
+      // Lecture : uniquement le destinataire
+      allow read: if isSignedIn() &&
+                     resource.data.userId == request.auth.uid;
+      // Création : uniquement le backend (via Admin SDK) — jamais le client directement
+      allow create: if false;
+      // Mise à jour : uniquement le destinataire (pour marquer comme lu)
+      allow update: if isSignedIn() &&
+                       resource.data.userId == request.auth.uid &&
+                       request.resource.data.diff(resource.data).affectedKeys().hasOnly(['isRead']);
+      allow delete: if false;
+    }
+
+    // --- conversations ---
+    match /conversations/{conversationId} {
+      function isParticipant() {
+        return isSignedIn() && request.auth.uid in resource.data.participants;
+      }
+
+      allow read: if isParticipant();
+      // Création : les deux participants doivent se suivre mutuellement
+      allow create: if isSignedIn() && notBanned() &&
+                       request.auth.uid in request.resource.data.participants &&
+                       request.resource.data.participants.size() == 2 &&
+                       mutualFollow(
+                         request.resource.data.participants[0],
+                         request.resource.data.participants[1]
+                       );
+      allow update: if isParticipant();
+      allow delete: if false;
+
+      // Messages (sous-collection)
+      match /messages/{messageId} {
+        function isConvParticipant() {
+          return isSignedIn() &&
+            request.auth.uid in get(/databases/$(database)/documents/conversations/$(conversationId)).data.participants;
+        }
+
+        allow read: if isConvParticipant();
+        allow create: if isConvParticipant() && notBanned() &&
+                         request.resource.data.senderId == request.auth.uid &&
+                         (request.resource.data.text.size() > 0 ||
+                          request.resource.data.attachments.size() > 0);
+        // Mise à jour : uniquement pour marquer comme lu (readBy)
+        allow update: if isConvParticipant() &&
+                         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['readBy']);
+        allow delete: if false;
+      }
+    }
+
+    // --- custom_lists ---
+    match /custom_lists/{listId} {
+      // Lecture : propriétaire toujours, autres utilisateurs si la liste est publique
+      allow read: if isSignedIn() &&
+                     (resource.data.userId == request.auth.uid || resource.data.isPrivate == false);
+      allow create: if isSignedIn() && notBanned() &&
+                       request.resource.data.userId == request.auth.uid;
+      allow update: if isSignedIn() &&
+                       resource.data.userId == request.auth.uid;
+      allow delete: if isSignedIn() &&
+                       (resource.data.userId == request.auth.uid || isAdmin());
+    }
+
+    // --- reports ---
+    match /reports/{reportId} {
+      // Lecture : admins uniquement
+      allow read: if isAdmin();
+      // Création : tout utilisateur connecté non banni
+      allow create: if isSignedIn() && notBanned() &&
+                       request.resource.data.reporterId == request.auth.uid;
+      // Mise à jour du statut : admins uniquement
+      allow update: if isAdmin();
+      allow delete: if false;
+    }
+
+    // --- logs (historique des actions) ---
+    match /logs/{logId} {
+      // Lecture : admins uniquement
+      allow read: if isAdmin();
+      // Écriture : uniquement le backend via Admin SDK
+      allow write: if false;
+    }
+
   }
 }

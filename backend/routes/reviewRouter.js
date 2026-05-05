@@ -1,18 +1,19 @@
-/*
- * Routes critiques.
- * Expose la lecture publique des reviews et les opérations CRUD pour l'utilisateur connecté.
- */
+// Routes des critiques
+// GET /game/:gameId est publique — montée AVANT le middleware auth
 const express = require('express');
 const router = express.Router();
 const auth = require('../middlewares/auth');
 const reviewController = require('../controllers/reviewController');
 
-router.use(auth); // Toutes les routes nécessitent une authentification
+// Route publique — déclarée avant router.use(auth)
+router.get('/game/:gameId', reviewController.getGameReviews);
 
-router.get('/game/:gameId',reviewController.getGameReviews);
-router.get('/me',reviewController.getMyReviews);
-router.post('/',reviewController.addOrUpdateReview);
-router.put('/:gameId',reviewController.addOrUpdateReview);
-router.delete('/:gameId',reviewController.deleteReview);
+// Routes privées
+router.use(auth);
+
+router.get('/me', reviewController.getMyReviews);
+router.post('/', reviewController.addOrUpdateReview);
+router.put('/:gameId', reviewController.addOrUpdateReview);
+router.delete('/:gameId', reviewController.deleteReview);
 
 module.exports = router;

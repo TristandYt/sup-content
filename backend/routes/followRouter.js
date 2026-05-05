@@ -1,17 +1,16 @@
 /*
  * Routes de suivi.
- * Gère les abonnements et désabonnements entre utilisateurs.
+ * Auth appliqué dans server.js.
+ * IMPORTANT : /me/following et /me/followers déclarés AVANT /:userId
+ * pour éviter qu'Express capture "me" comme userId.
  */
 const express = require('express');
 const router = express.Router();
-const auth = require('../middlewares/auth');
 const followController = require('../controllers/followController');
 
-router.use(auth);
-
-router.post('/:userId',followController.followUser);
-router.delete('/:userId',followController.unfollowUser);
-router.get('/me/following',followController.getMyFollowing);
-router.get('/me/followers',followController.getMyFollowers);
+router.get('/me/following', followController.getMyFollowing);
+router.get('/me/followers', followController.getMyFollowers);
+router.post('/:userId', followController.followUser);
+router.delete('/:userId', followController.unfollowUser);
 
 module.exports = router;

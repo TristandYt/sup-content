@@ -1,7 +1,4 @@
-/*
- * Middleware pour vérifier les rôles des utilisateurs.
- * Utilise req.user.profile.role pour vérifier le rôle.
- */
+// Vérification du rôle utilisateur (admin/user)
 
 const checkRole = (requiredRole) => {
     return (req, res, next) => {

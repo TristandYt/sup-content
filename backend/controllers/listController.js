@@ -1,23 +1,10 @@
-/*
- * Contrôleur bibliothèque.
- * Gère la sous-collection library de l'utilisateur.
- *
- * Modèle Firestore : users/{userId}/library/{gameId}
- *   { gameId, status, updatedAt }
- *
- * Statuts valides : to_play | playing | finished | dropped
- */
+// Gestion de la bibliothèque et des listes de jeux
 const { admin, db } = require('../Services/Firebase');
 const Logger = require('../Services/Logger');
 
 const VALID_STATUSES = ['to_play', 'playing', 'finished', 'dropped'];
 
-/*
- * POST /api/lists/status
- * PUT  /api/lists/status
- * Body : { gameId, status }
- * Ajoute ou met à jour le statut d'un jeu dans la bibliothèque (upsert).
- */
+// Ajouter ou mettre à jour le statut d'un jeu
 exports.updateGameStatus = async (req, res, next) => {
     try {
         const userId = req.user.id;
@@ -37,7 +24,6 @@ exports.updateGameStatus = async (req, res, next) => {
             updatedAt: admin.firestore.FieldValue.serverTimestamp(),
         }, { merge: true });
 
-        // Logger la mise à jour du statut dans la bibliothèque
         await Logger.log('library_status_updated', userId, { gameId, status });
 
         res.json({ success: true, msg: `Statut mis à jour : ${status}` });
@@ -46,11 +32,7 @@ exports.updateGameStatus = async (req, res, next) => {
     }
 };
 
-/*
- * GET /api/lists/library
- * Retourne tous les jeux de la bibliothèque de l'utilisateur.
- * Supporte le filtre optionnel ?status=playing
- */
+// Récupérer la bibliothèque complète
 exports.getMyLibrary = async (req, res, next) => {
     try {
         const userId = req.user.id;
@@ -76,10 +58,7 @@ exports.getMyLibrary = async (req, res, next) => {
     }
 };
 
-/*
- * GET /api/lists/library/:gameId
- * Retourne le statut d'un jeu précis dans la bibliothèque.
- */
+// Récupérer le statut d'un jeu spécifique
 exports.getGameFromLibrary = async (req, res, next) => {
     try {
         const userId = req.user.id;
@@ -98,10 +77,7 @@ exports.getGameFromLibrary = async (req, res, next) => {
     }
 };
 
-/*
- * DELETE /api/lists/library/:gameId
- * Supprime un jeu de la bibliothèque de l'utilisateur.
- */
+// Supprimer un jeu de la bibliothèque
 exports.removeFromLibrary = async (req, res, next) => {
     try {
         const userId = req.user.id;
@@ -117,7 +93,6 @@ exports.removeFromLibrary = async (req, res, next) => {
 
         await gameRef.delete();
 
-        // Logger la suppression de la bibliothèque
         await Logger.log('library_game_removed', userId, { gameId });
 
         res.json({ success: true, msg: 'Jeu retiré de la bibliothèque' });
@@ -126,25 +101,99 @@ exports.removeFromLibrary = async (req, res, next) => {
     }
 };
 
-/*
- * DELETE /api/lists/library/:gameId
- * Supprime un jeu de la bibliothèque.
- */
-exports.removeGameFromLibrary = async (req, res, next) => {
+// Statistiques de la bibliothèque (Tableau de bord)
+exports.getMyLibraryStats = async (req, res, next) => {
     try {
         const userId = req.user.id;
-        const gameId = req.params.gameId.toString();
+        const snapshot = await db.collection('users').doc(userId).collection('library').get();
 
-        const gameRef = db.collection('users').doc(userId)
-            .collection('library').doc(gameId);
+        const stats = {
+            to_play: 0,
+            playing: 0,
+            finished: 0,
+            dropped: 0,
+            total: 0
+        };
 
-        const gameDoc = await gameRef.get();
-        if (!gameDoc.exists) {
-            return res.status(404).json({ success: false, msg: 'Jeu introuvable dans la bibliothèque' });
-        }
+        snapshot.docs.forEach(doc => {
+            const status = doc.data().status;
+            if (stats[status] !== undefined) stats[status]++;
+            stats.total++;
+        });
 
-        await gameRef.delete();
-        res.json({ success: true, msg: 'Jeu retiré de la bibliothèque' });
+        res.json({ success: true, stats });
+    } catch (error) {
+        next(error);
+    }
+};
+
+// Listes personnalisées
+exports.createList = async (req, res, next) => {
+    try {
+        const userId = req.user.id;
+        const { name, description = '', isPrivate = false } = req.body;
+
+        if (!name) return res.status(400).json({ success: false, msg: 'Le nom de la liste est requis' });
+
+        const docRef = await db.collection('custom_lists').add({
+            userId, name, description, isPrivate, games: [],
+            createdAt: admin.firestore.FieldValue.serverTimestamp(),
+            updatedAt: admin.firestore.FieldValue.serverTimestamp()
+        });
+        res.status(201).json({ success: true, listId: docRef.id, msg: 'Liste créée' });
+    } catch (error) {
+        next(error);
+    }
+};
+
+exports.getMyLists = async (req, res, next) => {
+    try {
+        const userId = req.user.id;
+        const snap = await db.collection('custom_lists').where('userId', '==', userId).get();
+        res.json({ success: true, lists: snap.docs.map(doc => ({ id: doc.id, ...doc.data() })) });
+    } catch (error) {
+        next(error);
+    }
+};
+
+exports.getListDetails = async (req, res, next) => {
+    try {
+        const { listId } = req.params;
+        const userId = req.user?.id; 
+
+        const doc = await db.collection('custom_lists').doc(listId).get();
+        if (!doc.exists) return res.status(404).json({ success: false, msg: 'Liste introuvable' });
+
+        const listData = doc.data();
+        if (listData.isPrivate && listData.userId !== userId) return res.status(403).json({ success: false, msg: 'Cette liste est privée' });
+
+        res.json({ success: true, list: { id: doc.id, ...listData } });
+    } catch (error) {
+        next(error);
+    }
+};
+
+exports.addGameToList = async (req, res, next) => {
+    try {
+        const { listId } = req.params;
+        const userId = req.user.id;
+        const { gameId, gameName, gameCover } = req.body;
+
+        const listRef = db.collection('custom_lists').doc(listId);
+        const doc = await listRef.get();
+        if (!doc.exists) return res.status(404).json({ success: false, msg: 'Liste introuvable' });
+        if (doc.data().userId !== userId) return res.status(403).json({ success: false, msg: 'Accès refusé' });
+
+        await listRef.update({ 
+            games: admin.firestore.FieldValue.arrayUnion({ 
+                gameId: gameId.toString(), 
+                gameName: gameName || '', 
+                gameCover: gameCover || '', 
+                addedAt: new Date() 
+            }), 
+            updatedAt: admin.firestore.FieldValue.serverTimestamp() 
+        });
+        res.json({ success: true, msg: 'Jeu ajouté à la liste' });
     } catch (error) {
         next(error);
     }

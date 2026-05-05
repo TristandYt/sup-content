@@ -1,10 +1,4 @@
-/*
- * Routes jeux.
- * Recherche IGDB, jeux populaires et détails avec cache Firestore.
- *
- * Modèle Firestore cache : games/{gameId}
- *   { ...champsIGDB, supcontent_cached_at }
- */
+// Routes IGDB avec mise en cache Firestore
 const express = require('express');
 const axios = require('axios');
 const { admin, db } = require('../Services/Firebase');
@@ -23,10 +17,7 @@ const getIgdbHeaders = async () => {
     };
 };
 
-/*
- * Récupère un jeu depuis le cache Firestore ou depuis IGDB.
- * Stocke en cache si absent.
- */
+// Récupération avec cache automatique
 const fetchGameById = async (gameId) => {
     const gameRef = db.collection('games').doc(gameId.toString());
     const cached = await gameRef.get();
@@ -60,10 +51,7 @@ const fetchGameById = async (gameId) => {
     return gameData;
 };
 
-/*
- * GET /api/games/popular?sortBy=total_rating&order=desc
- * Retourne les 20 jeux les mieux notés (sans cache — résultats dynamiques).
- */
+// Jeux populaires dynamiques
 router.get('/popular', async (req, res, next) => {
     try {
         const { sortBy = 'total_rating', order = 'desc' } = req.query;
@@ -85,10 +73,7 @@ router.get('/popular', async (req, res, next) => {
     }
 });
 
-/*
- * GET /api/games/search?q=zelda
- * Recherche de jeux par titre via IGDB.
- */
+// Recherche de jeux par titre
 router.get('/search', async (req, res, next) => {
     const { q } = req.query;
     if (!q) return res.status(400).json({ success: false, msg: 'Paramètre q manquant' });
@@ -108,10 +93,7 @@ router.get('/search', async (req, res, next) => {
     }
 });
 
-/*
- * GET /api/games/details/:id
- * Détails complets d'un jeu (avec cache Firestore).
- */
+// Détails complets d'un jeu
 router.get('/details/:id', async (req, res, next) => {
     try {
         const gameData = await fetchGameById(req.params.id);
@@ -122,10 +104,7 @@ router.get('/details/:id', async (req, res, next) => {
     }
 });
 
-/*
- * GET /api/games/:id
- * Alias de /details/:id — conservé pour compatibilité.
- */
+// Alias de /details/:id
 router.get('/:id', async (req, res, next) => {
     try {
         const gameData = await fetchGameById(req.params.id);

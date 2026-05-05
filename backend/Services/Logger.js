@@ -1,7 +1,4 @@
-/*
- * Service de logging.
- * Stocke les logs dans Firestore pour consultation par les admins.
- */
+// Enregistrement des actions utilisateurs (Logs)
 const { admin, db } = require('./Firebase');
 
 class Logger {

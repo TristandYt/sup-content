@@ -1,20 +1,10 @@
-/*
- * Contrôleur critiques.
- * Pagination cursor-based sur getGameReviews et getMyReviews.
- *
- * Modèle Firestore : reviews/{userId}_{gameId}
- *   { userId, gameId, rating, text, updatedAt }
- */
+// Contrôleur des critiques
 const { admin, db } = require('../Services/Firebase');
 const Logger = require('../Services/Logger');
 
 const REVIEWS_PAGE_SIZE = 20;
 
-/*
- * POST /api/reviews
- * PUT  /api/reviews/:gameId
- * Body : { gameId?, rating, text? }
- */
+// Ajouter ou modifier une critique
 exports.addOrUpdateReview = async (req, res, next) => {
     try {
         const userId = req.user.id;
@@ -35,7 +25,6 @@ exports.addOrUpdateReview = async (req, res, next) => {
             updatedAt: admin.firestore.FieldValue.serverTimestamp(),
         }, { merge: true });
 
-        // Logger l'ajout/mise à jour de critique
         await Logger.log('review_added_or_updated', userId, { gameId, rating, text: text ? 'present' : 'empty' });
 
         res.json({ success: true, msg: 'Critique enregistrée' });
@@ -44,10 +33,7 @@ exports.addOrUpdateReview = async (req, res, next) => {
     }
 };
 
-/*
- * GET /api/reviews/me?cursor=<ISO date>
- * Reviews de l'utilisateur connecté, paginées.
- */
+// Récupérer les critiques de l'utilisateur (paginé)
 exports.getMyReviews = async (req, res, next) => {
     try {
         const userId = req.user.id;
@@ -75,10 +61,7 @@ exports.getMyReviews = async (req, res, next) => {
     }
 };
 
-/*
- * GET /api/reviews/game/:gameId?cursor=<ISO date>
- * Reviews d'un jeu + note moyenne. Route publique. Paginée.
- */
+// Récupérer les critiques d'un jeu avec sa note moyenne (paginé)
 exports.getGameReviews = async (req, res, next) => {
     try {
         const gameId = req.params.gameId.toString();
@@ -117,9 +100,7 @@ exports.getGameReviews = async (req, res, next) => {
     }
 };
 
-/*
- * DELETE /api/reviews/:gameId
- */
+// Supprimer une critique
 exports.deleteReview = async (req, res, next) => {
     try {
         const userId = req.user.id;
@@ -133,10 +114,70 @@ exports.deleteReview = async (req, res, next) => {
 
         await db.collection('reviews').doc(reviewId).delete();
 
-        // Logger la suppression de critique
         await Logger.log('review_deleted', userId, { gameId });
 
         res.json({ success: true, msg: 'Critique supprimée' });
+    } catch (error) {
+        next(error);
+    }
+};
+
+// Liker ou retirer un like sur une critique
+exports.toggleLikeReview = async (req, res, next) => {
+    try {
+        const userId = req.user.id;
+        const { reviewId } = req.params; 
+
+        const reviewRef = db.collection('reviews').doc(reviewId);
+        const reviewDoc = await reviewRef.get();
+
+        if (!reviewDoc.exists) return res.status(404).json({ success: false, msg: 'Critique introuvable' });
+
+        const currentLikes = reviewDoc.data().likedBy || [];
+        if (currentLikes.includes(userId)) {
+            await reviewRef.update({ likedBy: admin.firestore.FieldValue.arrayRemove(userId) });
+            res.status(200).json({ success: true, msg: 'Like retiré' });
+        } else {
+            await reviewRef.update({ likedBy: admin.firestore.FieldValue.arrayUnion(userId) });
+            
+            const authorId = reviewDoc.data().userId;
+            if (authorId !== userId) {
+                await db.collection('notifications').add({
+                    userId: authorId, type: 'NEW_LIKE', sourceUserId: userId, reviewId,
+                    isRead: false, createdAt: admin.firestore.FieldValue.serverTimestamp()
+                });
+            }
+            res.status(200).json({ success: true, msg: 'Critique likée' });
+        }
+    } catch (error) {
+        next(error);
+    }
+};
+
+// Commenter une critique
+exports.commentReview = async (req, res, next) => {
+    try {
+        const userId = req.user.id;
+        const { reviewId } = req.params;
+        const { text } = req.body;
+
+        if (!text || text.trim() === '') return res.status(400).json({ success: false, msg: 'Le commentaire ne peut pas être vide' });
+
+        const reviewRef = db.collection('reviews').doc(reviewId);
+        if (!(await reviewRef.get()).exists) return res.status(404).json({ success: false, msg: 'Critique introuvable' });
+
+        const commentRef = await reviewRef.collection('comments').add({
+            userId, text: text.trim(), createdAt: admin.firestore.FieldValue.serverTimestamp()
+        });
+
+        const reviewAuthorId = (await reviewRef.get()).data().userId;
+        if (reviewAuthorId !== userId) {
+            await db.collection('notifications').add({
+                userId: reviewAuthorId, type: 'NEW_COMMENT', sourceUserId: userId, reviewId,
+                isRead: false, createdAt: admin.firestore.FieldValue.serverTimestamp()
+            });
+        }
+        res.status(201).json({ success: true, msg: 'Commentaire ajouté', commentId: commentRef.id });
     } catch (error) {
         next(error);
     }

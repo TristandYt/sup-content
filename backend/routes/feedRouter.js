@@ -1,13 +1,11 @@
 /*
  * Route du fil d'actualité.
- * Renvoie les critiques récentes des utilisateurs suivis par le user connecté.
+ * Auth appliqué dans server.js — pas de router.use(auth) ici.
  */
 const express = require('express');
 const router = express.Router();
-const auth = require('../middlewares/auth');
 const feedController = require('../controllers/feedController');
 
-router.use(auth);
-router.get('/',feedController.getNewsFeed);
+router.get('/', feedController.getNewsFeed);
 
 module.exports = router;

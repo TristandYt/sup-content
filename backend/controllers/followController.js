@@ -1,17 +1,8 @@
-/*
- * Contrôleur de suivi.
- * Gère les relations follow/unfollow entre utilisateurs.
- *
- * Modèle Firestore : follows/{followerId}_{followingId}
- *   { followerId, followingId, createdAt }
- */
+// Gestion des abonnements
 const { admin, db } = require('../Services/Firebase');
 const Logger = require('../Services/Logger');
 
-/*
- * POST /api/follows/:userId
- * Suit un utilisateur. Vérifie qu'il existe et qu'on ne se suit pas soi-même.
- */
+// S'abonner à un utilisateur
 exports.followUser = async (req, res, next) => {
     try {
         const followerId = req.user.id;
@@ -38,8 +29,15 @@ exports.followUser = async (req, res, next) => {
             createdAt: admin.firestore.FieldValue.serverTimestamp(),
         });
 
-        // Logger le follow
         await Logger.log('user_followed', followerId, { followingId });
+
+        await db.collection('notifications').add({
+            userId: followingId,
+            type: 'NEW_FOLLOWER',
+            sourceUserId: followerId,
+            isRead: false,
+            createdAt: admin.firestore.FieldValue.serverTimestamp()
+        });
 
         res.status(201).json({ success: true, msg: 'Vous suivez maintenant cet utilisateur' });
     } catch (error) {
@@ -47,10 +45,7 @@ exports.followUser = async (req, res, next) => {
     }
 };
 
-/*
- * DELETE /api/follows/:userId
- * Arrête de suivre un utilisateur.
- */
+// Se désabonner d'un utilisateur
 exports.unfollowUser = async (req, res, next) => {
     try {
         const followerId = req.user.id;
@@ -64,7 +59,6 @@ exports.unfollowUser = async (req, res, next) => {
 
         await db.collection('follows').doc(followId).delete();
 
-        // Logger l'unfollow
         await Logger.log('user_unfollowed', followerId, { followingId });
 
         res.json({ success: true, msg: 'Vous ne suivez plus cet utilisateur' });
@@ -73,10 +67,7 @@ exports.unfollowUser = async (req, res, next) => {
     }
 };
 
-/*
- * GET /api/follows/me/following
- * Retourne la liste des utilisateurs que le user connecté suit.
- */
+// Liste des utilisateurs suivis (Following)
 exports.getMyFollowing = async (req, res, next) => {
     try {
         const userId = req.user.id;
@@ -97,10 +88,7 @@ exports.getMyFollowing = async (req, res, next) => {
     }
 };
 
-/*
- * GET /api/follows/me/followers
- * Retourne la liste des utilisateurs qui suivent le user connecté.
- */
+// Liste des abonnés (Followers)
 exports.getMyFollowers = async (req, res, next) => {
     try {
         const userId = req.user.id;

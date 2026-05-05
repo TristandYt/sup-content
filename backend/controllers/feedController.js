@@ -1,27 +1,12 @@
-/*
- * Contrôleur fil d'actualité.
- * Récupère les reviews récentes des utilisateurs suivis.
- * Pagination cursor-based via ?cursor=<updatedAt ISO string>.
- *
- * ⚠️ Limitation Firestore : `in` limité à 10 valeurs.
- *    Solution fan-out à implémenter pour les gros comptes (>10 followings).
- *    En attendant, on pagine par batch de 10 followings.
- */
+// Fil d'actualité (Abonnements)
 const { db } = require('../Services/Firebase');
 
 const FEED_PAGE_SIZE = 20;
 
-/*
- * GET /api/feeds?cursor=<ISO date>&followOffset=<number>
- *
- * cursor       : updatedAt du dernier item reçu (pour la page suivante)
- * followOffset : index de départ dans la liste des followings (par tranche de 10)
- */
 exports.getNewsFeed = async (req, res, next) => {
     try {
         const userId = req.user.id;
-        const { cursor, followOffset = 0 } = req.query;
-        const offset = parseInt(followOffset, 10) || 0;
+        const { cursor } = req.query;
 
         const followsSnapshot = await db.collection('follows')
             .where('followerId', '==', userId)
@@ -34,52 +19,81 @@ exports.getNewsFeed = async (req, res, next) => {
                 success: true,
                 feed: [],
                 nextCursor: null,
-                nextFollowOffset: null,
                 msg: 'Suivez des utilisateurs pour voir leur activité',
             });
         }
 
-        const batchIds = allFollowingIds.slice(offset, offset + 10);
-
-        if (batchIds.length === 0) {
-            return res.json({ success: true, feed: [], nextCursor: null, nextFollowOffset: null });
+        const chunks = [];
+        for (let i = 0; i < allFollowingIds.length; i += 10) {
+            chunks.push(allFollowingIds.slice(i, i + 10));
         }
 
-        let query = db.collection('reviews')
-            .where('userId', 'in', batchIds)
-            .orderBy('updatedAt', 'desc');
+        // 1. Récupération des critiques (Reviews)
+        const reviewPromises = chunks.map(chunk => {
+            return db.collection('reviews')
+                .where('userId', 'in', chunk)
+                .orderBy('updatedAt', 'desc')
+                .limit(FEED_PAGE_SIZE).get();
+        });
 
+        // 2. Récupération des ajouts en Bibliothèque (Library)
+        const libraryPromises = allFollowingIds.map(fId => {
+            return db.collection('users').doc(fId).collection('library')
+                .orderBy('updatedAt', 'desc')
+                .limit(FEED_PAGE_SIZE).get();
+        });
+
+        const [reviewSnapshots, librarySnapshots] = await Promise.all([
+            Promise.all(reviewPromises),
+            Promise.all(libraryPromises)
+        ]);
+        
+        let allFeedItems = [];
+        reviewSnapshots.forEach(snap => {
+            snap.docs.forEach(doc => {
+                allFeedItems.push({
+                    id: doc.id,
+                    type: 'REVIEW_ADDED',
+                    data: doc.data(),
+                    updatedAt: doc.data().updatedAt?.toDate()
+                });
+            });
+        });
+
+        librarySnapshots.forEach((snap, index) => {
+            const fId = allFollowingIds[index];
+            snap.docs.forEach(doc => {
+                allFeedItems.push({
+                    id: `lib_${fId}_${doc.id}`,
+                    type: 'LIBRARY_UPDATED',
+                    data: { userId: fId, ...doc.data() },
+                    updatedAt: doc.data().updatedAt?.toDate()
+                });
+            });
+        });
+
+        // Tri chronologique global (Critiques + Bibliothèque combinées)
+        allFeedItems.sort((a, b) => (b.updatedAt?.getTime() || 0) - (a.updatedAt?.getTime() || 0));
+        
         if (cursor) {
-            const cursorDate = new Date(cursor);
-            query = query.startAfter(cursorDate);
+            const cursorTime = new Date(cursor).getTime();
+            allFeedItems = allFeedItems.filter(item => (item.updatedAt?.getTime() || 0) < cursorTime);
         }
 
-        query = query.limit(FEED_PAGE_SIZE);
+        const feed = allFeedItems.slice(0, FEED_PAGE_SIZE);
 
-        const snapshot = await query.get();
-        const feed = snapshot.docs.map(doc => ({
-            id: doc.id,
-            type: 'REVIEW_ADDED',
-            data: doc.data(),
-        }));
-
-       
-        const lastDoc = snapshot.docs[snapshot.docs.length - 1];
-        const nextCursor = lastDoc
-            ? lastDoc.data().updatedAt?.toDate().toISOString()
+        const lastItem = feed[feed.length - 1];
+        const nextCursor = feed.length === FEED_PAGE_SIZE && lastItem
+            ? lastItem.updatedAt?.toISOString()
             : null;
 
-       
-        const nextFollowOffset = feed.length === FEED_PAGE_SIZE && offset + 10 < allFollowingIds.length
-            ? offset + 10
-            : null;
+        feed.forEach(item => delete item.updatedAt);
 
         res.json({
             success: true,
             total: feed.length,
             feed,
             nextCursor,
-            nextFollowOffset,
         });
     } catch (error) {
         next(error);

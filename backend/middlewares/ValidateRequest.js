@@ -1,7 +1,4 @@
-/*
- * Middleware de validation de requête.
- * Valide req.body avec un schéma Zod et renvoie les erreurs si nécessaire.
- */
+// Middleware de validation de requête (Zod)
 const validateRequest = (schema) => (req, res, next) => {
     try {
         schema.parse(req.body);

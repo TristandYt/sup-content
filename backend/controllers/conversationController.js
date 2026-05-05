@@ -1,14 +1,4 @@
-/*
- * Contrôleur conversations.
- * Messagerie privée 1-to-1 — suivi mutuel requis pour démarrer une conversation.
- *
- * Modèle Firestore :
- *   conversations/{userIdA}_{userIdB}          → document de conversation
- *   conversations/{id}/messages/{messageId}    → sous-collection messages
- *
- * Règle d'ID : les deux userIds sont triés alphabétiquement avant jointure
- *   pour éviter les doublons A_B / B_A.
- */
+// Contrôleur de messagerie privée
 const { admin, db } = require('../Services/Firebase');
 const Logger = require('../Services/Logger');
 
@@ -22,10 +12,7 @@ const checkMutualFollow = async (idA, idB) => {
     return snapAB.exists && snapBA.exists;
 };
 
-/*
- * GET /api/conversations
- * Retourne toutes les conversations de l'utilisateur connecté, triées par dernier message.
- */
+// Liste des conversations
 exports.getMyConversations = async (req, res, next) => {
     try {
         const userId = req.user.id;
@@ -46,19 +33,14 @@ exports.getMyConversations = async (req, res, next) => {
     }
 };
 
-/*
- * POST /api/conversations
- * Body : { targetUserId }
- * Récupère la conversation existante ou en crée une nouvelle.
- * Vérifie le suivi mutuel avant création.
- */
+// Créer ou récupérer une conversation
 exports.getOrCreateConversation = async (req, res, next) => {
     try {
         const userId = req.user.id;
         const { targetUserId } = req.body;
 
         if (!targetUserId) {
-            return res.status(400).json({ success: false, msg: 'targetUserId manquant' });
+            return res.status(400).json({ success: false, msg: 'Cible utilisateur manquant' });
         }
         if (userId === targetUserId) {
             return res.status(400).json({ success: false, msg: 'Vous ne pouvez pas vous écrire à vous-même' });
@@ -92,7 +74,6 @@ exports.getOrCreateConversation = async (req, res, next) => {
 
         await convRef.set(newConversation);
 
-        // Logger la création de conversation
         await Logger.log('conversation_created', userId, { targetUserId, conversationId });
 
         res.status(201).json({ success: true, created: true, conversation: { id: conversationId, ...newConversation } });
@@ -101,11 +82,7 @@ exports.getOrCreateConversation = async (req, res, next) => {
     }
 };
 
-/*
- * GET /api/conversations/:conversationId/messages
- * Récupère les messages d'une conversation (50 plus récents).
- * Vérifie que l'utilisateur est bien un participant.
- */
+// Historique des messages
 exports.getMessages = async (req, res, next) => {
     try {
         const userId = req.user.id;
@@ -132,12 +109,7 @@ exports.getMessages = async (req, res, next) => {
     }
 };
 
-/*
- * POST /api/conversations/:conversationId/messages
- * Body : { text?, attachments? }
- * Envoie un message. Met à jour le document parent en batch.
- * text OU attachments (min 1 entrée) est obligatoire.
- */
+// Envoyer un message
 exports.sendMessage = async (req, res, next) => {
     try {
         const userId = req.user.id;
@@ -168,7 +140,6 @@ exports.sendMessage = async (req, res, next) => {
             createdAt: admin.firestore.FieldValue.serverTimestamp(),
         };
 
-        // Batch : écriture du message + mise à jour du parent en une seule opération atomique
         const batch = db.batch();
         batch.set(messageRef, messageData);
         batch.update(convRef, {
@@ -179,7 +150,6 @@ exports.sendMessage = async (req, res, next) => {
 
         await batch.commit();
 
-        // Logger l'envoi de message
         await Logger.log('message_sent', userId, { conversationId, messageId: messageRef.id, hasText: !!text.trim(), attachmentsCount: attachments.length });
 
         res.status(201).json({ success: true, msg: 'Message envoyé', messageId: messageRef.id });
@@ -188,11 +158,7 @@ exports.sendMessage = async (req, res, next) => {
     }
 };
 
-/*
- * PATCH /api/conversations/:conversationId/messages/:messageId/read
- * Marque un message comme lu par l'utilisateur connecté (read receipt).
- * Ajoute l'userId dans le tableau readBy via arrayUnion.
- */
+// Marquer un message comme lu
 exports.markAsRead = async (req, res, next) => {
     try {
         const userId = req.user.id;
@@ -218,7 +184,6 @@ exports.markAsRead = async (req, res, next) => {
             readBy: admin.firestore.FieldValue.arrayUnion(userId),
         });
 
-        // Logger le marquage comme lu
         await Logger.log('message_read', userId, { conversationId, messageId });
 
         res.json({ success: true, msg: 'Message marqué comme lu' });

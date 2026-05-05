@@ -6,6 +6,7 @@
  */
 const { admin, db, auth } = require('../Services/Firebase');
 const Logger = require('../Services/Logger');
+const IGDBService = require('../Services/Api_igdb');
 
 /*
  * GET /api/users/profile  (privé)
@@ -52,11 +53,12 @@ exports.getPublicProfile = async (req, res, next) => {
 exports.updateProfile = async (req, res, next) => {
     try {
         const userId = req.user.id;
-        const { username, bio } = req.body;
+        const { username, bio, preferences } = req.body;
 
         const updates = { updatedAt: admin.firestore.FieldValue.serverTimestamp() };
         if (username !== undefined) updates.username = username;
         if (bio !== undefined) updates.bio = bio;
+        if (preferences !== undefined) updates.preferences = preferences;
 
         await db.collection('users').doc(userId).update(updates);
 
@@ -162,6 +164,24 @@ exports.addFavorite = async (req, res, next) => {
         // Logger l'ajout aux favoris
         await Logger.log('favorite_added', userId, { gameId, gameName });
 
+        // Recommandation automatique basée sur le goût (Cahier des charges 2.2.6)
+        try {
+            const similarGames = await IGDBService.getSimilarGames(gameId);
+            if (similarGames && similarGames.length > 0 && similarGames[0].similar_games && similarGames[0].similar_games.length > 0) {
+                const recGame = similarGames[0].similar_games[0];
+                await db.collection('notifications').add({
+                    userId,
+                    type: 'RECOMMENDATION',
+                    message: `Puisque vous avez aimé ${gameName || 'ce jeu'}, vous devriez découvrir ${recGame.name} !`,
+                    gameId: recGame.id,
+                    isRead: false,
+                    createdAt: admin.firestore.FieldValue.serverTimestamp()
+                });
+            }
+        } catch (error) {
+            console.error('Erreur génération notification reco:', error.message);
+        }
+
         res.json({ success: true, msg: 'Jeu ajouté aux favoris' });
     } catch (error) {
         next(error);
@@ -243,6 +263,39 @@ exports.promoteUser = async (req, res, next) => {
         await Logger.log('user_promoted', req.user.id, { promotedUserId: userId, newRole: 'admin' });
 
         res.json({ success: true, msg: 'Utilisateur promu administrateur' });
+    } catch (error) {
+        next(error);
+    }
+};
+
+/*
+ * GET /api/users/me/export
+ * Exportation des données RGPD
+ */
+exports.exportUserData = async (req, res, next) => {
+    try {
+        const userId = req.user.id;
+        
+        const userDoc = await db.collection('users').doc(userId).get();
+        const userData = userDoc.exists ? userDoc.data() : {};
+
+        const librarySnap = await db.collection('users').doc(userId).collection('library').get();
+        const library = librarySnap.docs.map(doc => doc.data());
+
+        const reviewsSnap = await db.collection('reviews').where('userId', '==', userId).get();
+        const reviews = reviewsSnap.docs.map(doc => doc.data());
+
+        const followsSnap = await db.collection('follows').where('followerId', '==', userId).get();
+        const follows = followsSnap.docs.map(doc => doc.data());
+
+        const exportData = {
+            profile: userData, library, reviews, following: follows,
+            exportedAt: new Date().toISOString()
+        };
+
+        res.setHeader('Content-disposition', `attachment; filename=export_rgpd_${userId}.json`);
+        res.setHeader('Content-type', 'application/json');
+        res.status(200).send(JSON.stringify(exportData, null, 2));
     } catch (error) {
         next(error);
     }
