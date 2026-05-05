@@ -362,7 +362,7 @@
 }
 
 /* ============================================
-   RESPONSIVE DESIGN
+   RESPONSIVE DESIGN - ACCUEIL
    ============================================ */
 
 @media (max-width: 768px) {
@@ -414,6 +414,7 @@
     font-size: 1rem;
   }
 }
+
 /* ============================================
    APP CONTAINER & LAYOUT
    ============================================ */
@@ -700,6 +701,389 @@
     height: 2rem;
   }
 }
+
+/* ============================================
+   AUTHENTICATION PAGES (LOGIN & REGISTER)
+   ============================================ */
+
+.auth-page-container {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  padding: 2rem 1rem;
+  background: #0a0a0f;
+}
+
+.auth-gradient {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(
+    ellipse at top,
+    rgba(147, 51, 234, 0.15) 0%,
+    rgba(59, 130, 246, 0.1) 30%,
+    transparent 70%
+  );
+  pointer-events: none;
+}
+
+/* ============================================
+   AUTH CARD
+   ============================================ */
+
+.auth-card {
+  position: relative;
+  width: 100%;
+  max-width: 460px;
+  padding: 2.5rem;
+  border-radius: 1.5rem;
+  background: linear-gradient(
+    to bottom,
+    rgba(255, 255, 255, 0.08),
+    rgba(255, 255, 255, 0.02)
+  );
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(20px);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+  animation: slideUp 0.4s ease-out;
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (max-width: 480px) {
+  .auth-card {
+    padding: 2rem 1.5rem;
+  }
+}
+
+/* ============================================
+   LANGUAGE SELECTOR
+   ============================================ */
+
+.auth-language-selector {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.lang-btn {
+  padding: 0.375rem 0.875rem;
+  border-radius: 0.5rem;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #9ca3af;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.lang-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: white;
+}
+
+.lang-btn.active {
+  background: linear-gradient(to right, #9333ea, #3b82f6);
+  border-color: transparent;
+  color: white;
+  box-shadow: 0 4px 12px rgba(147, 51, 234, 0.3);
+}
+
+/* ============================================
+   AUTH HEADER
+   ============================================ */
+
+.auth-header {
+  text-align: center;
+  margin-bottom: 2rem;
+}
+
+.auth-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 4rem;
+  height: 4rem;
+  margin-bottom: 1rem;
+  border-radius: 1rem;
+  background: linear-gradient(135deg, #9333ea, #3b82f6);
+  font-size: 2rem;
+  box-shadow: 0 8px 24px rgba(147, 51, 234, 0.4);
+}
+
+.auth-title {
+  font-size: 2rem;
+  font-weight: 700;
+  margin: 0 0 0.5rem 0;
+  background: linear-gradient(to right, white, #9ca3af);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.auth-subtitle {
+  font-size: 1rem;
+  color: #9ca3af;
+  margin: 0;
+}
+
+@media (max-width: 480px) {
+  .auth-icon {
+    width: 3.5rem;
+    height: 3.5rem;
+    font-size: 1.75rem;
+  }
+
+  .auth-title {
+    font-size: 1.75rem;
+  }
+
+  .auth-subtitle {
+    font-size: 0.9rem;
+  }
+}
+
+/* ============================================
+   ERROR MESSAGE
+   ============================================ */
+
+.auth-error {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.875rem 1rem;
+  margin-bottom: 1.5rem;
+  border-radius: 0.75rem;
+  background: rgba(239, 68, 68, 0.15);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  color: #fca5a5;
+  font-size: 0.9rem;
+  animation: shake 0.3s ease;
+}
+
+@keyframes shake {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  25% {
+    transform: translateX(-5px);
+  }
+  75% {
+    transform: translateX(5px);
+  }
+}
+
+/* ============================================
+   FORM
+   ============================================ */
+
+.auth-form {
+  margin-bottom: 1.5rem;
+}
+
+.auth-input-group {
+  margin-bottom: 1.25rem;
+}
+
+.auth-label {
+  display: inline-block;
+  margin-bottom: 0.5rem;
+  padding: 0.25rem 0.625rem;
+  background: rgba(147, 51, 234, 0.2);
+  color: #c084fc;
+  border-radius: 0.375rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.auth-input-wrapper {
+  position: relative;
+}
+
+.auth-input {
+  width: 100%;
+  padding: 0.875rem 1rem;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 0.75rem;
+  color: white;
+  font-size: 0.95rem;
+  outline: none;
+  transition: all 0.3s ease;
+}
+
+.auth-input::placeholder {
+  color: #64748b;
+}
+
+.auth-input:focus {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: #9333ea;
+  box-shadow: 0 0 0 3px rgba(147, 51, 234, 0.15);
+}
+
+.auth-input:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.auth-toggle-password {
+  position: absolute;
+  right: 1rem;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  color: #9ca3af;
+  cursor: pointer;
+  transition: color 0.2s ease;
+  padding: 0.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.auth-toggle-password:hover {
+  color: white;
+}
+
+/* ============================================
+   SUBMIT BUTTON
+   ============================================ */
+
+.auth-submit-btn {
+  width: 100%;
+  padding: 1rem;
+  margin-top: 0.5rem;
+  background: linear-gradient(to right, #9333ea, #3b82f6);
+  border: none;
+  border-radius: 0.75rem;
+  color: white;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 16px rgba(147, 51, 234, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+.auth-submit-btn:hover:not(:disabled) {
+  background: linear-gradient(to right, #7c3aed, #2563eb);
+  box-shadow: 0 6px 20px rgba(147, 51, 234, 0.4);
+  transform: translateY(-2px);
+}
+
+.auth-submit-btn:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.auth-submit-btn:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.auth-btn-spinner {
+  width: 1rem;
+  height: 1rem;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top-color: white;
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
+}
+
+/* ============================================
+   DIVIDER
+   ============================================ */
+
+.auth-divider {
+  display: flex;
+  align-items: center;
+  margin: 1.5rem 0;
+  color: #64748b;
+  font-size: 0.875rem;
+}
+
+.auth-divider::before,
+.auth-divider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.auth-divider span {
+  padding: 0 1rem;
+}
+
+/* ============================================
+   SOCIAL BUTTONS
+   ============================================ */
+
+.auth-social-buttons {
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+  margin-bottom: 1.5rem;
+}
+
+.auth-social-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 3.5rem;
+  height: 3.5rem;
+  padding: 0;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 0.75rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.auth-social-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(147, 51, 234, 0.5);
+  transform: translateY(-2px);
+}
+
+/* ============================================
+   FOOTER
+   ============================================ */
+
+.auth-footer {
+  text-align: center;
+  margin-top: 2rem;
+  margin-bottom: 0;
+  color: #9ca3af;
+  font-size: 0.95rem;
+}
+
+.auth-link {
+  color: #c084fc;
+  cursor: pointer;
+  text-decoration: underline;
+  transition: color 0.2s ease;
+}
+
+.auth-link:hover {
+  color: #a855f7;
+}
 /* ============================================
    MESSAGING PAGE - MODERN GAMING STYLE
    ============================================ */
@@ -729,10 +1113,6 @@
   pointer-events: none;
 }
 
-/* ============================================
-   MESSAGING LAYOUT
-   ============================================ */
-
 .messaging-layout {
   position: relative;
   display: grid;
@@ -749,10 +1129,6 @@
     grid-template-columns: 1fr;
   }
 }
-
-/* ============================================
-   SIDEBAR
-   ============================================ */
 
 .messaging-sidebar {
   background: rgba(10, 10, 15, 0.8);
@@ -815,10 +1191,6 @@
   transform: scale(1.05);
   box-shadow: 0 4px 12px rgba(147, 51, 234, 0.4);
 }
-
-/* ============================================
-   CONTACTS LIST
-   ============================================ */
 
 .messaging-contacts-list {
   flex: 1;
@@ -913,10 +1285,6 @@
   color: #64748b;
 }
 
-/* ============================================
-   MAIN CHAT AREA
-   ============================================ */
-
 .messaging-main {
   background: rgba(10, 10, 15, 0.5);
   backdrop-filter: blur(20px);
@@ -984,10 +1352,6 @@
   color: white;
 }
 
-/* ============================================
-   MESSAGES AREA
-   ============================================ */
-
 .messaging-messages-area {
   flex: 1;
   overflow-y: auto;
@@ -1032,10 +1396,6 @@
   color: #64748b;
   margin: 0;
 }
-
-/* ============================================
-   MESSAGE BUBBLES
-   ============================================ */
 
 .messaging-message {
   display: flex;
@@ -1118,10 +1478,6 @@
   color: #64748b;
 }
 
-/* ============================================
-   MESSAGE OPTIONS
-   ============================================ */
-
 .messaging-message-options {
   position: relative;
 }
@@ -1200,10 +1556,6 @@
   background: rgba(239, 68, 68, 0.15);
 }
 
-/* ============================================
-   INPUT AREA
-   ============================================ */
-
 .messaging-input-area {
   display: flex;
   align-items: center;
@@ -1281,10 +1633,6 @@
   cursor: not-allowed;
 }
 
-/* ============================================
-   EMPTY STATE
-   ============================================ */
-
 .messaging-empty-state {
   display: flex;
   align-items: center;
@@ -1317,57 +1665,24 @@
   margin: 0;
 }
 
-/* 
-/* ============================================
-   LAYOUT PROFIL
-   ============================================ */
-
-.profile-layout {
-  display: grid;
-  grid-template-columns: 350px 1fr;
-  gap: 40px;
-  align-items: start;
-  padding-top: 40px;
-}
-
-.avatar-wrapper-v2 {
-  position: relative;
-  width: 120px;
-  height: 120px;
-  margin: 0 auto;
-}
-
-.avatar-img-v2 {
-  width: 100%;
-  height: 100%;
-  border-radius: 50%;
-  object-fit: cover;
-  border: 3px solid var(--primary);
-  box-shadow: 0 0 20px rgba(147, 51, 234, 0.3);
-}
-
-.edit-badge-v2 {
-  position: absolute;
-  bottom: 5px;
-  right: 5px;
-  background: var(--primary);
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  font-size: 14px;
-  border: 2px solid #1e293b;
-}
-
-@media (max-width: 1000px) {
-  .profile-layout {
-    grid-template-columns: 1fr;
+@media (max-width: 768px) {
+  .messaging-layout {
+    height: calc(100vh - 3.5rem);
   }
-  .profile-sidebar {
-    max-width: 500px;
-    margin: 0 auto;
+
+  .messaging-messages-area {
+    padding: 1rem;
+  }
+
+  .messaging-message {
+    max-width: 85%;
+  }
+
+  .messaging-input-area {
+    padding: 0.75rem 1rem;
+  }
+
+  .messaging-chat-header {
+    padding: 0.75rem 1rem;
   }
 }
