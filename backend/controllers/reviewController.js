@@ -41,6 +41,7 @@ exports.addOrUpdateReview = async (req, res, next) => {
           gameId,
           rating: Number(rating),
           text,
+          pseudo: req.body.pseudo || "Anonyme",
           updatedAt: admin.firestore.FieldValue.serverTimestamp(),
         },
         { merge: true },
