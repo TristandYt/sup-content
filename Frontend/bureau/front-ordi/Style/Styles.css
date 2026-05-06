@@ -1922,7 +1922,23 @@
   outline: none;
   transition: all 0.3s ease;
 }
+/* ============================================
+   FIX : SELECT OPTIONS AVEC TEXTE NOIR
+   ============================================ */
 
+.status-select option,
+.filter-select option,
+select option {
+  background: white;
+  color: black;
+}
+
+/* Texte visible dans le select fermé */
+.status-select,
+.filter-select,
+select {
+  color: white;
+}
 .status-select:hover {
   background: rgba(255, 255, 255, 0.08);
   border-color: rgba(147, 51, 234, 0.5);
