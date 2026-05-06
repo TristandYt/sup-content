@@ -9,8 +9,10 @@ services:
       - "9099:9099" # Port Auth
     volumes:
       - .:/home/node/app
+      - db_vol:/home/node/app/data
+      - firebase_cache:/home/node/.cache
     working_dir: /home/node/app
-    command: firebase emulators:start --project sup-content-tristan
+    command: firebase emulators:start --project sup-content-tristan --import=./data --export-on-exit=./data
     networks:
       - sup-network
 
@@ -25,7 +27,7 @@ services:
       - "3000:3000"
     volumes:
       - ./backend:/app
-      - /app/node_modules
+      - backend_vol:/app/node_modules
     env_file:
       - ./backend/.env
     environment:
@@ -47,7 +49,7 @@ services:
       - "3001:5173"
     volumes:
       - ./Frontend/bureau/front-ordi:/app
-      - /app/node_modules
+      - web_vol:/app/node_modules
     environment:
       - CHOKIDAR_USEPOLLING=true 
     depends_on:
@@ -58,3 +60,9 @@ services:
 networks:
   sup-network:
     driver: bridge
+
+volumes:
+  backend_vol:
+  web_vol:
+  db_vol:
+  firebase_cache:
