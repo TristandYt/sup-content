@@ -1,6 +1,6 @@
 // Recherche globale et recommandations
-const { db } = require('../../Services/Firebase');
-const IGDBService = require('../../Services/Api_igdb');
+const { db } = require('../Services/Firebase');
+const IGDBService = require('../Services/Api_igdb');
 const { filterGamesByAge } = require('../utils/pegiHelper');
 
 exports.searchAll = async (req, res, next) => {

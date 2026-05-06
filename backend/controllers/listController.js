@@ -1,6 +1,6 @@
 // Gestion de la bibliothèque et des listes de jeux
-const { admin, db } = require('../../Services/Firebase');
-const Logger = require('../../Services/Logger');
+const { admin, db } = require('../Services/Firebase');
+const Logger = require('../Services/Logger');
 
 const VALID_STATUSES = ['to_play', 'playing', 'finished', 'dropped'];
 

@@ -2,7 +2,7 @@
  * Middleware d'authentification Firebase.
  * Vérifie le token Authorization et attache l'UID à req.user.
  */
-const { auth } = require('../../Services/Firebase');
+const { auth } = require('../Services/Firebase');
 
 const authMiddleware = async (req, res, next) => {
 

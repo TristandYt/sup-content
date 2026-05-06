@@ -1,6 +1,6 @@
 // Contrôleur des critiques
-const { admin, db } = require('../../Services/Firebase');
-const Logger = require('../../Services/Logger');
+const { admin, db } = require('../Services/Firebase');
+const Logger = require('../Services/Logger');
 
 const REVIEWS_PAGE_SIZE = 20;
 

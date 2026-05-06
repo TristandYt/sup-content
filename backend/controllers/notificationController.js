@@ -1,5 +1,5 @@
 // Gestion des notifications
-const { db } = require('../../Services/Firebase');
+const { db } = require('../Services/Firebase');
 
 exports.getMyNotifications = async (req, res, next) => {
     try {
