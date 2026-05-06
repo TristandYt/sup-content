@@ -9,10 +9,13 @@ services:
       - "9099:9099" # Port Auth
     volumes:
       - .:/home/node/app
-      - db_vol:/home/node/app/data
       - firebase_cache:/home/node/.cache
     working_dir: /home/node/app
-    command: firebase emulators:start --project sup-content-tristan --import=./data --export-on-exit=./data
+    command: >
+      firebase emulators:start 
+      --project sup-content-tristan 
+      --import=./data 
+      --export-on-exit=./data
     networks:
       - sup-network
 

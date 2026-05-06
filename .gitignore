@@ -10,6 +10,7 @@ node_modules/
 .dockerignore
 
 # Firebase
+data/
 .firebase/
 firestore-debug.log
 ui-debug.log
