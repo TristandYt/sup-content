@@ -27,26 +27,6 @@ exports.getProfile = async (req, res, next) => {
 };
 
 /*
- * GET /api/users/:userId/profile  (public)
- * Retourne uniquement les champs non sensibles : username, bio, createdAt.
- */
-exports.getPublicProfile = async (req, res, next) => {
-    try {
-        const { userId } = req.params;
-        const userDoc = await db.collection('users').doc(userId).get();
-
-        if (!userDoc.exists) {
-            return res.status(404).json({ success: false, msg: 'Utilisateur introuvable' });
-        }
-
-        const { username, bio, createdAt } = userDoc.data();
-        res.json({ success: true, user: { userId, username, bio, createdAt } });
-    } catch (error) {
-        next(error);
-    }
-};
-
-/*
  * PUT /api/users/profile
  * Body : { username?, bio? }
  */

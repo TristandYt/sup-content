@@ -429,22 +429,6 @@ describe('GET /api/users/profile', () => {
     });
 });
 
-describe('GET /api/users/:userId/profile', () => {
-    it('200 — retourne le profil public sans token', async () => {
-        const res = await request(app)
-            .get('/api/users/user_alice_001/profile')
-            .set(AUTH_HEADER); 
-
-        expect(res.status).toBe(200);
-        expect(res.body.user).not.toHaveProperty('email');
-    });
-
-    it('404 — rejette si l\'utilisateur public n\'existe pas', async () => {
-        const res = await request(app).get('/api/users/ghost_user/profile').set(AUTH_HEADER);
-        expect(res.status).toBe(404);
-    });
-});
-
 describe('PUT /api/users/profile', () => {
     it('200 — met à jour le profil', async () => {
         const res = await request(app)
