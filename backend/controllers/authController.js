@@ -44,8 +44,16 @@ exports.register = async (req, res, next) => {
     }
 };
 
+/*
+ * POST /api/auth/login
+ * Note d'architecture (Firebase) : 
+ * La vérification de l'email et du mot de passe se fait directement sur le Frontend via le SDK Firebase.
+ * Le Frontend récupère un JWT (Token) qu'il transmettra ensuite au Backend via l'en-tête Authorization.
+ * Cette route n'est donc pas censée gérer la validation du mot de passe elle-même en base de données.
+ */
 exports.login = async (req, res, next) => {
     res.json({
-        success: false
+        success: false,
+        msg: 'Veuillez utiliser le SDK Firebase côté client pour vous connecter et obtenir votre JWT.'
     });
 };

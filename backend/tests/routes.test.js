@@ -90,6 +90,7 @@ const buildApp = () => {
     app.post('/api/interactions/reviews/:reviewId/like', authMiddleware, require('../controllers/reviewController').toggleLikeReview);
     app.post('/api/interactions/reviews/:reviewId/comments', authMiddleware, require('../controllers/reviewController').commentReview);
     app.get('/api/notifications', authMiddleware, require('../controllers/notificationController').getMyNotifications);
+    app.get('/api/notifications/stream', authMiddleware, require('../controllers/notificationController').streamNotifications);
     app.patch('/api/notifications/:notificationId/read', authMiddleware, require('../controllers/notificationController').markAsRead);
     app.post('/api/moderation/report', authMiddleware, require('../controllers/moderationController').reportContent);
     app.delete('/api/moderation/reviews/:reviewId', authMiddleware, isAdmin, require('../controllers/moderationController').adminDeleteReview);

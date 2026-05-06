@@ -37,25 +37,20 @@ exports.addOrUpdateReview = async (req, res, next) => {
 exports.getMyReviews = async (req, res, next) => {
     try {
         const userId = req.user.id;
-        const { cursor } = req.query;
+        const page = parseInt(req.query.page) || 1;
+        const limitSize = parseInt(req.query.limit) || REVIEWS_PAGE_SIZE;
 
         let query = db.collection('reviews')
             .where('userId', '==', userId)
             .orderBy('updatedAt', 'desc');
 
-        if (cursor) query = query.startAfter(new Date(cursor));
-
-        query = query.limit(REVIEWS_PAGE_SIZE);
+        const offset = (page - 1) * limitSize;
+        query = query.offset(offset).limit(limitSize);
 
         const snapshot = await query.get();
         const reviews = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 
-        const lastDoc = snapshot.docs[snapshot.docs.length - 1];
-        const nextCursor = lastDoc
-            ? lastDoc.data().updatedAt?.toDate().toISOString()
-            : null;
-
-        res.json({ success: true, total: reviews.length, reviews, nextCursor });
+        res.json({ success: true, page, limit: limitSize, count: reviews.length, reviews });
     } catch (error) {
         next(error);
     }
@@ -65,15 +60,15 @@ exports.getMyReviews = async (req, res, next) => {
 exports.getGameReviews = async (req, res, next) => {
     try {
         const gameId = req.params.gameId.toString();
-        const { cursor } = req.query;
+        const page = parseInt(req.query.page) || 1;
+        const limitSize = parseInt(req.query.limit) || REVIEWS_PAGE_SIZE;
 
         let query = db.collection('reviews')
             .where('gameId', '==', gameId)
             .orderBy('updatedAt', 'desc');
 
-        if (cursor) query = query.startAfter(new Date(cursor));
-
-        query = query.limit(REVIEWS_PAGE_SIZE);
+        const offset = (page - 1) * limitSize;
+        query = query.offset(offset).limit(limitSize);
 
         const snapshot = await query.get();
         const reviews = [];
@@ -89,12 +84,7 @@ exports.getGameReviews = async (req, res, next) => {
             ? (totalRating / reviews.length).toFixed(1)
             : null;
 
-        const lastDoc = snapshot.docs[snapshot.docs.length - 1];
-        const nextCursor = lastDoc
-            ? lastDoc.data().updatedAt?.toDate().toISOString()
-            : null;
-
-        res.json({ success: true, averageRating, totalReviews: reviews.length, reviews, nextCursor });
+        res.json({ success: true, averageRating, page, limit: limitSize, count: reviews.length, reviews });
     } catch (error) {
         next(error);
     }
