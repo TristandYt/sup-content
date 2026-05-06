@@ -37,10 +37,12 @@ const UserSearchModal = ({ onClose, onSelectConversation }) => {
       setLoading(true);
       setError("");
       try {
-        const res = await axios.get(`http://localhost:3000/api/users/search`, {
+        const api = await authAxios();
+        const res = await api.get(`/search`, {
           params: { q: query.trim() },
         });
-        setResults(res.data);
+        // Le moteur de recherche unifié renvoie { results: { users: [...], ... } }
+        setResults(res.data.results?.users || []);
       } catch (err) {
         console.error("Erreur recherche:", err);
         setError("Erreur lors de la recherche.");
@@ -52,12 +54,13 @@ const UserSearchModal = ({ onClose, onSelectConversation }) => {
   }, [query]);
 
   const handleSelect = async (u) => {
-    setActionLoading(u.uid);
+    const userId = u.id || u.uid;
+    setActionLoading(userId);
     setError("");
     try {
       const api = await authAxios();
-      const res = await api.post("/conversations", { targetUserId: u.uid });
-      onSelectConversation(res.data.conversation, u);
+      const res = await api.post("/conversations", { targetUserId: userId });
+      onSelectConversation(res.data.conversation, { ...u, uid: userId });
       onClose();
     } catch (err) {
       const msg = err.response?.data?.msg || "";
@@ -181,14 +184,18 @@ const UserSearchModal = ({ onClose, onSelectConversation }) => {
           {!loading &&
             results.map((u) => (
               <div
-                key={u.uid}
+                key={u.id || u.uid}
                 onClick={() => !actionLoading && handleSelect(u)}
                 className="messaging-contact-item"
                 style={{
                   borderRadius: "10px",
                   marginBottom: "6px",
-                  cursor: actionLoading === u.uid ? "wait" : "pointer",
-                  opacity: actionLoading && actionLoading !== u.uid ? 0.5 : 1,
+                  cursor:
+                    actionLoading === (u.id || u.uid) ? "wait" : "pointer",
+                  opacity:
+                    actionLoading && actionLoading !== (u.id || u.uid)
+                      ? 0.5
+                      : 1,
                   transition: "opacity 0.2s",
                 }}
               >
@@ -196,14 +203,16 @@ const UserSearchModal = ({ onClose, onSelectConversation }) => {
                   <img
                     src={
                       u.avatar ||
-                      `https://api.dicebear.com/7.x/bottts/svg?seed=${u.pseudo}`
+                      `https://api.dicebear.com/7.x/bottts/svg?seed=${u.username || u.pseudo}`
                     }
-                    alt={u.pseudo}
+                    alt={u.username || u.pseudo}
                     className="messaging-contact-avatar"
                   />
                 </div>
                 <div className="messaging-contact-info">
-                  <span className="messaging-contact-name">{u.pseudo}</span>
+                  <span className="messaging-contact-name">
+                    {u.username || u.pseudo}
+                  </span>
                   <span className="messaging-contact-status">
                     {u.bio || "Joueur passionné"}
                   </span>

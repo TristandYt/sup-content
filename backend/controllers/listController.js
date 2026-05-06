@@ -47,7 +47,8 @@ exports.updateGameStatus = async (req, res, next) => {
 // Récupérer la bibliothèque complète
 exports.getMyLibrary = async (req, res, next) => {
   try {
-    const userId = req.user.id;
+    // Utilise l'ID passé en paramètre (profil public) ou l'ID de l'utilisateur connecté (mon profil)
+    const userId = req.query.userId || req.user.id;
     const { status } = req.query;
 
     let query = db.collection("users").doc(userId).collection("library");

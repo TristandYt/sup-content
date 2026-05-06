@@ -1,8 +1,17 @@
 import React, { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import axios from "axios";
+import { auth } from "../Service/firebase";
 import "../../Style/Styles.css";
 import defaultCover from "../assets/fr-default-large_default.jpg";
+
+const authAxios = async () => {
+  const token = await auth.currentUser?.getIdToken(true);
+  return axios.create({
+    baseURL: "http://localhost:3000/api",
+    headers: { Authorization: `Bearer ${token}` },
+  });
+};
 
 const Accueil = ({ onGameClick, onUserClick, searchTerm }) => {
   const { t } = useTranslation();
@@ -45,10 +54,12 @@ const Accueil = ({ onGameClick, onUserClick, searchTerm }) => {
           setLoading(false);
           return;
         }
-        const res = await axios.get(`http://localhost:3000/api/users/search`, {
+        const api = await authAxios();
+        const res = await api.get(`/search`, {
           params: { q: searchTerm.trim() },
         });
-        setUsers(res.data);
+        // Le moteur de recherche unifié renvoie { results: { users: [...], ... } }
+        setUsers(res.data.results?.users || []);
       } else {
         setUsers([]);
         const endpoint = hasSearchTerm ? "search" : "popular";
@@ -267,10 +278,10 @@ const Accueil = ({ onGameClick, onUserClick, searchTerm }) => {
               ))
             : users.map((u) => (
                 <div
-                  key={u.uid}
+                  key={u.id || u.uid}
                   className="game-card-modern"
                   style={{ cursor: "pointer" }}
-                  onClick={() => onUserClick && onUserClick(u.uid)}
+                  onClick={() => onUserClick && onUserClick(u.id || u.uid)}
                 >
                   <div
                     className="game-image-container"
@@ -285,9 +296,9 @@ const Accueil = ({ onGameClick, onUserClick, searchTerm }) => {
                     <img
                       src={
                         u.avatar ||
-                        `https://api.dicebear.com/7.x/bottts/svg?seed=${u.pseudo}`
+                        `https://api.dicebear.com/7.x/bottts/svg?seed=${u.username || u.pseudo}`
                       }
-                      alt={u.pseudo}
+                      alt={u.username || u.pseudo}
                       className="game-image"
                     />
                   </div>
@@ -295,7 +306,7 @@ const Accueil = ({ onGameClick, onUserClick, searchTerm }) => {
                     className="game-content"
                     style={{ textAlign: "center", paddingBottom: "20px" }}
                   >
-                    <h3 className="game-title">{u.pseudo}</h3>
+                    <h3 className="game-title">{u.username || u.pseudo}</h3>
                     <p className="game-genre" style={{ fontSize: "0.8rem" }}>
                       {u.bio || "Joueur passionné"}
                     </p>

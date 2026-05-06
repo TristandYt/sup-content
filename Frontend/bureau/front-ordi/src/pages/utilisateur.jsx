@@ -29,6 +29,11 @@ const PublicProfile = ({
   const [followLoading, setFollowLoading] = useState(false);
   const [msgLoading, setMsgLoading] = useState(false);
   const [error, setError] = useState("");
+  const [library, setLibrary] = useState([]);
+
+  const isMe =
+    currentUser &&
+    (currentUser.uid === targetUserId || currentUser.id === targetUserId);
 
   useEffect(() => {
     fetchAll();
@@ -39,16 +44,40 @@ const PublicProfile = ({
     setError("");
     try {
       const api = await authAxios();
-      const [profileRes, followingRes, followersRes] = await Promise.all([
-        axios.get(`http://localhost:3000/api/users/${targetUserId}/profile`),
-        api.get("/follows/me/following"),
-        api.get("/follows/me/followers"),
-      ]);
-      setProfile(profileRes.data);
+      const [profileRes, followingRes, followersRes, libraryRes] =
+        await Promise.all([
+          api.get(`/users/${targetUserId}/profile`),
+          api.get("/follows/me/following"),
+          api.get("/follows/me/followers"),
+          api
+            .get(`/lists/library?userId=${targetUserId}`)
+            .catch(() => ({ data: { library: [] } })),
+        ]);
+
+      // On extrait les données de l'utilisateur et les stats de la réponse
+      const data = profileRes.data;
+      if (data && data.user) {
+        setProfile({
+          ...data.user,
+          followersCount: data.followersCount,
+          followingCount: data.followingCount,
+          gamesCount: data.gamesCount,
+          avatar: data.user.avatar, // S'assure que l'avatar est bien mappé
+        });
+      } else {
+        setProfile(data);
+      }
+
+      setLibrary(libraryRes.data?.library || []);
       const following = followingRes.data?.following || [];
       const followers = followersRes.data?.followers || [];
-      setIFollow(following.some((u) => u.uid === targetUserId));
-      setTheyFollowMe(followers.some((u) => u.uid === targetUserId));
+      // Vérification plus robuste sur uid ou id
+      setIFollow(
+        following.some((u) => u.uid === targetUserId || u.id === targetUserId),
+      );
+      setTheyFollowMe(
+        followers.some((u) => u.uid === targetUserId || u.id === targetUserId),
+      );
     } catch (err) {
       console.error("Erreur fetchAll:", err);
       setError("Impossible de charger ce profil.");
@@ -92,6 +121,29 @@ const PublicProfile = ({
   };
 
   const isMutual = iFollow && theyFollowMe;
+
+  const getCoverUrl = (cover) => {
+    if (!cover) return defaultCover;
+    if (cover.image_id) {
+      return `https://images.igdb.com/igdb/image/upload/t_cover_big/${cover.image_id}.jpg`;
+    }
+    if (
+      typeof cover === "string" &&
+      cover.trim() !== "" &&
+      !cover.includes("undefined")
+    ) {
+      if (cover.startsWith("http")) return cover;
+      return `https://images.igdb.com/igdb/image/upload/t_cover_big/${cover}.jpg`;
+    }
+    return defaultCover;
+  };
+
+  const statusMapping = {
+    to_play: "⏳ À faire",
+    playing: "🎮 En cours",
+    finished: "✅ Fini",
+    dropped: "❌ Abandonné",
+  };
 
   if (loading) {
     return (
@@ -184,9 +236,9 @@ const PublicProfile = ({
             <img
               src={
                 profile.avatar ||
-                `https://api.dicebear.com/7.x/bottts/svg?seed=${profile.pseudo}`
+                `https://api.dicebear.com/7.x/bottts/svg?seed=${profile.username || profile.pseudo}`
               }
-              alt={profile.pseudo}
+              alt={profile.username || profile.pseudo}
               style={{
                 width: "100px",
                 height: "100px",
@@ -204,7 +256,7 @@ const PublicProfile = ({
               className="hero-title"
               style={{ fontSize: "1.8rem", margin: "10px 0 8px" }}
             >
-              {profile.pseudo}
+              {profile.username || profile.pseudo}
             </h2>
 
             {/* Badges statut suivi */}
@@ -320,7 +372,7 @@ const PublicProfile = ({
             </div>
 
             {/* Boutons d'action */}
-            {currentUser ? (
+            {currentUser && !isMe ? (
               <div
                 style={{
                   display: "flex",
@@ -368,17 +420,17 @@ const PublicProfile = ({
                   </button>
                 )}
               </div>
-            ) : (
+            ) : !currentUser ? (
               <p
                 className="game-genre"
                 style={{ opacity: 0.6, fontSize: "0.85rem" }}
               >
                 Connectez-vous pour interagir avec cet utilisateur.
               </p>
-            )}
+            ) : null}
 
             {/* Hint si on suit mais pas de retour */}
-            {currentUser && iFollow && !theyFollowMe && (
+            {currentUser && !isMe && iFollow && !theyFollowMe && (
               <p
                 style={{
                   marginTop: "14px",
@@ -390,6 +442,50 @@ const PublicProfile = ({
               </p>
             )}
           </div>
+        </div>
+
+        {/* Affichage de la collection publique */}
+        <div style={{ marginTop: "40px" }}>
+          <div className="section-header" style={{ marginBottom: "20px" }}>
+            <h3 className="section-title">Sa Collection</h3>
+            <span className="section-count">{library.length}</span>
+          </div>
+
+          {library.length === 0 ? (
+            <p
+              className="empty-text"
+              style={{ textAlign: "center", padding: "20px" }}
+            >
+              Cet utilisateur n'a pas encore ajouté de jeux.
+            </p>
+          ) : (
+            <div className="game-grid">
+              {library.map((game) => (
+                <div
+                  key={game.gameId}
+                  className="game-card-modern"
+                  style={{ cursor: "default" }}
+                >
+                  <div className="game-image-container">
+                    <img
+                      src={getCoverUrl(game.gameCover || game.cover)}
+                      alt={game.gameName || game.name}
+                      className="game-image"
+                    />
+                  </div>
+                  <div className="game-content">
+                    <h4 className="game-title">{game.gameName || game.name}</h4>
+                    <span
+                      className="game-genre"
+                      style={{ fontSize: "0.7rem", opacity: 0.8 }}
+                    >
+                      {statusMapping[game.status] || "Prévu"}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
     </div>
@@ -403,7 +499,7 @@ const MyProfile = ({ user, onLoginSuccess, onLogout }) => {
   const { t, i18n } = useTranslation();
 
   const [profileData, setProfileData] = useState({
-    pseudo: user?.pseudo || user?.displayName || "Joueur",
+    pseudo: user?.username || user?.pseudo || user?.displayName || "Joueur",
     email: user?.email || "",
     bio: user?.bio || "",
     avatar:
@@ -416,15 +512,28 @@ const MyProfile = ({ user, onLoginSuccess, onLogout }) => {
 
   useEffect(() => {
     if (user) {
-      setProfileData((prev) => ({
-        ...prev,
-        pseudo: user.pseudo || user.displayName || prev.pseudo,
-        email: user.email || prev.email,
-        bio: user.bio || prev.bio,
-      }));
+      fetchMyFullProfile();
       fetchLibrary();
     }
   }, [user]);
+
+  const fetchMyFullProfile = async () => {
+    try {
+      const api = await authAxios();
+      const res = await api.get("/users/profile");
+      if (res.data.success && res.data.user) {
+        const u = res.data.user;
+        setProfileData((prev) => ({
+          ...prev,
+          pseudo: u.username || u.pseudo || prev.pseudo,
+          bio: u.bio || prev.bio,
+          avatar: u.avatar || prev.avatar,
+        }));
+      }
+    } catch (err) {
+      console.warn("Erreur fetch profile perso", err);
+    }
+  };
 
   const fetchLibrary = async () => {
     try {
@@ -493,7 +602,7 @@ const MyProfile = ({ user, onLoginSuccess, onLogout }) => {
     try {
       const api = await authAxios();
       await api.put("/users/profile", {
-        username: profileData.pseudo,
+        username: profileData.pseudo || profileData.username,
         bio: profileData.bio,
       });
       if (onLoginSuccess) onLoginSuccess(profileData);
