@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import axios from "axios";
 import { auth } from "../Service/firebase";
 import "../../Style/Styles.css";
+import defaultCover from "../assets/fr-default-large_default.jpg"; // Import de l'image par défaut
 
 const authAxios = async () => {
   const token = await auth.currentUser?.getIdToken(true);
@@ -12,7 +13,393 @@ const authAxios = async () => {
   });
 };
 
-const Profile = ({ user, onLoginSuccess, onLogout }) => {
+/* ═══════════════════════════════════════════════════════════
+   VUE PROFIL PUBLIC — isPublic === true
+═══════════════════════════════════════════════════════════ */
+const PublicProfile = ({
+  targetUserId,
+  currentUser,
+  onBack,
+  onOpenMessaging,
+}) => {
+  const [profile, setProfile] = useState(null);
+  const [iFollow, setIFollow] = useState(false);
+  const [theyFollowMe, setTheyFollowMe] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [followLoading, setFollowLoading] = useState(false);
+  const [msgLoading, setMsgLoading] = useState(false);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    fetchAll();
+  }, [targetUserId]);
+
+  const fetchAll = async () => {
+    setLoading(true);
+    setError("");
+    try {
+      const api = await authAxios();
+      const [profileRes, followingRes, followersRes] = await Promise.all([
+        axios.get(`http://localhost:3000/api/users/${targetUserId}/profile`),
+        api.get("/follows/me/following"),
+        api.get("/follows/me/followers"),
+      ]);
+      setProfile(profileRes.data);
+      const following = followingRes.data?.following || [];
+      const followers = followersRes.data?.followers || [];
+      setIFollow(following.some((u) => u.uid === targetUserId));
+      setTheyFollowMe(followers.some((u) => u.uid === targetUserId));
+    } catch (err) {
+      console.error("Erreur fetchAll:", err);
+      setError("Impossible de charger ce profil.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleFollow = async () => {
+    if (!currentUser) return;
+    setFollowLoading(true);
+    try {
+      const api = await authAxios();
+      if (iFollow) {
+        await api.delete(`/follows/${targetUserId}`);
+        setIFollow(false);
+      } else {
+        await api.post(`/follows/${targetUserId}`);
+        setIFollow(true);
+      }
+    } catch (err) {
+      console.error("Erreur follow:", err);
+    } finally {
+      setFollowLoading(false);
+    }
+  };
+
+  // Crée ou récupère la conversation puis redirige vers la messagerie
+  const handleMessage = async () => {
+    setMsgLoading(true);
+    try {
+      const api = await authAxios();
+      const res = await api.post("/conversations", { targetUserId });
+      onOpenMessaging(res.data.conversation);
+    } catch (err) {
+      console.error("Erreur conversation:", err);
+      alert(err.response?.data?.msg || "Impossible d'ouvrir la conversation.");
+    } finally {
+      setMsgLoading(false);
+    }
+  };
+
+  const isMutual = iFollow && theyFollowMe;
+
+  if (loading) {
+    return (
+      <div
+        className="accueil-container"
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "center",
+          minHeight: "60vh",
+        }}
+      >
+        <div className="loading-spinner" />
+        <p className="loading-text" style={{ marginTop: "16px" }}>
+          Chargement du profil…
+        </p>
+      </div>
+    );
+  }
+
+  if (error || !profile) {
+    return (
+      <div
+        className="accueil-container"
+        style={{ textAlign: "center", paddingTop: "80px" }}
+      >
+        <div className="empty-icon">😕</div>
+        <h3 className="empty-title">Profil introuvable</h3>
+        <p className="empty-text">{error}</p>
+        <button
+          className="category-btn"
+          onClick={onBack}
+          style={{ marginTop: "20px" }}
+        >
+          ← Retour
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="accueil-container">
+      {/* Hero banner */}
+      <div
+        className="hero-section"
+        style={{
+          minHeight: "200px",
+          background:
+            "linear-gradient(135deg, rgba(139,92,246,0.25) 0%, rgba(59,130,246,0.1) 100%)",
+        }}
+      >
+        <div className="hero-gradient" />
+      </div>
+
+      <div
+        style={{
+          maxWidth: "640px",
+          margin: "-100px auto 0",
+          padding: "0 20px 60px",
+        }}
+      >
+        {/* Bouton retour */}
+        <button
+          className="category-btn"
+          onClick={onBack}
+          style={{
+            marginBottom: "24px",
+            display: "inline-flex",
+            alignItems: "center",
+            gap: "6px",
+          }}
+        >
+          ← Retour
+        </button>
+
+        {/* Card principale */}
+        <div
+          className="game-card-modern"
+          style={{ padding: "0", cursor: "default", overflow: "visible" }}
+        >
+          {/* Avatar flottant */}
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "center",
+              marginTop: "-50px",
+            }}
+          >
+            <img
+              src={
+                profile.avatar ||
+                `https://api.dicebear.com/7.x/bottts/svg?seed=${profile.pseudo}`
+              }
+              alt={profile.pseudo}
+              style={{
+                width: "100px",
+                height: "100px",
+                borderRadius: "50%",
+                border: "4px solid rgba(139, 92, 246, 0.6)",
+                boxShadow: "0 0 30px rgba(139, 92, 246, 0.25)",
+                objectFit: "cover",
+                background: "#1a1a2e",
+              }}
+            />
+          </div>
+
+          <div style={{ padding: "16px 30px 30px", textAlign: "center" }}>
+            <h2
+              className="hero-title"
+              style={{ fontSize: "1.8rem", margin: "10px 0 8px" }}
+            >
+              {profile.pseudo}
+            </h2>
+
+            {/* Badges statut suivi */}
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "center",
+                gap: "8px",
+                flexWrap: "wrap",
+                marginBottom: "12px",
+              }}
+            >
+              {isMutual && (
+                <span
+                  style={{
+                    background: "rgba(34,197,94,0.12)",
+                    border: "1px solid rgba(34,197,94,0.35)",
+                    color: "#4ade80",
+                    borderRadius: "20px",
+                    padding: "3px 12px",
+                    fontSize: "0.75rem",
+                    fontWeight: "600",
+                  }}
+                >
+                  ✓ Abonnement mutuel
+                </span>
+              )}
+              {!isMutual && theyFollowMe && (
+                <span
+                  style={{
+                    background: "rgba(59,130,246,0.12)",
+                    border: "1px solid rgba(59,130,246,0.35)",
+                    color: "#60a5fa",
+                    borderRadius: "20px",
+                    padding: "3px 12px",
+                    fontSize: "0.75rem",
+                  }}
+                >
+                  Vous suit
+                </span>
+              )}
+              {iFollow && !theyFollowMe && (
+                <span
+                  style={{
+                    background: "rgba(139,92,246,0.12)",
+                    border: "1px solid rgba(139,92,246,0.35)",
+                    color: "#a78bfa",
+                    borderRadius: "20px",
+                    padding: "3px 12px",
+                    fontSize: "0.75rem",
+                  }}
+                >
+                  Abonné
+                </span>
+              )}
+            </div>
+
+            {profile.bio && (
+              <p
+                className="hero-subtitle"
+                style={{
+                  fontSize: "0.9rem",
+                  fontStyle: "italic",
+                  opacity: 0.65,
+                }}
+              >
+                "{profile.bio}"
+              </p>
+            )}
+
+            {/* Stats */}
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "center",
+                margin: "24px 0",
+                borderTop: "1px solid rgba(255,255,255,0.07)",
+                borderBottom: "1px solid rgba(255,255,255,0.07)",
+              }}
+            >
+              {[
+                { label: "Jeux", value: profile.gamesCount ?? "—" },
+                { label: "Abonnés", value: profile.followersCount ?? "—" },
+                { label: "Abonnements", value: profile.followingCount ?? "—" },
+              ].map((stat, i) => (
+                <div
+                  key={stat.label}
+                  style={{
+                    flex: 1,
+                    padding: "18px 8px",
+                    borderRight:
+                      i < 2 ? "1px solid rgba(255,255,255,0.07)" : "none",
+                  }}
+                >
+                  <p
+                    className="hero-title"
+                    style={{
+                      fontSize: "1.4rem",
+                      margin: "0 0 4px",
+                      fontWeight: "700",
+                    }}
+                  >
+                    {stat.value}
+                  </p>
+                  <p
+                    className="game-genre"
+                    style={{ margin: 0, fontSize: "0.75rem", opacity: 0.6 }}
+                  >
+                    {stat.label}
+                  </p>
+                </div>
+              ))}
+            </div>
+
+            {/* Boutons d'action */}
+            {currentUser ? (
+              <div
+                style={{
+                  display: "flex",
+                  gap: "12px",
+                  justifyContent: "center",
+                  flexWrap: "wrap",
+                }}
+              >
+                <button
+                  className="nav-user-btn"
+                  onClick={handleFollow}
+                  disabled={followLoading}
+                  style={{
+                    minWidth: "150px",
+                    justifyContent: "center",
+                    opacity: followLoading ? 0.6 : 1,
+                    transition: "all 0.2s",
+                    ...(iFollow
+                      ? { borderColor: "rgba(239,68,68,0.5)", color: "#f87171" }
+                      : {}),
+                  }}
+                >
+                  {followLoading
+                    ? "…"
+                    : iFollow
+                      ? "✗ Se désabonner"
+                      : "✚ Suivre"}
+                </button>
+
+                {/* Bouton message visible uniquement si suivi mutuel */}
+                {isMutual && (
+                  <button
+                    className="nav-user-btn"
+                    onClick={handleMessage}
+                    disabled={msgLoading}
+                    style={{
+                      minWidth: "150px",
+                      justifyContent: "center",
+                      opacity: msgLoading ? 0.6 : 1,
+                      background: "rgba(139,92,246,0.2)",
+                      borderColor: "rgba(139,92,246,0.5)",
+                    }}
+                  >
+                    {msgLoading ? "…" : "💬 Envoyer un message"}
+                  </button>
+                )}
+              </div>
+            ) : (
+              <p
+                className="game-genre"
+                style={{ opacity: 0.6, fontSize: "0.85rem" }}
+              >
+                Connectez-vous pour interagir avec cet utilisateur.
+              </p>
+            )}
+
+            {/* Hint si on suit mais pas de retour */}
+            {currentUser && iFollow && !theyFollowMe && (
+              <p
+                style={{
+                  marginTop: "14px",
+                  fontSize: "0.78rem",
+                  color: "rgba(255,255,255,0.35)",
+                }}
+              >
+                En attente qu'il vous suive en retour pour pouvoir lui écrire.
+              </p>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+/* ═══════════════════════════════════════════════════════════
+   MON PROFIL PERSONNEL — isPublic !== true
+═══════════════════════════════════════════════════════════ */
+const MyProfile = ({ user, onLoginSuccess, onLogout }) => {
   const { t, i18n } = useTranslation();
 
   const [profileData, setProfileData] = useState({
@@ -43,8 +430,7 @@ const Profile = ({ user, onLoginSuccess, onLogout }) => {
     try {
       const api = await authAxios();
       const res = await api.get(`/lists/library`);
-      const lib = res.data?.library || [];
-      setFavorites(lib);
+      setFavorites(res.data?.library || []);
     } catch (err) {
       console.warn("Bibliothèque : erreur.", err.message);
     }
@@ -59,7 +445,6 @@ const Profile = ({ user, onLoginSuccess, onLogout }) => {
         gameName,
         gameCover,
       });
-      // Mise à jour de l'état local pour un changement instantané à l'écran
       setFavorites((prev) =>
         prev.map((g) =>
           g.gameId === gameId ? { ...g, status: newStatus } : g,
@@ -81,6 +466,14 @@ const Profile = ({ user, onLoginSuccess, onLogout }) => {
     if (filter === "Tous") return true;
     return statusMapping[game.status] === filter;
   });
+
+  const getCoverUrl = (cover) => {
+    if (!cover) return "";
+    // Si c'est déjà une URL complète (commence par http), on la garde
+    if (typeof cover === "string" && cover.startsWith("http")) return cover;
+    // Sinon on suppose que c'est un image_id d'IGDB (ex: "co1r76") ou on utilise l'image par défaut
+    return `https://images.igdb.com/igdb/image/upload/t_cover_big/${cover}.jpg`;
+  };
 
   const handleUpdate = async () => {
     setSaveStatus("saving");
@@ -276,23 +669,19 @@ const Profile = ({ user, onLoginSuccess, onLogout }) => {
                 <div key={game.gameId} className="game-card-modern">
                   <div className="game-image-container">
                     <img
-                      src={
-                        game.gameCover ||
-                        "https://via.placeholder.com/264x352?text=No+Cover"
-                      }
-                      alt={game.gameName}
+                      src={getCoverUrl(game.gameCover)}
+                      alt={game.gameName || "Jeu"}
                       className="game-image"
                     />
                   </div>
                   <div className="game-content">
-                    <h4
-                      className="game-title"
-                      style={{ fontSize: "1rem", marginBottom: "10px" }}
-                    >
-                      {game.gameName}
-                    </h4>
+                    <h4 className="game-title">{game.gameName}</h4>
                     <select
-                      className={`status-select ${statusMapping[game.status]?.toLowerCase().replace(" ", "-") || ""}`}
+                      className={`status-select ${
+                        statusMapping[game.status]
+                          ?.toLowerCase()
+                          .replace(" ", "-") || ""
+                      }`}
                       value={game.status || "to_play"}
                       onChange={(e) =>
                         handleStatusUpdate(
@@ -319,4 +708,36 @@ const Profile = ({ user, onLoginSuccess, onLogout }) => {
   );
 };
 
-export default Profile;
+/* ═══════════════════════════════════════════════════════════
+   EXPORT — router entre profil public et profil personnel
+═══════════════════════════════════════════════════════════ */
+const Utilisateur = ({
+  user,
+  onLoginSuccess,
+  onLogout,
+  isPublic,
+  targetUserId,
+  onBack,
+  onOpenMessaging,
+}) => {
+  if (isPublic) {
+    return (
+      <PublicProfile
+        targetUserId={targetUserId}
+        currentUser={user}
+        onBack={onBack}
+        onOpenMessaging={onOpenMessaging}
+      />
+    );
+  }
+
+  return (
+    <MyProfile
+      user={user}
+      onLoginSuccess={onLoginSuccess}
+      onLogout={onLogout}
+    />
+  );
+};
+
+export default Utilisateur;

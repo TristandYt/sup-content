@@ -4,11 +4,11 @@ import axios from "axios";
 import "../../Style/Styles.css";
 import defaultCover from "../assets/fr-default-large_default.jpg";
 
-const Accueil = ({ onGameClick, searchTerm }) => {
+const Accueil = ({ onGameClick, onUserClick, searchTerm }) => {
   const { t } = useTranslation();
   const [games, setGames] = useState([]);
   const [users, setUsers] = useState([]);
-  const [searchType, setSearchType] = useState("games"); // "games" ou "users"
+  const [searchType, setSearchType] = useState("games");
   const [loading, setLoading] = useState(true);
   const [activeCategory, setActiveCategory] = useState("Tous");
   const [params, setParams] = useState({
@@ -39,7 +39,7 @@ const Accueil = ({ onGameClick, searchTerm }) => {
       const hasSearchTerm = searchTerm && searchTerm.trim() !== "";
 
       if (searchType === "users") {
-        setGames([]); // On vide les jeux pour ne pas polluer l'affichage
+        setGames([]);
         if (!hasSearchTerm) {
           setUsers([]);
           setLoading(false);
@@ -50,7 +50,7 @@ const Accueil = ({ onGameClick, searchTerm }) => {
         });
         setUsers(res.data);
       } else {
-        setUsers([]); // On vide les utilisateurs
+        setUsers([]);
         const endpoint = hasSearchTerm ? "search" : "popular";
         const res = await axios.get(
           `http://localhost:3000/api/games/${endpoint}`,
@@ -203,7 +203,7 @@ const Accueil = ({ onGameClick, searchTerm }) => {
         </div>
       </div>
 
-      {/* Games Grid */}
+      {/* Résultats */}
       {loading ? (
         <div className="loading-container">
           <div className="loading-spinner"></div>
@@ -236,7 +236,6 @@ const Accueil = ({ onGameClick, searchTerm }) => {
                     />
                     <div className="game-overlay"></div>
 
-                    {/* Rating Badge */}
                     {game.total_rating && (
                       <div className="rating-badge">
                         <span className="rating-star">⭐</span>
@@ -249,7 +248,6 @@ const Accueil = ({ onGameClick, searchTerm }) => {
 
                   <div className="game-content">
                     <h3 className="game-title">{game.name}</h3>
-
                     <div className="game-meta">
                       <span className="game-year">
                         {game.first_release_date
@@ -272,6 +270,7 @@ const Accueil = ({ onGameClick, searchTerm }) => {
                   key={u.uid}
                   className="game-card-modern"
                   style={{ cursor: "pointer" }}
+                  onClick={() => onUserClick && onUserClick(u.uid)}
                 >
                   <div
                     className="game-image-container"

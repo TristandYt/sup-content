@@ -16,6 +16,12 @@ const App = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [profileRefresh, setProfileRefresh] = useState(0);
 
+  // Profil public d'un autre utilisateur
+  const [selectedUserId, setSelectedUserId] = useState(null);
+
+  // Conversation à présélectionner dans la messagerie
+  const [preselectedConversation, setPreselectedConversation] = useState(null);
+
   const handleLoginSuccess = (userData) => {
     setUser(userData);
     setCurrentPage("accueil");
@@ -30,9 +36,21 @@ const App = () => {
     setProfileRefresh((n) => n + 1);
   };
 
+  // Depuis Accueil → clic sur une card utilisateur
+  const handleUserClick = (userId) => {
+    setSelectedUserId(userId);
+    setCurrentPage("utilisateur_public");
+  };
+
+  // Depuis le profil public → bouton "Envoyer un message"
+  const handleOpenMessaging = (conversation) => {
+    setPreselectedConversation(conversation);
+    setCurrentPage("messagerie");
+  };
+
   return (
     <div className="app-container">
-      {/* Navbar */}
+      {/* ── Navbar ── */}
       <nav className="modern-navbar">
         <div className="navbar-container">
           {!showSearch ? (
@@ -74,7 +92,10 @@ const App = () => {
                 {user && (
                   <button
                     className="nav-icon-btn"
-                    onClick={() => setCurrentPage("messagerie")}
+                    onClick={() => {
+                      setPreselectedConversation(null);
+                      setCurrentPage("messagerie");
+                    }}
                     title="Messagerie"
                   >
                     <svg
@@ -180,11 +201,16 @@ const App = () => {
         </div>
       </nav>
 
-      {/* Pages */}
+      {/* ── Pages ── */}
       <main className="main-content-wrapper">
         {currentPage === "accueil" && (
-          <Accueil onGameClick={handleShowGame} searchTerm={searchTerm} />
+          <Accueil
+            onGameClick={handleShowGame}
+            onUserClick={handleUserClick}
+            searchTerm={searchTerm}
+          />
         )}
+
         {currentPage === "jeu" && (
           <Jeu
             gameId={selectedGameId}
@@ -193,15 +219,19 @@ const App = () => {
             onFavoriteChange={handleFavoriteChange}
           />
         )}
+
         {currentPage === "login" && (
           <Login
             onSwitch={() => setCurrentPage("register")}
             onLoginSuccess={handleLoginSuccess}
           />
         )}
+
         {currentPage === "register" && (
           <Register onSwitch={() => setCurrentPage("login")} />
         )}
+
+        {/* Mon propre profil */}
         {currentPage === "utilisateur" && (
           <Utilisateur
             key={profileRefresh}
@@ -212,7 +242,26 @@ const App = () => {
             }}
           />
         )}
-        {currentPage === "messagerie" && <Messagerie user={user} />}
+
+        {/* Profil public d'un autre utilisateur */}
+        {currentPage === "utilisateur_public" && (
+          <Utilisateur
+            key={selectedUserId}
+            targetUserId={selectedUserId}
+            user={user}
+            isPublic={true}
+            onBack={() => setCurrentPage("accueil")}
+            onOpenMessaging={handleOpenMessaging}
+          />
+        )}
+
+        {currentPage === "messagerie" && (
+          <Messagerie
+            user={user}
+            preselectedConversation={preselectedConversation}
+            onConversationOpen={() => setPreselectedConversation(null)}
+          />
+        )}
       </main>
     </div>
   );

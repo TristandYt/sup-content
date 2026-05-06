@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { auth } from "../Service/firebase";
 import "../../Style/Styles.css";
+import defaultCover from "../assets/fr-default-large_default.jpg"; // Import de l'image par défaut
 
 const authAxios = async () => {
   const token = await auth.currentUser?.getIdToken(true);
@@ -263,6 +264,13 @@ const Jeu = ({ gameId, onBack, user, onFavoriteChange, onGameSelect }) => {
       </div>
     );
 
+  const getCoverUrl = (coverObj) => {
+    if (coverObj && coverObj.image_id) {
+      return `https://images.igdb.com/igdb/image/upload/t_cover_big/${coverObj.image_id}.jpg`;
+    }
+    return defaultCover; // Retourne l'image par défaut
+  };
+
   return (
     <div className="app-container">
       <div className="hero-gradient"></div>
@@ -287,7 +295,7 @@ const Jeu = ({ gameId, onBack, user, onFavoriteChange, onGameSelect }) => {
             <div className="game-card-modern" style={{ cursor: "default" }}>
               <div className="game-image-container">
                 <img
-                  src={`https://images.igdb.com/igdb/image/upload/t_cover_big/${game.cover?.image_id}.jpg`}
+                  src={getCoverUrl(game.cover)}
                   alt={game.name}
                   className="game-image"
                 />
@@ -586,30 +594,11 @@ const Jeu = ({ gameId, onBack, user, onFavoriteChange, onGameSelect }) => {
                       onClick={() => onGameSelect?.(sg.id)}
                     >
                       <div className="game-image-container">
-                        {sg.cover?.image_id ? (
-                          <img
-                            src={`https://images.igdb.com/igdb/image/upload/t_cover_big/${sg.cover.image_id}.jpg`}
-                            alt={sg.name}
-                            className="game-image"
-                            style={{ aspectRatio: "3/4", objectFit: "cover" }}
-                          />
-                        ) : (
-                          <div
-                            style={{
-                              aspectRatio: "3/4",
-                              background: "#1e293b",
-                              display: "flex",
-                              alignItems: "center",
-                              justifyContent: "center",
-                              color: "#6b7280",
-                              fontSize: "0.75rem",
-                              textAlign: "center",
-                              padding: "0.5rem",
-                            }}
-                          >
-                            {sg.name}
-                          </div>
-                        )}
+                        <img
+                          src={getCoverUrl(sg.cover)}
+                          alt={sg.name}
+                          className="game-image"
+                        />
                       </div>
                       <div
                         className="game-content"

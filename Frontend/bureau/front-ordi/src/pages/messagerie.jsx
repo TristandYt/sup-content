@@ -1,132 +1,420 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
+import axios from "axios";
+import { auth } from "../Service/firebase";
 import "../../Style/Styles.css";
 
-const Messagerie = ({ user }) => {
-  const { t } = useTranslation();
-  const [contacts, setContacts] = useState([]);
-  const [selectedContact, setSelectedContact] = useState(null);
-  const [newMessage, setNewMessage] = useState("");
-  const [allConversations, setAllConversations] = useState({});
-  const [activeMenu, setActiveMenu] = useState(null);
+const authAxios = async () => {
+  const token = await auth.currentUser?.getIdToken(true);
+  return axios.create({
+    baseURL: "http://localhost:3000/api",
+    headers: { Authorization: `Bearer ${token}` },
+  });
+};
 
+/* ═══════════════════════════════════════════════════════════
+   MODALE RECHERCHE UTILISATEUR (bouton +)
+═══════════════════════════════════════════════════════════ */
+const UserSearchModal = ({ onClose, onSelectConversation }) => {
+  const [query, setQuery] = useState("");
+  const [results, setResults] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [actionLoading, setActionLoading] = useState(null);
+  const [error, setError] = useState("");
+  const inputRef = useRef(null);
+
+  useEffect(() => {
+    inputRef.current?.focus();
+  }, []);
+
+  useEffect(() => {
+    if (!query.trim()) {
+      setResults([]);
+      setError("");
+      return;
+    }
+    const delay = setTimeout(async () => {
+      setLoading(true);
+      setError("");
+      try {
+        const res = await axios.get(`http://localhost:3000/api/users/search`, {
+          params: { q: query.trim() },
+        });
+        setResults(res.data);
+      } catch (err) {
+        console.error("Erreur recherche:", err);
+        setError("Erreur lors de la recherche.");
+      } finally {
+        setLoading(false);
+      }
+    }, 400);
+    return () => clearTimeout(delay);
+  }, [query]);
+
+  const handleSelect = async (u) => {
+    setActionLoading(u.uid);
+    setError("");
+    try {
+      const api = await authAxios();
+      const res = await api.post("/conversations", { targetUserId: u.uid });
+      onSelectConversation(res.data.conversation, u);
+      onClose();
+    } catch (err) {
+      const msg = err.response?.data?.msg || "";
+      if (msg.toLowerCase().includes("mutuellement")) {
+        setError(
+          `Vous devez vous suivre mutuellement avec ${u.pseudo} pour lui écrire.`,
+        );
+      } else {
+        setError(msg || "Impossible d'ouvrir la conversation.");
+      }
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  return (
+    <>
+      {/* Overlay */}
+      <div
+        onClick={onClose}
+        style={{
+          position: "fixed",
+          inset: 0,
+          background: "rgba(0,0,0,0.65)",
+          zIndex: 1000,
+          backdropFilter: "blur(4px)",
+        }}
+      />
+
+      {/* Modale */}
+      <div
+        style={{
+          position: "fixed",
+          top: "50%",
+          left: "50%",
+          transform: "translate(-50%, -50%)",
+          zIndex: 1001,
+          width: "90%",
+          maxWidth: "460px",
+          background: "#1a1a2e",
+          border: "1px solid rgba(139,92,246,0.3)",
+          borderRadius: "16px",
+          padding: "24px",
+          boxShadow: "0 20px 60px rgba(0,0,0,0.5)",
+        }}
+      >
+        {/* Header modale */}
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            marginBottom: "20px",
+          }}
+        >
+          <h3 className="section-title" style={{ margin: 0 }}>
+            Nouvelle conversation
+          </h3>
+          <button
+            onClick={onClose}
+            style={{
+              background: "none",
+              border: "none",
+              color: "rgba(255,255,255,0.5)",
+              fontSize: "1.5rem",
+              cursor: "pointer",
+              lineHeight: 1,
+              padding: "0 4px",
+            }}
+          >
+            ×
+          </button>
+        </div>
+
+        {/* Input recherche */}
+        <input
+          ref={inputRef}
+          type="text"
+          className="messaging-input"
+          placeholder="Rechercher un utilisateur…"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          style={{
+            width: "100%",
+            marginBottom: "12px",
+            boxSizing: "border-box",
+          }}
+        />
+
+        {/* Erreur */}
+        {error && (
+          <p
+            style={{
+              fontSize: "0.8rem",
+              color: "#f87171",
+              background: "rgba(239,68,68,0.1)",
+              border: "1px solid rgba(239,68,68,0.25)",
+              borderRadius: "8px",
+              padding: "8px 12px",
+              marginBottom: "12px",
+            }}
+          >
+            {error}
+          </p>
+        )}
+
+        {/* Résultats */}
+        <div style={{ maxHeight: "320px", overflowY: "auto" }}>
+          {loading && (
+            <div style={{ textAlign: "center", padding: "24px" }}>
+              <div className="loading-spinner" style={{ margin: "0 auto" }} />
+            </div>
+          )}
+
+          {!loading && results.length === 0 && query.trim() && !error && (
+            <div style={{ textAlign: "center", padding: "30px" }}>
+              <p className="empty-text">Aucun utilisateur trouvé</p>
+            </div>
+          )}
+
+          {!loading &&
+            results.map((u) => (
+              <div
+                key={u.uid}
+                onClick={() => !actionLoading && handleSelect(u)}
+                className="messaging-contact-item"
+                style={{
+                  borderRadius: "10px",
+                  marginBottom: "6px",
+                  cursor: actionLoading === u.uid ? "wait" : "pointer",
+                  opacity: actionLoading && actionLoading !== u.uid ? 0.5 : 1,
+                  transition: "opacity 0.2s",
+                }}
+              >
+                <div className="messaging-contact-avatar-wrapper">
+                  <img
+                    src={
+                      u.avatar ||
+                      `https://api.dicebear.com/7.x/bottts/svg?seed=${u.pseudo}`
+                    }
+                    alt={u.pseudo}
+                    className="messaging-contact-avatar"
+                  />
+                </div>
+                <div className="messaging-contact-info">
+                  <span className="messaging-contact-name">{u.pseudo}</span>
+                  <span className="messaging-contact-status">
+                    {u.bio || "Joueur passionné"}
+                  </span>
+                </div>
+                <span
+                  style={{
+                    color: "rgba(139,92,246,0.8)",
+                    fontSize: "1rem",
+                    marginLeft: "auto",
+                    flexShrink: 0,
+                  }}
+                >
+                  {actionLoading === u.uid ? "…" : "→"}
+                </span>
+              </div>
+            ))}
+        </div>
+      </div>
+    </>
+  );
+};
+
+/* ═══════════════════════════════════════════════════════════
+   MESSAGERIE PRINCIPALE
+═══════════════════════════════════════════════════════════ */
+const Messagerie = ({ user, preselectedConversation, onConversationOpen }) => {
+  const { t } = useTranslation();
+  const [conversations, setConversations] = useState([]);
+  const [selectedConv, setSelectedConv] = useState(null);
+  const [messages, setMessages] = useState([]);
+  const [newMessage, setNewMessage] = useState("");
+  const [loadingConvs, setLoadingConvs] = useState(true);
+  const [loadingMsgs, setLoadingMsgs] = useState(false);
+  const [sendLoading, setSendLoading] = useState(false);
+  const [showSearchModal, setShowSearchModal] = useState(false);
+  const [activeMenu, setActiveMenu] = useState(null);
   const messagesEndRef = useRef(null);
 
+  /* ── Chargement initial des conversations ── */
   useEffect(() => {
-    // Simulation de contacts
-    setContacts([
-      {
-        id: 101,
-        pseudo: "Gamer_X",
-        avatar: "https://api.dicebear.com/7.x/bottts/svg?seed=Gamer",
-        status: "online",
-      },
-      {
-        id: 102,
-        pseudo: "PixelArt",
-        avatar: "https://api.dicebear.com/7.x/bottts/svg?seed=Pixel",
-        status: "online",
-      },
-      {
-        id: 103,
-        pseudo: "ProPlayer",
-        avatar: "https://api.dicebear.com/7.x/bottts/svg?seed=Pro",
-        status: "offline",
-      },
-      {
-        id: 104,
-        pseudo: "NinjaGamer",
-        avatar: "https://api.dicebear.com/7.x/bottts/svg?seed=Ninja",
-        status: "online",
-      },
-    ]);
+    fetchConversations();
+  }, []);
 
-    const savedChats = localStorage.getItem(`chats_${user?.email}`);
-    if (savedChats) {
-      setAllConversations(JSON.parse(savedChats));
+  /* ── Présélection d'une conversation (depuis profil public) ── */
+  useEffect(() => {
+    if (!preselectedConversation) return;
+    // Attendre que les conversations soient chargées
+    if (conversations.length === 0) return;
+
+    const found = conversations.find(
+      (c) => c.id === preselectedConversation.id,
+    );
+    if (found) {
+      selectConversation(found);
+    } else {
+      // Nouvelle conversation pas encore dans la liste → recharger
+      fetchConversations(preselectedConversation.id);
     }
-  }, [user]);
+    if (onConversationOpen) onConversationOpen();
+  }, [preselectedConversation, conversations]);
 
+  /* ── Scroll automatique ── */
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [selectedContact, allConversations]);
+  }, [messages]);
 
-  const saveAndSetConversations = (updated) => {
-    setAllConversations(updated);
-    localStorage.setItem(`chats_${user?.email}`, JSON.stringify(updated));
-  };
+  const fetchConversations = async (autoSelectId = null) => {
+    setLoadingConvs(true);
+    try {
+      const api = await authAxios();
+      const res = await api.get("/conversations");
+      const convs = res.data.conversations || [];
+      setConversations(convs);
 
-  const handleSendMessage = (e) => {
-    e.preventDefault();
-    if (!newMessage.trim() || !selectedContact) return;
-
-    const msg = {
-      id: Date.now(),
-      senderId: user.id,
-      text: newMessage,
-      time: new Date().toLocaleTimeString([], {
-        hour: "2-digit",
-        minute: "2-digit",
-      }),
-    };
-
-    const contactId = selectedContact.id;
-    const updated = {
-      ...allConversations,
-      [contactId]: [...(allConversations[contactId] || []), msg],
-    };
-    saveAndSetConversations(updated);
-    setNewMessage("");
-  };
-
-  const deleteMessage = (messageId) => {
-    const contactId = selectedContact.id;
-    const updatedMessages = allConversations[contactId].filter(
-      (m) => m.id !== messageId,
-    );
-    saveAndSetConversations({
-      ...allConversations,
-      [contactId]: updatedMessages,
-    });
-    setActiveMenu(null);
-  };
-
-  const editMessage = (messageId) => {
-    const contactId = selectedContact.id;
-    const msgToEdit = allConversations[contactId].find(
-      (m) => m.id === messageId,
-    );
-    const newText = prompt("Modifier votre message :", msgToEdit.text);
-
-    if (newText && newText.trim() !== "") {
-      const updatedMessages = allConversations[contactId].map((m) =>
-        m.id === messageId ? { ...m, text: newText } : m,
-      );
-      saveAndSetConversations({
-        ...allConversations,
-        [contactId]: updatedMessages,
-      });
+      // Auto-sélection si on a un id cible
+      const targetId = autoSelectId || preselectedConversation?.id;
+      if (targetId) {
+        const target = convs.find((c) => c.id === targetId);
+        if (target) {
+          selectConversation(target);
+          if (onConversationOpen) onConversationOpen();
+        }
+      }
+    } catch (err) {
+      console.error("Erreur fetchConversations:", err);
+    } finally {
+      setLoadingConvs(false);
     }
+  };
+
+  const selectConversation = async (conv) => {
+    setSelectedConv(conv);
+    setMessages([]);
+    setActiveMenu(null);
+    setLoadingMsgs(true);
+    try {
+      const api = await authAxios();
+      const res = await api.get(`/conversations/${conv.id}/messages`);
+      setMessages(res.data.messages || []);
+    } catch (err) {
+      console.error("Erreur fetchMessages:", err);
+    } finally {
+      setLoadingMsgs(false);
+    }
+  };
+
+  const handleSendMessage = async (e) => {
+    e.preventDefault();
+    if (!newMessage.trim() || !selectedConv || sendLoading) return;
+
+    setSendLoading(true);
+    const text = newMessage.trim();
+    setNewMessage("");
+
+    // Affichage optimiste
+    const tempMsg = {
+      id: `temp_${Date.now()}`,
+      senderId: user?.id,
+      text,
+      createdAt: { seconds: Date.now() / 1000 },
+      _pending: true,
+    };
+    setMessages((prev) => [...prev, tempMsg]);
+
+    try {
+      const api = await authAxios();
+      await api.post(`/conversations/${selectedConv.id}/messages`, { text });
+      // Recharger les vrais messages depuis le serveur
+      const res = await api.get(`/conversations/${selectedConv.id}/messages`);
+      setMessages(res.data.messages || []);
+      // Mettre à jour le preview dans la sidebar
+      setConversations((prev) =>
+        prev.map((c) =>
+          c.id === selectedConv.id
+            ? { ...c, lastMessage: text, lastMessageAt: Date.now() }
+            : c,
+        ),
+      );
+    } catch (err) {
+      console.error("Erreur sendMessage:", err);
+      // Retirer le message optimiste en cas d'erreur
+      setMessages((prev) => prev.filter((m) => m.id !== tempMsg.id));
+      setNewMessage(text);
+    } finally {
+      setSendLoading(false);
+    }
+  };
+
+  const handleDeleteMessage = (messageId) => {
+    setMessages((prev) => prev.filter((m) => m.id !== messageId));
     setActiveMenu(null);
   };
 
-  const currentMessages = selectedContact
-    ? allConversations[selectedContact.id] || []
-    : [];
+  const handleEditMessage = (messageId) => {
+    const msgToEdit = messages.find((m) => m.id === messageId);
+    const newText = prompt("Modifier votre message :", msgToEdit?.text);
+    if (!newText || !newText.trim()) return;
+    setMessages((prev) =>
+      prev.map((m) =>
+        m.id === messageId ? { ...m, text: newText.trim() } : m,
+      ),
+    );
+    setActiveMenu(null);
+  };
+
+  // Détermine le pseudo/avatar de l'autre participant
+  const getOtherUser = (conv) => {
+    if (!conv) return { pseudo: "Inconnu", avatar: null, status: "offline" };
+    const otherId = conv.participants?.find((p) => p !== user?.id);
+    return {
+      pseudo:
+        conv.otherUserPseudo ||
+        conv[`pseudo_${otherId}`] ||
+        otherId ||
+        "Utilisateur",
+      avatar:
+        conv.otherUserAvatar ||
+        `https://api.dicebear.com/7.x/bottts/svg?seed=${otherId}`,
+      status: conv.otherUserStatus || "offline",
+    };
+  };
+
+  const formatTime = (createdAt) => {
+    if (!createdAt) return "";
+    const date = createdAt.seconds
+      ? new Date(createdAt.seconds * 1000)
+      : new Date(createdAt);
+    return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  };
+
+  const otherUser = getOtherUser(selectedConv);
 
   return (
     <div className="messaging-container">
       <div className="messaging-gradient"></div>
 
       <div className="messaging-layout">
-        {/* SIDEBAR : LISTE DES CONTACTS */}
+        {/* ── SIDEBAR CONTACTS ── */}
         <aside className="messaging-sidebar">
           <div className="messaging-sidebar-header">
             <div className="messaging-header-content">
               <div className="messaging-icon">💬</div>
               <h3 className="messaging-title">Messages</h3>
             </div>
-            <button className="messaging-new-btn" title="Nouveau message">
+
+            {/* Bouton + → ouvre la modale de recherche */}
+            <button
+              className="messaging-new-btn"
+              title="Nouvelle conversation"
+              onClick={() => setShowSearchModal(true)}
+            >
               <svg
                 width="20"
                 height="20"
@@ -141,51 +429,89 @@ const Messagerie = ({ user }) => {
           </div>
 
           <div className="messaging-contacts-list">
-            {contacts.map((c) => (
-              <div
-                key={c.id}
-                className={`messaging-contact-item ${selectedContact?.id === c.id ? "active" : ""}`}
-                onClick={() => setSelectedContact(c)}
-              >
-                <div className="messaging-contact-avatar-wrapper">
-                  <img
-                    src={c.avatar}
-                    alt={c.pseudo}
-                    className="messaging-contact-avatar"
-                  />
-                  <span
-                    className={`messaging-status-dot ${c.status === "online" ? "online" : "offline"}`}
-                  ></span>
-                </div>
-                <div className="messaging-contact-info">
-                  <span className="messaging-contact-name">{c.pseudo}</span>
-                  <span className="messaging-contact-status">
-                    {c.status === "online" ? "En ligne" : "Hors ligne"}
-                  </span>
-                </div>
+            {loadingConvs ? (
+              <div style={{ textAlign: "center", padding: "30px" }}>
+                <div className="loading-spinner" style={{ margin: "0 auto" }} />
               </div>
-            ))}
+            ) : conversations.length === 0 ? (
+              <div style={{ textAlign: "center", padding: "40px 20px" }}>
+                <p
+                  style={{
+                    color: "rgba(255,255,255,0.35)",
+                    fontSize: "0.85rem",
+                    lineHeight: "1.5",
+                  }}
+                >
+                  Aucune conversation.
+                  <br />
+                  Appuyez sur + pour en démarrer une.
+                </p>
+              </div>
+            ) : (
+              conversations.map((conv) => {
+                const other = getOtherUser(conv);
+                return (
+                  <div
+                    key={conv.id}
+                    className={`messaging-contact-item ${
+                      selectedConv?.id === conv.id ? "active" : ""
+                    }`}
+                    onClick={() => selectConversation(conv)}
+                  >
+                    <div className="messaging-contact-avatar-wrapper">
+                      <img
+                        src={other.avatar}
+                        alt={other.pseudo}
+                        className="messaging-contact-avatar"
+                      />
+                      <span
+                        className={`messaging-status-dot ${
+                          other.status === "online" ? "online" : "offline"
+                        }`}
+                      />
+                    </div>
+                    <div className="messaging-contact-info">
+                      <span className="messaging-contact-name">
+                        {other.pseudo}
+                      </span>
+                      <span
+                        className="messaging-contact-status"
+                        style={{
+                          maxWidth: "140px",
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                          whiteSpace: "nowrap",
+                          display: "block",
+                        }}
+                      >
+                        {conv.lastMessage || "Démarrer la conversation"}
+                      </span>
+                    </div>
+                  </div>
+                );
+              })
+            )}
           </div>
         </aside>
 
-        {/* MAIN : ZONE DE CHAT */}
+        {/* ── ZONE DE CHAT ── */}
         <main className="messaging-main">
-          {selectedContact ? (
+          {selectedConv ? (
             <>
               {/* En-tête du chat */}
               <div className="messaging-chat-header">
                 <div className="messaging-chat-header-info">
                   <img
-                    src={selectedContact.avatar}
-                    alt={selectedContact.pseudo}
+                    src={otherUser.avatar}
+                    alt={otherUser.pseudo}
                     className="messaging-header-avatar"
                   />
                   <div>
                     <h4 className="messaging-header-name">
-                      {selectedContact.pseudo}
+                      {otherUser.pseudo}
                     </h4>
                     <span className="messaging-header-status">
-                      {selectedContact.status === "online"
+                      {otherUser.status === "online"
                         ? "● En ligne"
                         : "○ Hors ligne"}
                     </span>
@@ -227,7 +553,18 @@ const Messagerie = ({ user }) => {
 
               {/* Zone des messages */}
               <div className="messaging-messages-area">
-                {currentMessages.length === 0 ? (
+                {loadingMsgs ? (
+                  <div
+                    style={{
+                      display: "flex",
+                      justifyContent: "center",
+                      alignItems: "center",
+                      height: "100%",
+                    }}
+                  >
+                    <div className="loading-spinner" />
+                  </div>
+                ) : messages.length === 0 ? (
                   <div className="messaging-no-messages">
                     <div className="messaging-no-messages-icon">💬</div>
                     <p className="messaging-no-messages-text">
@@ -239,14 +576,17 @@ const Messagerie = ({ user }) => {
                   </div>
                 ) : (
                   <>
-                    {currentMessages.map((m) => (
+                    {messages.map((m) => (
                       <div
                         key={m.id}
-                        className={`messaging-message ${m.senderId === user.id ? "sent" : "received"}`}
+                        className={`messaging-message ${
+                          m.senderId === user?.id ? "sent" : "received"
+                        }`}
+                        style={{ opacity: m._pending ? 0.6 : 1 }}
                       >
-                        {m.senderId !== user.id && (
+                        {m.senderId !== user?.id && (
                           <img
-                            src={selectedContact.avatar}
+                            src={otherUser.avatar}
                             alt=""
                             className="messaging-message-avatar"
                           />
@@ -257,9 +597,9 @@ const Messagerie = ({ user }) => {
                           </div>
                           <div className="messaging-message-footer">
                             <span className="messaging-message-time">
-                              {m.time}
+                              {formatTime(m.createdAt)}
                             </span>
-                            {m.senderId === user.id && (
+                            {m.senderId === user?.id && !m._pending && (
                               <div className="messaging-message-options">
                                 <button
                                   className="messaging-options-btn"
@@ -283,7 +623,7 @@ const Messagerie = ({ user }) => {
                                 {activeMenu === m.id && (
                                   <div className="messaging-options-menu">
                                     <button
-                                      onClick={() => editMessage(m.id)}
+                                      onClick={() => handleEditMessage(m.id)}
                                       className="messaging-option-item"
                                     >
                                       <svg
@@ -300,7 +640,7 @@ const Messagerie = ({ user }) => {
                                       Modifier
                                     </button>
                                     <button
-                                      onClick={() => deleteMessage(m.id)}
+                                      onClick={() => handleDeleteMessage(m.id)}
                                       className="messaging-option-item delete"
                                     >
                                       <svg
@@ -351,12 +691,12 @@ const Messagerie = ({ user }) => {
                   className="messaging-input"
                   value={newMessage}
                   onChange={(e) => setNewMessage(e.target.value)}
-                  placeholder="Écrivez votre message..."
+                  placeholder="Écrivez votre message…"
                 />
                 <button
                   type="submit"
                   className="messaging-send-btn"
-                  disabled={!newMessage.trim()}
+                  disabled={!newMessage.trim() || sendLoading}
                 >
                   <svg
                     width="20"
@@ -380,13 +720,31 @@ const Messagerie = ({ user }) => {
                   Sélectionnez une conversation
                 </h3>
                 <p className="messaging-empty-text">
-                  Choisissez un contact dans la liste pour commencer à discuter
+                  Choisissez un contact dans la liste ou appuyez sur + pour
+                  démarrer une nouvelle conversation
                 </p>
               </div>
             </div>
           )}
         </main>
       </div>
+
+      {/* Modale recherche utilisateur */}
+      {showSearchModal && (
+        <UserSearchModal
+          onClose={() => setShowSearchModal(false)}
+          onSelectConversation={(conv) => {
+            setShowSearchModal(false);
+            // Ajouter la conversation à la liste si elle n'y est pas encore
+            setConversations((prev) => {
+              const exists = prev.find((c) => c.id === conv.id);
+              if (exists) return prev;
+              return [conv, ...prev];
+            });
+            selectConversation(conv);
+          }}
+        />
+      )}
     </div>
   );
 };
