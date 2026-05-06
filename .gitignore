@@ -15,5 +15,4 @@ firestore-debug.log
 ui-debug.log
 firebase-debug.log
 backend/.env
-backend/.env
 /coverage
