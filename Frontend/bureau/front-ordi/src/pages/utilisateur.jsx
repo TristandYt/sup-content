@@ -468,11 +468,24 @@ const MyProfile = ({ user, onLoginSuccess, onLogout }) => {
   });
 
   const getCoverUrl = (cover) => {
-    if (!cover) return "";
-    // Si c'est déjà une URL complète (commence par http), on la garde
-    if (typeof cover === "string" && cover.startsWith("http")) return cover;
-    // Sinon on suppose que c'est un image_id d'IGDB (ex: "co1r76") ou on utilise l'image par défaut
-    return `https://images.igdb.com/igdb/image/upload/t_cover_big/${cover}.jpg`;
+    if (!cover) return defaultCover;
+
+    // Logique identique à Jeu.jsx : si c'est un objet IGDB
+    if (cover.image_id) {
+      return `https://images.igdb.com/igdb/image/upload/t_cover_big/${cover.image_id}.jpg`;
+    }
+
+    // Logique spécifique bibliothèque : si c'est une chaîne (URL ou ID seul)
+    if (
+      typeof cover === "string" &&
+      cover.trim() !== "" &&
+      !cover.includes("undefined")
+    ) {
+      if (cover.startsWith("http")) return cover;
+      return `https://images.igdb.com/igdb/image/upload/t_cover_big/${cover}.jpg`;
+    }
+
+    return defaultCover;
   };
 
   const handleUpdate = async () => {
@@ -669,13 +682,13 @@ const MyProfile = ({ user, onLoginSuccess, onLogout }) => {
                 <div key={game.gameId} className="game-card-modern">
                   <div className="game-image-container">
                     <img
-                      src={getCoverUrl(game.gameCover)}
-                      alt={game.gameName || "Jeu"}
+                      src={getCoverUrl(game.gameCover || game.cover)}
+                      alt={game.gameName || game.name}
                       className="game-image"
                     />
                   </div>
                   <div className="game-content">
-                    <h4 className="game-title">{game.gameName}</h4>
+                    <h4 className="game-title">{game.gameName || game.name}</h4>
                     <select
                       className={`status-select ${
                         statusMapping[game.status]
@@ -687,8 +700,8 @@ const MyProfile = ({ user, onLoginSuccess, onLogout }) => {
                         handleStatusUpdate(
                           game.gameId,
                           e.target.value,
-                          game.gameName,
-                          game.gameCover,
+                          game.gameName || game.name,
+                          game.gameCover || game.cover,
                         )
                       }
                     >

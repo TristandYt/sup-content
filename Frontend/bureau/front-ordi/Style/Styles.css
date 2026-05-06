@@ -183,6 +183,13 @@
   gap: 1.5rem;
 }
 
+/* Grille générique pour les membres et la bibliothèque */
+.game-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 1.25rem;
+}
+
 .game-card-modern {
   position: relative;
   overflow: hidden;
@@ -281,11 +288,12 @@
   margin: 0 0 0.5rem 0;
   line-height: 1.4;
   transition: color 0.3s ease;
-  /* Fix Line Clamp */
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
+  text-overflow: ellipsis;
+  min-height: 2.8em; /* Aligne les cartes même si le titre fait 1 seule ligne */
 }
 
 .game-card-modern:hover .game-title {
