@@ -4,8 +4,8 @@
  */
 const express = require('express');
 const router = express.Router();
-const { isAdmin } = require('../middlewares/roleMiddleware');
-const userController = require('../controllers/userController');
+const { isAdmin } = require('../backend/middlewares/roleMiddleware');
+const userController = require('../backend/controllers/userController');
 
 // Routes privées (auth + ensureFirestoreProfile appliqués dans server.js)
 router.get('/profile', userController.getProfile);

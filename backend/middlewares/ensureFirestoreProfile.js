@@ -1,5 +1,5 @@
 // Crée un profil public Firestore s'il n'existe pas encore
-const { admin, db } = require('../Services/Firebase');
+const { admin, db } = require('../../Services/Firebase');
 
 const ensureFirestoreProfile = async (req, res, next) => {
     try {

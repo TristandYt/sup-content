@@ -4,9 +4,9 @@
  * Modèle Firestore : users/{userId}
  *   { username, email, bio, favorites[], createdAt, updatedAt }
  */
-const { admin, db, auth } = require('../Services/Firebase');
-const Logger = require('../Services/Logger');
-const IGDBService = require('../Services/Api_igdb');
+const { admin, db, auth } = require('../../Services/Firebase');
+const Logger = require('../../Services/Logger');
+const IGDBService = require('../../Services/Api_igdb');
 
 /*
  * GET /api/users/profile  (privé)

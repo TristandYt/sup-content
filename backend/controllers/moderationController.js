@@ -1,6 +1,6 @@
 // Contrôleur de modération
-const { admin, db } = require('../Services/Firebase');
-const Logger = require('../Services/Logger');
+const { admin, db } = require('../../Services/Firebase');
+const Logger = require('../../Services/Logger');
 
 exports.reportContent = async (req, res, next) => {
     try {

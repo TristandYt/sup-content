@@ -14,8 +14,8 @@ services:
     command: >
       firebase emulators:start 
       --project sup-content-tristan 
-      --import=./data 
-      --export-on-exit=./data
+      --import=./backend/data 
+      --export-on-exit=./backend/data
     networks:
       - sup-network
 

@@ -12,7 +12,7 @@ const request = require('supertest');
 const express = require('express');
 const axios = require('axios');
 
-const { db, admin } = require('../Services/Firebase');
+const { db, admin } = require('../../Services/Firebase');
 const { calculateAge, getMinAgeFromRating, isAgeAllowed, filterGamesByAge } = require('../utils/pegiHelper');
 
 // --- Mocks ---
@@ -77,14 +77,14 @@ const buildApp = () => {
     const errorHandler = require('../middlewares/errorHandlers');
     const { isAdmin } = require('../middlewares/roleMiddleware');
 
-    app.use('/api/auth',require('../Routes/authRouter'));
-    app.use('/api/games',require('../Routes/games'));
-    app.use('/api/users',authMiddleware, ensureFirestoreProfile, require('../Routes/usersRouter'));
-    app.use('/api/lists',authMiddleware, ensureFirestoreProfile, require('../Routes/listRouter'));
-    app.use('/api/reviews', require('../Routes/reviewRouter'));
-    app.use('/api/follows',authMiddleware, ensureFirestoreProfile, require('../Routes/followRouter'));
-    app.use('/api/feeds',authMiddleware, ensureFirestoreProfile, require('../Routes/feedRouter'));
-    app.use('/api/conversations', authMiddleware, ensureFirestoreProfile, require('../Routes/conversationRouter'));
+    app.use('/api/auth',require('../../Routes/authRouter'));
+    app.use('/api/games',require('../../Routes/games'));
+    app.use('/api/users',authMiddleware, ensureFirestoreProfile, require('../../Routes/usersRouter'));
+    app.use('/api/lists',authMiddleware, ensureFirestoreProfile, require('../../Routes/listRouter'));
+    app.use('/api/reviews', require('../../Routes/reviewRouter'));
+    app.use('/api/follows',authMiddleware, ensureFirestoreProfile, require('../../Routes/followRouter'));
+    app.use('/api/feeds',authMiddleware, ensureFirestoreProfile, require('../../Routes/feedRouter'));
+    app.use('/api/conversations', authMiddleware, ensureFirestoreProfile, require('../../Routes/conversationRouter'));
 
     app.get('/api/users/me/export', authMiddleware, require('../controllers/userController').exportUserData);
     app.post('/api/interactions/reviews/:reviewId/like', authMiddleware, require('../controllers/reviewController').toggleLikeReview);
