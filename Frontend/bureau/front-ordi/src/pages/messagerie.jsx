@@ -282,9 +282,9 @@ const Messagerie = ({ user, preselectedConversation, onConversationOpen }) => {
         const res = await api.get(`/conversations/${selectedConv.id}/messages`);
         const newMsgs = res.data.messages || [];
 
-        // On ne met à jour que si aucun message n'est en cours d'envoi pour éviter le scintillement
+        // On ne met à jour que si aucun message n'est en cours d'envoi et qu'aucun menu n'est ouvert
         setMessages((prev) => {
-          if (prev.some((m) => m._pending)) return prev;
+          if (prev.some((m) => m._pending) || activeMenu !== null) return prev;
           return newMsgs;
         });
       } catch (err) {
@@ -396,21 +396,53 @@ const Messagerie = ({ user, preselectedConversation, onConversationOpen }) => {
     }
   };
 
-  const handleDeleteMessage = (messageId) => {
-    setMessages((prev) => prev.filter((m) => m.id !== messageId));
-    setActiveMenu(null);
+  const handleDeleteMessage = async (messageId) => {
+    if (!selectedConv?.id) return;
+    if (!window.confirm("Supprimer ce message ?")) {
+      setActiveMenu(null);
+      return;
+    }
+    try {
+      const api = await authAxios();
+      await api.delete(
+        `/conversations/${selectedConv.id}/messages/${messageId}`,
+      );
+      setMessages((prev) => prev.filter((m) => m.id !== messageId));
+    } catch (err) {
+      console.error("Erreur suppression:", err);
+      alert("Erreur lors de la suppression.");
+    } finally {
+      setActiveMenu(null);
+    }
   };
 
-  const handleEditMessage = (messageId) => {
+  const handleEditMessage = async (messageId) => {
+    if (!selectedConv?.id) return;
     const msgToEdit = messages.find((m) => m.id === messageId);
+    if (!msgToEdit) return;
+
     const newText = prompt("Modifier votre message :", msgToEdit?.text);
-    if (!newText || !newText.trim()) return;
-    setMessages((prev) =>
-      prev.map((m) =>
-        m.id === messageId ? { ...m, text: newText.trim() } : m,
-      ),
-    );
-    setActiveMenu(null);
+    if (!newText || !newText.trim() || newText === msgToEdit.text) {
+      return;
+    }
+
+    try {
+      const api = await authAxios();
+      await api.patch(
+        `/conversations/${selectedConv.id}/messages/${messageId}`,
+        { text: newText.trim() },
+      );
+      setMessages((prev) =>
+        prev.map((m) =>
+          m.id === messageId ? { ...m, text: newText.trim() } : m,
+        ),
+      );
+    } catch (err) {
+      console.error("Erreur modification:", err);
+      alert("Erreur lors de la modification.");
+    } finally {
+      setActiveMenu(null);
+    }
   };
 
   const getOtherUser = (conv) => {
@@ -647,6 +679,20 @@ const Messagerie = ({ user, preselectedConversation, onConversationOpen }) => {
                                 <div className="messaging-message-options">
                                   <button
                                     className="messaging-options-btn"
+                                    style={{
+                                      background: "#ffffff",
+                                      color: "#9333ea",
+                                      borderRadius: "50%",
+                                      width: "28px",
+                                      height: "28px",
+                                      display: "flex",
+                                      alignItems: "center",
+                                      justifyContent: "center",
+                                      border: "2px solid #9333ea",
+                                      cursor: "pointer",
+                                      boxShadow: "0 2px 8px rgba(0,0,0,0.4)",
+                                      marginLeft: "8px",
+                                    }}
                                     onClick={() =>
                                       setActiveMenu(
                                         activeMenu === m.id ? null : m.id,
