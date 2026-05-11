@@ -72,6 +72,9 @@ const Jeu = ({ gameId, onBack, user, onFavoriteChange, onGameClick }) => {
   const [rating, setRating] = useState(0);
   const [hoverRating, setHoverRating] = useState(0);
 
+  const [commentingReviewId, setCommentingReviewId] = useState(null);
+  const [reviewCommentText, setReviewCommentText] = useState("");
+
   // Jeux similaires
   const [similarGames, setSimilarGames] = useState([]);
 
@@ -278,6 +281,30 @@ const Jeu = ({ gameId, onBack, user, onFavoriteChange, onGameClick }) => {
       }
     } catch (err) {
       console.error("Erreur like review:", err);
+    }
+  };
+
+  /* ── Commenter une review ── */
+  const handleSendComment = async (reviewId) => {
+    if (!auth.currentUser) {
+      alert("Connectez-vous pour commenter.");
+      return;
+    }
+    if (!reviewCommentText.trim()) return;
+
+    try {
+      const api = await authAxios();
+      const res = await api.post(`/interactions/reviews/${reviewId}/comments`, {
+        text: reviewCommentText,
+      });
+      if (res.data.success) {
+        setReviewCommentText("");
+        setCommentingReviewId(null);
+        alert("Commentaire envoyé !");
+        refreshReviews();
+      }
+    } catch (err) {
+      console.error("Erreur comment review:", err);
     }
   };
 
@@ -597,6 +624,9 @@ const Jeu = ({ gameId, onBack, user, onFavoriteChange, onGameClick }) => {
                           marginTop: "12px",
                           borderTop: "1px solid rgba(255,255,255,0.05)",
                           paddingTop: "8px",
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "15px",
                         }}
                       >
                         <button
@@ -626,7 +656,102 @@ const Jeu = ({ gameId, onBack, user, onFavoriteChange, onGameClick }) => {
                             : "🤍"}
                           <span>{r.likedBy?.length || 0}</span>
                         </button>
+
+                        <button
+                          onClick={() =>
+                            setCommentingReviewId(
+                              commentingReviewId === r.id ? null : r.id,
+                            )
+                          }
+                          className="nav-icon-btn"
+                          style={{
+                            padding: "4px 10px",
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "6px",
+                            color: "#94a3b8",
+                            fontSize: "0.85rem",
+                            fontWeight: "600",
+                          }}
+                        >
+                          ✍️ Répondre
+                        </button>
                       </div>
+
+                      {/* Liste des réponses/commentaires (affichée en plus petit) */}
+                      {r.comments && r.comments.length > 0 && (
+                        <div
+                          style={{
+                            marginTop: "12px",
+                            marginLeft: "10px",
+                            paddingLeft: "12px",
+                            borderLeft: "2px solid rgba(147, 51, 234, 0.3)",
+                          }}
+                        >
+                          {r.comments.map((c, idx) => (
+                            <div
+                              key={idx}
+                              style={{
+                                background: "rgba(255, 255, 255, 0.03)",
+                                padding: "8px 12px",
+                                borderRadius: "8px",
+                                marginBottom: "6px",
+                                fontSize: "0.82rem",
+                              }}
+                            >
+                              <p
+                                style={{
+                                  margin: "0 0 4px 0",
+                                  color: "#cbd5e1",
+                                  lineHeight: "1.4",
+                                }}
+                              >
+                                {c.text}
+                              </p>
+                              <span
+                                style={{
+                                  color: "#9333ea",
+                                  fontSize: "0.75rem",
+                                  fontWeight: "600",
+                                }}
+                              >
+                                {c.pseudo || "Anonyme"}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      {commentingReviewId === r.id && (
+                        <div style={{ marginTop: "12px" }}>
+                          <textarea
+                            className="filter-select"
+                            style={{
+                              width: "100%",
+                              minHeight: "60px",
+                              fontSize: "0.85rem",
+                              padding: "8px",
+                              resize: "vertical",
+                            }}
+                            value={reviewCommentText}
+                            onChange={(e) =>
+                              setReviewCommentText(e.target.value)
+                            }
+                            placeholder="Écrire une réponse..."
+                          />
+                          <button
+                            className="nav-user-btn"
+                            style={{
+                              marginTop: "8px",
+                              padding: "5px 15px",
+                              fontSize: "0.8rem",
+                            }}
+                            onClick={() => handleSendComment(r.id)}
+                          >
+                            Envoyer
+                          </button>
+                        </div>
+                      )}
                     </div>
                   );
                 })}
