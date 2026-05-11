@@ -240,17 +240,13 @@ const Messagerie = ({ user, preselectedConversation, onConversationOpen }) => {
   const [activeMenu, setActiveMenu] = useState(null);
   const messagesEndRef = useRef(null);
 
-  // ✅ BUG 3 CORRIGÉ — récupère l'uid Firebase en priorité, sinon id custom
   const myId = String(user?.uid || user?.id || "");
 
   useEffect(() => {
     fetchConversations();
-
-    // Rafraîchissement silencieux de la liste des conversations (toutes les 5s)
     const interval = setInterval(() => {
       fetchConversations(null, true);
     }, 5000);
-
     return () => clearInterval(interval);
   }, []);
 
@@ -272,36 +268,27 @@ const Messagerie = ({ user, preselectedConversation, onConversationOpen }) => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages.length, selectedConv?.id]);
 
-  // Rafraîchissement "semi-réel" des messages (toutes les 1 seconde)
   useEffect(() => {
     if (!selectedConv) return;
-
     const interval = setInterval(async () => {
       try {
         const api = await authAxios();
         const res = await api.get(`/conversations/${selectedConv.id}/messages`);
         const newMsgs = res.data.messages || [];
-
-        // On ne met à jour que si aucun message n'est en cours d'envoi et qu'aucun menu n'est ouvert
         setMessages((prev) => {
           if (prev.some((m) => m._pending) || activeMenu !== null) return prev;
           return newMsgs;
         });
-      } catch (err) {
-        // Échec silencieux pour le rafraîchissement auto
-      }
+      } catch (err) {}
     }, 1000);
-
     return () => clearInterval(interval);
   }, [selectedConv]);
 
-  // Marquer les messages comme lus
   const markMessagesAsRead = async (convId, msgs) => {
     const unread = msgs.filter(
       (m) => String(m.senderId) !== myId && !m.readBy?.includes(myId),
     );
     if (unread.length === 0) return;
-
     try {
       const api = await authAxios();
       await Promise.all(
@@ -321,9 +308,7 @@ const Messagerie = ({ user, preselectedConversation, onConversationOpen }) => {
       const res = await api.get("/conversations");
       const convs = res.data.conversations || [];
       setConversations(convs);
-
-      if (silent) return; // On ne gère pas l'auto-sélection en arrière-plan
-
+      if (silent) return;
       const targetId = autoSelectId || preselectedConversation?.id;
       if (targetId) {
         const target = convs.find((c) => c.id === targetId);
@@ -360,12 +345,9 @@ const Messagerie = ({ user, preselectedConversation, onConversationOpen }) => {
   const handleSendMessage = async (e) => {
     e.preventDefault();
     if (!newMessage.trim() || !selectedConv || sendLoading) return;
-
     setSendLoading(true);
     const text = newMessage.trim();
     setNewMessage("");
-
-    // ✅ BUG 3 CORRIGÉ — senderId = myId pour que le côté sent/received soit correct
     const tempMsg = {
       id: `temp_${Date.now()}`,
       senderId: myId,
@@ -374,7 +356,6 @@ const Messagerie = ({ user, preselectedConversation, onConversationOpen }) => {
       _pending: true,
     };
     setMessages((prev) => [...prev, tempMsg]);
-
     try {
       const api = await authAxios();
       await api.post(`/conversations/${selectedConv.id}/messages`, { text });
@@ -408,10 +389,8 @@ const Messagerie = ({ user, preselectedConversation, onConversationOpen }) => {
       await api.delete(
         `/conversations/${selectedConv.id}/messages/${messageId}`,
       );
-
       setMessages((prev) => {
         const updated = prev.filter((m) => m.id !== messageId);
-        // Mise à jour instantanée de la sidebar
         setConversations((convs) =>
           convs.map((c) => {
             if (
@@ -443,13 +422,11 @@ const Messagerie = ({ user, preselectedConversation, onConversationOpen }) => {
     if (!selectedConv?.id) return;
     const msgToEdit = messages.find((m) => m.id === messageId);
     if (!msgToEdit) return;
-
     const newText = prompt("Modifier votre message :", msgToEdit?.text);
     if (!newText || !newText.trim() || newText === msgToEdit.text) {
       setActiveMenu(null);
       return;
     }
-
     try {
       const api = await authAxios();
       await api.patch(
@@ -460,7 +437,6 @@ const Messagerie = ({ user, preselectedConversation, onConversationOpen }) => {
         const updated = prev.map((m) =>
           m.id === messageId ? { ...m, text: newText.trim() } : m,
         );
-        // Mise à jour instantanée de la sidebar
         setConversations((convs) =>
           convs.map((c) =>
             c.id === selectedConv.id && c.lastMessage === msgToEdit.text
@@ -488,23 +464,14 @@ const Messagerie = ({ user, preselectedConversation, onConversationOpen }) => {
     };
   };
 
-  // ✅ BUG 3 CORRIGÉ — gère tous les formats de date Firestore possibles
   const formatTime = (createdAt) => {
     if (!createdAt) return "";
     let date;
-    if (createdAt?.seconds) {
-      // Firestore Timestamp natif
-      date = new Date(createdAt.seconds * 1000);
-    } else if (createdAt?._seconds) {
-      // Firestore Timestamp sérialisé en JSON par le backend
-      date = new Date(createdAt._seconds * 1000);
-    } else if (typeof createdAt === "number") {
-      date = new Date(createdAt);
-    } else if (typeof createdAt === "string") {
-      date = new Date(createdAt);
-    } else {
-      return "";
-    }
+    if (createdAt?.seconds) date = new Date(createdAt.seconds * 1000);
+    else if (createdAt?._seconds) date = new Date(createdAt._seconds * 1000);
+    else if (typeof createdAt === "number") date = new Date(createdAt);
+    else if (typeof createdAt === "string") date = new Date(createdAt);
+    else return "";
     if (isNaN(date.getTime())) return "";
     return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
   };
@@ -522,20 +489,35 @@ const Messagerie = ({ user, preselectedConversation, onConversationOpen }) => {
               <div className="messaging-icon">💬</div>
               <h3 className="messaging-title">Messages</h3>
             </div>
+            {/* ✅ ELEMENT 1 : BOUTON NOUVELLE CONVERSATION AVEC + */}
             <button
               className="messaging-new-btn"
               title="Nouvelle conversation"
               onClick={() => setShowSearchModal(true)}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                background: "#8b5cf6", // Fond violet pour le rendre visible
+                width: "56px",
+                height: "36px",
+                borderRadius: "8px",
+                border: "none",
+                cursor: "pointer",
+              }}
             >
               <svg
                 width="20"
                 height="20"
                 viewBox="0 0 24 24"
                 fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
+                stroke="white"
+                strokeWidth="3"
+                strokeLinecap="round"
+                strokeLinejoin="round"
               >
-                <path d="M12 5v14M5 12h14" />
+                <line x1="12" y1="5" x2="12" y2="19"></line>
+                <line x1="5" y1="12" x2="19" y2="12"></line>
               </svg>
             </button>
           </div>
@@ -574,7 +556,6 @@ const Messagerie = ({ user, preselectedConversation, onConversationOpen }) => {
                         alt={other.pseudo}
                         className="messaging-contact-avatar"
                       />
-                      {/* Pastille violette si conversation non lue */}
                       {conv.unreadCount > 0 && (
                         <span
                           className="messaging-status-dot online"
@@ -623,38 +604,6 @@ const Messagerie = ({ user, preselectedConversation, onConversationOpen }) => {
                     </h4>
                   </div>
                 </div>
-                <div className="messaging-chat-actions">
-                  <button className="messaging-action-btn" title="Rechercher">
-                    <svg
-                      width="20"
-                      height="20"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                    >
-                      <circle cx="11" cy="11" r="8"></circle>
-                      <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-                    </svg>
-                  </button>
-                  <button
-                    className="messaging-action-btn"
-                    title="Plus d'options"
-                  >
-                    <svg
-                      width="20"
-                      height="20"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                    >
-                      <circle cx="12" cy="12" r="1"></circle>
-                      <circle cx="12" cy="5" r="1"></circle>
-                      <circle cx="12" cy="19" r="1"></circle>
-                    </svg>
-                  </button>
-                </div>
               </div>
 
               <div className="messaging-messages-area">
@@ -682,10 +631,8 @@ const Messagerie = ({ user, preselectedConversation, onConversationOpen }) => {
                 ) : (
                   <>
                     {messages.map((m, index) => {
-                      // ✅ BUG 3 CORRIGÉ — comparaison String pour sent/received
                       const isMine = String(m.senderId) === myId;
                       const isLastMessage = index === messages.length - 1;
-
                       return (
                         <div
                           key={m.id}
@@ -704,7 +651,6 @@ const Messagerie = ({ user, preselectedConversation, onConversationOpen }) => {
                               <p className="messaging-message-text">{m.text}</p>
                             </div>
                             <div className="messaging-message-footer">
-                              {/* ✅ BUG 3 CORRIGÉ — formatTime gère tous les formats Firestore */}
                               <span className="messaging-message-time">
                                 {formatTime(m.createdAt)}
                               </span>
@@ -763,7 +709,6 @@ const Messagerie = ({ user, preselectedConversation, onConversationOpen }) => {
                                 </div>
                               )}
                             </div>
-                            {/* ✅ AJOUT : Indicateur "Vu" placé explicitement EN DESSOUS du dernier message envoyé */}
                             {isMine &&
                               isLastMessage &&
                               !m._pending &&
@@ -772,10 +717,11 @@ const Messagerie = ({ user, preselectedConversation, onConversationOpen }) => {
                                   style={{
                                     textAlign: "right",
                                     fontSize: "0.72rem",
-                                    color: "#c084fc",
+                                    color: "#ffffff",
                                     marginTop: "4px",
                                     fontWeight: "700",
                                     paddingRight: "4px",
+                                    textShadow: "0 1px 2px rgba(0,0,0,0.5)",
                                   }}
                                 >
                                   Vu
@@ -794,18 +740,6 @@ const Messagerie = ({ user, preselectedConversation, onConversationOpen }) => {
                 className="messaging-input-area"
                 onSubmit={handleSendMessage}
               >
-                <button type="button" className="messaging-attach-btn">
-                  <svg
-                    width="20"
-                    height="20"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                  >
-                    <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"></path>
-                  </svg>
-                </button>
                 <input
                   type="text"
                   className="messaging-input"
@@ -813,18 +747,34 @@ const Messagerie = ({ user, preselectedConversation, onConversationOpen }) => {
                   onChange={(e) => setNewMessage(e.target.value)}
                   placeholder="Écrivez votre message…"
                 />
+                {/* ✅ ELEMENT 2 : BOUTON D'ENVOI AVEC AVION */}
                 <button
                   type="submit"
                   className="messaging-send-btn"
                   disabled={!newMessage.trim() || sendLoading}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    background: "#8b5cf6", // Fond violet pour le rendre visible
+                    width: "52px",
+                    height: "42px",
+                    borderRadius: "50%",
+                    border: "none",
+                    cursor: "pointer",
+                    opacity: !newMessage.trim() || sendLoading ? 0.5 : 1,
+                  }}
                 >
                   <svg
-                    width="20"
-                    height="20"
                     viewBox="0 0 24 24"
+                    width="22"
+                    height="22"
                     fill="none"
-                    stroke="currentColor"
+                    stroke="white"
                     strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    style={{ transform: "rotate(45deg) translate(-2px, 2px)" }}
                   >
                     <line x1="22" y1="2" x2="11" y2="13"></line>
                     <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
