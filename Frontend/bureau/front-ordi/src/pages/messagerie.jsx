@@ -270,7 +270,7 @@ const Messagerie = ({ user, preselectedConversation, onConversationOpen }) => {
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+  }, [messages.length, selectedConv?.id]);
 
   // Rafraîchissement "semi-réel" des messages (toutes les 1 seconde)
   useEffect(() => {
@@ -294,6 +294,25 @@ const Messagerie = ({ user, preselectedConversation, onConversationOpen }) => {
 
     return () => clearInterval(interval);
   }, [selectedConv]);
+
+  // Marquer les messages comme lus
+  const markMessagesAsRead = async (convId, msgs) => {
+    const unread = msgs.filter(
+      (m) => String(m.senderId) !== myId && !m.readBy?.includes(myId),
+    );
+    if (unread.length === 0) return;
+
+    try {
+      const api = await authAxios();
+      await Promise.all(
+        unread.map((m) =>
+          api.patch(`/conversations/${convId}/messages/${m.id}/read`),
+        ),
+      );
+    } catch (err) {
+      console.error("Erreur lecture:", err);
+    }
+  };
 
   const fetchConversations = async (autoSelectId = null, silent = false) => {
     if (!silent) setLoadingConvs(true);
@@ -328,7 +347,9 @@ const Messagerie = ({ user, preselectedConversation, onConversationOpen }) => {
     try {
       const api = await authAxios();
       const res = await api.get(`/conversations/${conv.id}/messages`);
-      setMessages(res.data.messages || []);
+      const msgs = res.data.messages || [];
+      setMessages(msgs);
+      markMessagesAsRead(conv.id, msgs);
     } catch (err) {
       console.error("Erreur fetchMessages:", err);
     } finally {
@@ -393,13 +414,12 @@ const Messagerie = ({ user, preselectedConversation, onConversationOpen }) => {
   };
 
   const getOtherUser = (conv) => {
-    if (!conv) return { pseudo: "Inconnu", avatar: null, status: "offline" };
+    if (!conv) return { pseudo: "Inconnu", avatar: null };
     return {
       pseudo: conv.otherUserPseudo || "Utilisateur",
       avatar:
         conv.otherUserAvatar ||
         `https://api.dicebear.com/7.x/bottts/svg?seed=${conv.otherUserPseudo || "user"}`,
-      status: conv.otherUserStatus || "offline",
     };
   };
 
@@ -489,9 +509,13 @@ const Messagerie = ({ user, preselectedConversation, onConversationOpen }) => {
                         alt={other.pseudo}
                         className="messaging-contact-avatar"
                       />
-                      <span
-                        className={`messaging-status-dot ${other.status === "online" ? "online" : "offline"}`}
-                      />
+                      {/* Pastille violette si conversation non lue */}
+                      {conv.unreadCount > 0 && (
+                        <span
+                          className="messaging-status-dot online"
+                          style={{ background: "#9333ea" }}
+                        />
+                      )}
                     </div>
                     <div className="messaging-contact-info">
                       <span className="messaging-contact-name">
@@ -532,11 +556,6 @@ const Messagerie = ({ user, preselectedConversation, onConversationOpen }) => {
                     <h4 className="messaging-header-name">
                       {otherUser.pseudo}
                     </h4>
-                    <span className="messaging-header-status">
-                      {otherUser.status === "online"
-                        ? "● En ligne"
-                        : "○ Hors ligne"}
-                    </span>
                   </div>
                 </div>
                 <div className="messaging-chat-actions">
@@ -597,9 +616,11 @@ const Messagerie = ({ user, preselectedConversation, onConversationOpen }) => {
                   </div>
                 ) : (
                   <>
-                    {messages.map((m) => {
+                    {messages.map((m, index) => {
                       // ✅ BUG 3 CORRIGÉ — comparaison String pour sent/received
                       const isMine = String(m.senderId) === myId;
+                      const isLastMessage = index === messages.length - 1;
+
                       return (
                         <div
                           key={m.id}
@@ -686,6 +707,24 @@ const Messagerie = ({ user, preselectedConversation, onConversationOpen }) => {
                                 </div>
                               )}
                             </div>
+                            {/* ✅ AJOUT : Indicateur "Vu" placé explicitement EN DESSOUS du dernier message envoyé */}
+                            {isMine &&
+                              isLastMessage &&
+                              !m._pending &&
+                              m.readBy?.length > 1 && (
+                                <div
+                                  style={{
+                                    textAlign: "right",
+                                    fontSize: "0.72rem",
+                                    color: "#c084fc",
+                                    marginTop: "4px",
+                                    fontWeight: "700",
+                                    paddingRight: "4px",
+                                  }}
+                                >
+                                  Vu
+                                </div>
+                              )}
                           </div>
                         </div>
                       );

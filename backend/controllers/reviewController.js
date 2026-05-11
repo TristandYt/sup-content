@@ -195,26 +195,36 @@ exports.commentReview = async (req, res, next) => {
   try {
     const userId = req.user.id;
     const { reviewId } = req.params;
-    const { text } = req.body;
+    const { text, pseudo } = req.body;
 
-    if (!text || text.trim() === "")
+    if (!text || text.trim() === "") {
       return res
         .status(400)
         .json({ success: false, msg: "Le commentaire ne peut pas être vide" });
+    }
 
     const reviewRef = db.collection("reviews").doc(reviewId);
-    if (!(await reviewRef.get()).exists)
+    const reviewDoc = await reviewRef.get();
+
+    if (!reviewDoc.exists) {
       return res
         .status(404)
         .json({ success: false, msg: "Critique introuvable" });
+    }
 
-    const commentRef = await reviewRef.collection("comments").add({
+    // On crée l'objet commentaire
+    const newComment = {
       userId,
+      pseudo: pseudo || "Anonyme",
       text: text.trim(),
-      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      createdAt: new Date().toISOString(),
+    };
+
+    await reviewRef.update({
+      comments: admin.firestore.FieldValue.arrayUnion(newComment),
     });
 
-    const reviewAuthorId = (await reviewRef.get()).data().userId;
+    const reviewAuthorId = reviewDoc.data().userId;
     if (reviewAuthorId !== userId) {
       await db.collection("notifications").add({
         userId: reviewAuthorId,
@@ -225,13 +235,11 @@ exports.commentReview = async (req, res, next) => {
         createdAt: admin.firestore.FieldValue.serverTimestamp(),
       });
     }
-    res
-      .status(201)
-      .json({
-        success: true,
-        msg: "Commentaire ajouté",
-        commentId: commentRef.id,
-      });
+
+    res.status(201).json({
+      success: true,
+      msg: "Commentaire ajouté",
+    });
   } catch (error) {
     next(error);
   }
