@@ -398,6 +398,7 @@ const Messagerie = ({ user, preselectedConversation, onConversationOpen }) => {
 
   const handleDeleteMessage = async (messageId) => {
     if (!selectedConv?.id) return;
+    const msgToDelete = messages.find((m) => m.id === messageId);
     if (!window.confirm("Supprimer ce message ?")) {
       setActiveMenu(null);
       return;
@@ -407,7 +408,29 @@ const Messagerie = ({ user, preselectedConversation, onConversationOpen }) => {
       await api.delete(
         `/conversations/${selectedConv.id}/messages/${messageId}`,
       );
-      setMessages((prev) => prev.filter((m) => m.id !== messageId));
+
+      setMessages((prev) => {
+        const updated = prev.filter((m) => m.id !== messageId);
+        // Mise à jour instantanée de la sidebar
+        setConversations((convs) =>
+          convs.map((c) => {
+            if (
+              c.id === selectedConv.id &&
+              c.lastMessage === msgToDelete?.text
+            ) {
+              const newLast = updated[updated.length - 1];
+              return {
+                ...c,
+                lastMessage: newLast
+                  ? newLast.text
+                  : "Démarrer la conversation",
+              };
+            }
+            return c;
+          }),
+        );
+        return updated;
+      });
     } catch (err) {
       console.error("Erreur suppression:", err);
       alert("Erreur lors de la suppression.");
@@ -423,6 +446,7 @@ const Messagerie = ({ user, preselectedConversation, onConversationOpen }) => {
 
     const newText = prompt("Modifier votre message :", msgToEdit?.text);
     if (!newText || !newText.trim() || newText === msgToEdit.text) {
+      setActiveMenu(null);
       return;
     }
 
@@ -432,11 +456,20 @@ const Messagerie = ({ user, preselectedConversation, onConversationOpen }) => {
         `/conversations/${selectedConv.id}/messages/${messageId}`,
         { text: newText.trim() },
       );
-      setMessages((prev) =>
-        prev.map((m) =>
+      setMessages((prev) => {
+        const updated = prev.map((m) =>
           m.id === messageId ? { ...m, text: newText.trim() } : m,
-        ),
-      );
+        );
+        // Mise à jour instantanée de la sidebar
+        setConversations((convs) =>
+          convs.map((c) =>
+            c.id === selectedConv.id && c.lastMessage === msgToEdit.text
+              ? { ...c, lastMessage: newText.trim() }
+              : c,
+          ),
+        );
+        return updated;
+      });
     } catch (err) {
       console.error("Erreur modification:", err);
       alert("Erreur lors de la modification.");
@@ -679,36 +712,13 @@ const Messagerie = ({ user, preselectedConversation, onConversationOpen }) => {
                                 <div className="messaging-message-options">
                                   <button
                                     className="messaging-options-btn"
-                                    style={{
-                                      background: "#ffffff",
-                                      color: "#9333ea",
-                                      borderRadius: "50%",
-                                      width: "28px",
-                                      height: "28px",
-                                      display: "flex",
-                                      alignItems: "center",
-                                      justifyContent: "center",
-                                      border: "2px solid #9333ea",
-                                      cursor: "pointer",
-                                      boxShadow: "0 2px 8px rgba(0,0,0,0.4)",
-                                      marginLeft: "8px",
-                                    }}
                                     onClick={() =>
                                       setActiveMenu(
                                         activeMenu === m.id ? null : m.id,
                                       )
                                     }
                                   >
-                                    <svg
-                                      width="16"
-                                      height="16"
-                                      viewBox="0 0 24 24"
-                                      fill="currentColor"
-                                    >
-                                      <circle cx="12" cy="12" r="2"></circle>
-                                      <circle cx="12" cy="5" r="2"></circle>
-                                      <circle cx="12" cy="19" r="2"></circle>
-                                    </svg>
+                                    ...
                                   </button>
                                   {activeMenu === m.id && (
                                     <div className="messaging-options-menu">

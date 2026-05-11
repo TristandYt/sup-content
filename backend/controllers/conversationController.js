@@ -46,12 +46,10 @@ exports.getOrCreateConversation = async (req, res, next) => {
         .json({ success: false, msg: "Cible utilisateur manquant" });
     }
     if (userId === targetUserId) {
-      return res
-        .status(400)
-        .json({
-          success: false,
-          msg: "Vous ne pouvez pas vous écrire à vous-même",
-        });
+      return res.status(400).json({
+        success: false,
+        msg: "Vous ne pouvez pas vous écrire à vous-même",
+      });
     }
 
     const targetExists = await db.collection("users").doc(targetUserId).get();
@@ -63,12 +61,10 @@ exports.getOrCreateConversation = async (req, res, next) => {
 
     const isMutual = await checkMutualFollow(userId, targetUserId);
     if (!isMutual) {
-      return res
-        .status(403)
-        .json({
-          success: false,
-          msg: "Vous devez vous suivre mutuellement pour échanger des messages",
-        });
+      return res.status(403).json({
+        success: false,
+        msg: "Vous devez vous suivre mutuellement pour échanger des messages",
+      });
     }
 
     const conversationId = buildConversationId(userId, targetUserId);
@@ -98,13 +94,11 @@ exports.getOrCreateConversation = async (req, res, next) => {
       conversationId,
     });
 
-    res
-      .status(201)
-      .json({
-        success: true,
-        created: true,
-        conversation: { id: conversationId, ...newConversation },
-      });
+    res.status(201).json({
+      success: true,
+      created: true,
+      conversation: { id: conversationId, ...newConversation },
+    });
   } catch (error) {
     next(error);
   }
@@ -287,6 +281,18 @@ exports.updateMessage = async (req, res, next) => {
       updatedAt: admin.firestore.FieldValue.serverTimestamp(),
     });
 
+    // Mettre à jour l'aperçu dans la conversation si c'était le dernier message
+    const convRef = db.collection("conversations").doc(conversationId);
+    const convDoc = await convRef.get();
+    if (
+      convDoc.exists &&
+      convDoc.data().lastMessage === messageDoc.data().text
+    ) {
+      await convRef.update({
+        lastMessage: text.trim(),
+      });
+    }
+
     res.json({ success: true, msg: "Message modifié" });
   } catch (error) {
     next(error);
@@ -318,6 +324,35 @@ exports.deleteMessage = async (req, res, next) => {
     }
 
     await messageRef.delete();
+
+    // Si on a supprimé le dernier message, on doit trouver le nouveau message précédent pour l'aperçu
+    const convRef = db.collection("conversations").doc(conversationId);
+    const convDoc = await convRef.get();
+    if (
+      convDoc.exists &&
+      convDoc.data().lastMessage === messageDoc.data().text
+    ) {
+      const lastMsgs = await convRef
+        .collection("messages")
+        .orderBy("createdAt", "desc")
+        .limit(1)
+        .get();
+
+      if (!lastMsgs.empty) {
+        const last = lastMsgs.docs[0].data();
+        await convRef.update({
+          lastMessage: last.text || "[Fichier]",
+          lastMessageAt: last.createdAt,
+          lastMessageSender: last.senderId,
+        });
+      } else {
+        await convRef.update({
+          lastMessage: null,
+          lastMessageAt: null,
+          lastMessageSender: null,
+        });
+      }
+    }
 
     res.json({ success: true, msg: "Message supprimé" });
   } catch (error) {
