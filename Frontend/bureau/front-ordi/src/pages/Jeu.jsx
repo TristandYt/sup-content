@@ -54,7 +54,7 @@ const formatDate = (updatedAt) => {
 };
 
 /* ════════════════════════════════════════════════ */
-const Jeu = ({ gameId, onBack, user, onFavoriteChange, onGameSelect }) => {
+const Jeu = ({ gameId, onBack, user, onFavoriteChange, onGameClick }) => {
   const [game, setGame] = useState(null);
   const [loading, setLoading] = useState(true);
   const [isFavorite, setIsFavorite] = useState(false);
@@ -78,6 +78,8 @@ const Jeu = ({ gameId, onBack, user, onFavoriteChange, onGameSelect }) => {
   /* ── Chargement initial ── */
   useEffect(() => {
     if (!gameId) return;
+
+    window.scrollTo(0, 0);
 
     const fetchDetails = async () => {
       try {
@@ -591,7 +593,7 @@ const Jeu = ({ gameId, onBack, user, onFavoriteChange, onGameSelect }) => {
                       key={sg.id}
                       className="game-card-modern"
                       style={{ cursor: "pointer" }}
-                      onClick={() => onGameSelect?.(sg.id)}
+                      onClick={() => onGameClick?.(sg.id)}
                     >
                       <div className="game-image-container">
                         <img

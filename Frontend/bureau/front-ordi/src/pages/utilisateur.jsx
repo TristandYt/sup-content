@@ -21,6 +21,7 @@ const PublicProfile = ({
   currentUser,
   onBack,
   onOpenMessaging,
+  onGameClick,
 }) => {
   const [profile, setProfile] = useState(null);
   const [iFollow, setIFollow] = useState(false);
@@ -488,7 +489,8 @@ const PublicProfile = ({
                 <div
                   key={game.gameId}
                   className="game-card-modern"
-                  style={{ cursor: "default" }}
+                  style={{ cursor: "pointer" }}
+                  onClick={() => onGameClick(game.gameId)}
                 >
                   <div className="game-image-container">
                     <img
@@ -519,7 +521,7 @@ const PublicProfile = ({
 /* ═══════════════════════════════════════════════════════════
    MON PROFIL PERSONNEL — isPublic !== true
 ═══════════════════════════════════════════════════════════ */
-const MyProfile = ({ user, onLoginSuccess, onLogout }) => {
+const MyProfile = ({ user, onLoginSuccess, onLogout, onGameClick }) => {
   const { t, i18n } = useTranslation();
 
   const [profileData, setProfileData] = useState({
@@ -777,7 +779,7 @@ const MyProfile = ({ user, onLoginSuccess, onLogout }) => {
           </div>
 
           <div className="filters-container" style={{ marginBottom: "30px" }}>
-            {["Tous", "A faire", "En cours", "Fini"].map((s) => (
+            {["Tous", "A faire", "En cours", "Fini", "Abandonné"].map((s) => (
               <button
                 key={s}
                 className={`category-btn ${filter === s ? "active" : ""}`}
@@ -806,7 +808,11 @@ const MyProfile = ({ user, onLoginSuccess, onLogout }) => {
           ) : (
             <div className="game-grid">
               {filteredGames.map((game) => (
-                <div key={game.gameId} className="game-card-modern">
+                <div
+                  key={game.gameId}
+                  className="game-card-modern"
+                  onClick={() => onGameClick(game.gameId)}
+                >
                   <div className="game-image-container">
                     <img
                       src={getCoverUrl(game.gameCover || game.cover)}
@@ -819,6 +825,7 @@ const MyProfile = ({ user, onLoginSuccess, onLogout }) => {
                     <select
                       className={`status-select ${statusMapping[game.status]?.toLowerCase().replace(" ", "-") || ""}`}
                       value={game.status || "to_play"}
+                      onClick={(e) => e.stopPropagation()}
                       onChange={(e) =>
                         handleStatusUpdate(
                           game.gameId,
@@ -855,6 +862,7 @@ const Utilisateur = ({
   targetUserId,
   onBack,
   onOpenMessaging,
+  onGameClick,
 }) => {
   if (isPublic) {
     return (
@@ -863,6 +871,7 @@ const Utilisateur = ({
         currentUser={user}
         onBack={onBack}
         onOpenMessaging={onOpenMessaging}
+        onGameClick={onGameClick}
       />
     );
   }
@@ -871,6 +880,7 @@ const Utilisateur = ({
       user={user}
       onLoginSuccess={onLoginSuccess}
       onLogout={onLogout}
+      onGameClick={onGameClick}
     />
   );
 };
