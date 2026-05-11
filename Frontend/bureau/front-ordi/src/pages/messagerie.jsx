@@ -38,10 +38,7 @@ const UserSearchModal = ({ onClose, onSelectConversation }) => {
       setError("");
       try {
         const api = await authAxios();
-        const res = await api.get(`/search`, {
-          params: { q: query.trim() },
-        });
-        // Le moteur de recherche unifié renvoie { results: { users: [...], ... } }
+        const res = await api.get(`/search`, { params: { q: query.trim() } });
         setResults(res.data.results?.users || []);
       } catch (err) {
         console.error("Erreur recherche:", err);
@@ -66,7 +63,7 @@ const UserSearchModal = ({ onClose, onSelectConversation }) => {
       const msg = err.response?.data?.msg || "";
       if (msg.toLowerCase().includes("mutuellement")) {
         setError(
-          `Vous devez vous suivre mutuellement avec ${u.pseudo} pour lui écrire.`,
+          `Vous devez vous suivre mutuellement avec ${u.username || u.pseudo} pour lui écrire.`,
         );
       } else {
         setError(msg || "Impossible d'ouvrir la conversation.");
@@ -78,7 +75,6 @@ const UserSearchModal = ({ onClose, onSelectConversation }) => {
 
   return (
     <>
-      {/* Overlay */}
       <div
         onClick={onClose}
         style={{
@@ -89,8 +85,6 @@ const UserSearchModal = ({ onClose, onSelectConversation }) => {
           backdropFilter: "blur(4px)",
         }}
       />
-
-      {/* Modale */}
       <div
         style={{
           position: "fixed",
@@ -107,7 +101,6 @@ const UserSearchModal = ({ onClose, onSelectConversation }) => {
           boxShadow: "0 20px 60px rgba(0,0,0,0.5)",
         }}
       >
-        {/* Header modale */}
         <div
           style={{
             display: "flex",
@@ -135,7 +128,6 @@ const UserSearchModal = ({ onClose, onSelectConversation }) => {
           </button>
         </div>
 
-        {/* Input recherche */}
         <input
           ref={inputRef}
           type="text"
@@ -150,7 +142,6 @@ const UserSearchModal = ({ onClose, onSelectConversation }) => {
           }}
         />
 
-        {/* Erreur */}
         {error && (
           <p
             style={{
@@ -167,20 +158,17 @@ const UserSearchModal = ({ onClose, onSelectConversation }) => {
           </p>
         )}
 
-        {/* Résultats */}
         <div style={{ maxHeight: "320px", overflowY: "auto" }}>
           {loading && (
             <div style={{ textAlign: "center", padding: "24px" }}>
               <div className="loading-spinner" style={{ margin: "0 auto" }} />
             </div>
           )}
-
           {!loading && results.length === 0 && query.trim() && !error && (
             <div style={{ textAlign: "center", padding: "30px" }}>
               <p className="empty-text">Aucun utilisateur trouvé</p>
             </div>
           )}
-
           {!loading &&
             results.map((u) => (
               <div
@@ -203,6 +191,7 @@ const UserSearchModal = ({ onClose, onSelectConversation }) => {
                   <img
                     src={
                       u.avatar ||
+                      u.photoURL ||
                       `https://api.dicebear.com/7.x/bottts/svg?seed=${u.username || u.pseudo}`
                     }
                     alt={u.username || u.pseudo}
@@ -225,7 +214,7 @@ const UserSearchModal = ({ onClose, onSelectConversation }) => {
                     flexShrink: 0,
                   }}
                 >
-                  {actionLoading === u.uid ? "…" : "→"}
+                  {actionLoading === (u.id || u.uid) ? "…" : "→"}
                 </span>
               </div>
             ))}
@@ -251,30 +240,27 @@ const Messagerie = ({ user, preselectedConversation, onConversationOpen }) => {
   const [activeMenu, setActiveMenu] = useState(null);
   const messagesEndRef = useRef(null);
 
-  /* ── Chargement initial des conversations ── */
+  // ✅ BUG 3 CORRIGÉ — récupère l'uid Firebase en priorité, sinon id custom
+  const myId = String(user?.uid || user?.id || "");
+
   useEffect(() => {
     fetchConversations();
   }, []);
 
-  /* ── Présélection d'une conversation (depuis profil public) ── */
   useEffect(() => {
     if (!preselectedConversation) return;
-    // Attendre que les conversations soient chargées
     if (conversations.length === 0) return;
-
     const found = conversations.find(
       (c) => c.id === preselectedConversation.id,
     );
     if (found) {
       selectConversation(found);
     } else {
-      // Nouvelle conversation pas encore dans la liste → recharger
       fetchConversations(preselectedConversation.id);
     }
     if (onConversationOpen) onConversationOpen();
   }, [preselectedConversation, conversations]);
 
-  /* ── Scroll automatique ── */
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
@@ -286,8 +272,6 @@ const Messagerie = ({ user, preselectedConversation, onConversationOpen }) => {
       const res = await api.get("/conversations");
       const convs = res.data.conversations || [];
       setConversations(convs);
-
-      // Auto-sélection si on a un id cible
       const targetId = autoSelectId || preselectedConversation?.id;
       if (targetId) {
         const target = convs.find((c) => c.id === targetId);
@@ -327,12 +311,12 @@ const Messagerie = ({ user, preselectedConversation, onConversationOpen }) => {
     const text = newMessage.trim();
     setNewMessage("");
 
-    // Affichage optimiste
+    // ✅ BUG 3 CORRIGÉ — senderId = myId pour que le côté sent/received soit correct
     const tempMsg = {
       id: `temp_${Date.now()}`,
-      senderId: user?.id,
+      senderId: myId,
       text,
-      createdAt: { seconds: Date.now() / 1000 },
+      createdAt: { _seconds: Date.now() / 1000 },
       _pending: true,
     };
     setMessages((prev) => [...prev, tempMsg]);
@@ -340,10 +324,8 @@ const Messagerie = ({ user, preselectedConversation, onConversationOpen }) => {
     try {
       const api = await authAxios();
       await api.post(`/conversations/${selectedConv.id}/messages`, { text });
-      // Recharger les vrais messages depuis le serveur
       const res = await api.get(`/conversations/${selectedConv.id}/messages`);
       setMessages(res.data.messages || []);
-      // Mettre à jour le preview dans la sidebar
       setConversations((prev) =>
         prev.map((c) =>
           c.id === selectedConv.id
@@ -353,7 +335,6 @@ const Messagerie = ({ user, preselectedConversation, onConversationOpen }) => {
       );
     } catch (err) {
       console.error("Erreur sendMessage:", err);
-      // Retirer le message optimiste en cas d'erreur
       setMessages((prev) => prev.filter((m) => m.id !== tempMsg.id));
       setNewMessage(text);
     } finally {
@@ -378,28 +359,35 @@ const Messagerie = ({ user, preselectedConversation, onConversationOpen }) => {
     setActiveMenu(null);
   };
 
-  // Détermine le pseudo/avatar de l'autre participant
   const getOtherUser = (conv) => {
     if (!conv) return { pseudo: "Inconnu", avatar: null, status: "offline" };
-    const otherId = conv.participants?.find((p) => p !== user?.id);
     return {
-      pseudo:
-        conv.otherUserPseudo ||
-        conv[`pseudo_${otherId}`] ||
-        otherId ||
-        "Utilisateur",
+      pseudo: conv.otherUserPseudo || "Utilisateur",
       avatar:
         conv.otherUserAvatar ||
-        `https://api.dicebear.com/7.x/bottts/svg?seed=${otherId}`,
+        `https://api.dicebear.com/7.x/bottts/svg?seed=${conv.otherUserPseudo || "user"}`,
       status: conv.otherUserStatus || "offline",
     };
   };
 
+  // ✅ BUG 3 CORRIGÉ — gère tous les formats de date Firestore possibles
   const formatTime = (createdAt) => {
     if (!createdAt) return "";
-    const date = createdAt.seconds
-      ? new Date(createdAt.seconds * 1000)
-      : new Date(createdAt);
+    let date;
+    if (createdAt?.seconds) {
+      // Firestore Timestamp natif
+      date = new Date(createdAt.seconds * 1000);
+    } else if (createdAt?._seconds) {
+      // Firestore Timestamp sérialisé en JSON par le backend
+      date = new Date(createdAt._seconds * 1000);
+    } else if (typeof createdAt === "number") {
+      date = new Date(createdAt);
+    } else if (typeof createdAt === "string") {
+      date = new Date(createdAt);
+    } else {
+      return "";
+    }
+    if (isNaN(date.getTime())) return "";
     return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
   };
 
@@ -408,7 +396,6 @@ const Messagerie = ({ user, preselectedConversation, onConversationOpen }) => {
   return (
     <div className="messaging-container">
       <div className="messaging-gradient"></div>
-
       <div className="messaging-layout">
         {/* ── SIDEBAR CONTACTS ── */}
         <aside className="messaging-sidebar">
@@ -417,8 +404,6 @@ const Messagerie = ({ user, preselectedConversation, onConversationOpen }) => {
               <div className="messaging-icon">💬</div>
               <h3 className="messaging-title">Messages</h3>
             </div>
-
-            {/* Bouton + → ouvre la modale de recherche */}
             <button
               className="messaging-new-btn"
               title="Nouvelle conversation"
@@ -462,9 +447,7 @@ const Messagerie = ({ user, preselectedConversation, onConversationOpen }) => {
                 return (
                   <div
                     key={conv.id}
-                    className={`messaging-contact-item ${
-                      selectedConv?.id === conv.id ? "active" : ""
-                    }`}
+                    className={`messaging-contact-item ${selectedConv?.id === conv.id ? "active" : ""}`}
                     onClick={() => selectConversation(conv)}
                   >
                     <div className="messaging-contact-avatar-wrapper">
@@ -474,9 +457,7 @@ const Messagerie = ({ user, preselectedConversation, onConversationOpen }) => {
                         className="messaging-contact-avatar"
                       />
                       <span
-                        className={`messaging-status-dot ${
-                          other.status === "online" ? "online" : "offline"
-                        }`}
+                        className={`messaging-status-dot ${other.status === "online" ? "online" : "offline"}`}
                       />
                     </div>
                     <div className="messaging-contact-info">
@@ -507,7 +488,6 @@ const Messagerie = ({ user, preselectedConversation, onConversationOpen }) => {
         <main className="messaging-main">
           {selectedConv ? (
             <>
-              {/* En-tête du chat */}
               <div className="messaging-chat-header">
                 <div className="messaging-chat-header-info">
                   <img
@@ -560,7 +540,6 @@ const Messagerie = ({ user, preselectedConversation, onConversationOpen }) => {
                 </div>
               </div>
 
-              {/* Zone des messages */}
               <div className="messaging-messages-area">
                 {loadingMsgs ? (
                   <div
@@ -585,100 +564,104 @@ const Messagerie = ({ user, preselectedConversation, onConversationOpen }) => {
                   </div>
                 ) : (
                   <>
-                    {messages.map((m) => (
-                      <div
-                        key={m.id}
-                        className={`messaging-message ${
-                          m.senderId === user?.id ? "sent" : "received"
-                        }`}
-                        style={{ opacity: m._pending ? 0.6 : 1 }}
-                      >
-                        {m.senderId !== user?.id && (
-                          <img
-                            src={otherUser.avatar}
-                            alt=""
-                            className="messaging-message-avatar"
-                          />
-                        )}
-                        <div className="messaging-message-content">
-                          <div className="messaging-message-bubble">
-                            <p className="messaging-message-text">{m.text}</p>
-                          </div>
-                          <div className="messaging-message-footer">
-                            <span className="messaging-message-time">
-                              {formatTime(m.createdAt)}
-                            </span>
-                            {m.senderId === user?.id && !m._pending && (
-                              <div className="messaging-message-options">
-                                <button
-                                  className="messaging-options-btn"
-                                  onClick={() =>
-                                    setActiveMenu(
-                                      activeMenu === m.id ? null : m.id,
-                                    )
-                                  }
-                                >
-                                  <svg
-                                    width="16"
-                                    height="16"
-                                    viewBox="0 0 24 24"
-                                    fill="currentColor"
+                    {messages.map((m) => {
+                      // ✅ BUG 3 CORRIGÉ — comparaison String pour sent/received
+                      const isMine = String(m.senderId) === myId;
+                      return (
+                        <div
+                          key={m.id}
+                          className={`messaging-message ${isMine ? "sent" : "received"}`}
+                          style={{ opacity: m._pending ? 0.6 : 1 }}
+                        >
+                          {!isMine && (
+                            <img
+                              src={otherUser.avatar}
+                              alt=""
+                              className="messaging-message-avatar"
+                            />
+                          )}
+                          <div className="messaging-message-content">
+                            <div className="messaging-message-bubble">
+                              <p className="messaging-message-text">{m.text}</p>
+                            </div>
+                            <div className="messaging-message-footer">
+                              {/* ✅ BUG 3 CORRIGÉ — formatTime gère tous les formats Firestore */}
+                              <span className="messaging-message-time">
+                                {formatTime(m.createdAt)}
+                              </span>
+                              {isMine && !m._pending && (
+                                <div className="messaging-message-options">
+                                  <button
+                                    className="messaging-options-btn"
+                                    onClick={() =>
+                                      setActiveMenu(
+                                        activeMenu === m.id ? null : m.id,
+                                      )
+                                    }
                                   >
-                                    <circle cx="12" cy="12" r="2"></circle>
-                                    <circle cx="12" cy="5" r="2"></circle>
-                                    <circle cx="12" cy="19" r="2"></circle>
-                                  </svg>
-                                </button>
-                                {activeMenu === m.id && (
-                                  <div className="messaging-options-menu">
-                                    <button
-                                      onClick={() => handleEditMessage(m.id)}
-                                      className="messaging-option-item"
+                                    <svg
+                                      width="16"
+                                      height="16"
+                                      viewBox="0 0 24 24"
+                                      fill="currentColor"
                                     >
-                                      <svg
-                                        width="16"
-                                        height="16"
-                                        viewBox="0 0 24 24"
-                                        fill="none"
-                                        stroke="currentColor"
-                                        strokeWidth="2"
+                                      <circle cx="12" cy="12" r="2"></circle>
+                                      <circle cx="12" cy="5" r="2"></circle>
+                                      <circle cx="12" cy="19" r="2"></circle>
+                                    </svg>
+                                  </button>
+                                  {activeMenu === m.id && (
+                                    <div className="messaging-options-menu">
+                                      <button
+                                        onClick={() => handleEditMessage(m.id)}
+                                        className="messaging-option-item"
                                       >
-                                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
-                                        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
-                                      </svg>
-                                      Modifier
-                                    </button>
-                                    <button
-                                      onClick={() => handleDeleteMessage(m.id)}
-                                      className="messaging-option-item delete"
-                                    >
-                                      <svg
-                                        width="16"
-                                        height="16"
-                                        viewBox="0 0 24 24"
-                                        fill="none"
-                                        stroke="currentColor"
-                                        strokeWidth="2"
+                                        <svg
+                                          width="16"
+                                          height="16"
+                                          viewBox="0 0 24 24"
+                                          fill="none"
+                                          stroke="currentColor"
+                                          strokeWidth="2"
+                                        >
+                                          <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                                          <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                                        </svg>
+                                        Modifier
+                                      </button>
+                                      <button
+                                        onClick={() =>
+                                          handleDeleteMessage(m.id)
+                                        }
+                                        className="messaging-option-item delete"
                                       >
-                                        <polyline points="3 6 5 6 21 6"></polyline>
-                                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-                                      </svg>
-                                      Supprimer
-                                    </button>
-                                  </div>
-                                )}
-                              </div>
-                            )}
+                                        <svg
+                                          width="16"
+                                          height="16"
+                                          viewBox="0 0 24 24"
+                                          fill="none"
+                                          stroke="currentColor"
+                                          strokeWidth="2"
+                                        >
+                                          <polyline points="3 6 5 6 21 6"></polyline>
+                                          <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                                        </svg>
+                                        Supprimer
+                                      </button>
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                     <div ref={messagesEndRef} />
                   </>
                 )}
               </div>
 
-              {/* Zone de saisie */}
               <form
                 className="messaging-input-area"
                 onSubmit={handleSendMessage}
@@ -738,13 +721,11 @@ const Messagerie = ({ user, preselectedConversation, onConversationOpen }) => {
         </main>
       </div>
 
-      {/* Modale recherche utilisateur */}
       {showSearchModal && (
         <UserSearchModal
           onClose={() => setShowSearchModal(false)}
           onSelectConversation={(conv) => {
             setShowSearchModal(false);
-            // Ajouter la conversation à la liste si elle n'y est pas encore
             setConversations((prev) => {
               const exists = prev.find((c) => c.id === conv.id);
               if (exists) return prev;

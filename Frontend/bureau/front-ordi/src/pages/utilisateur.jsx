@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import axios from "axios";
 import { auth } from "../Service/firebase";
 import "../../Style/Styles.css";
-import defaultCover from "../assets/fr-default-large_default.jpg"; // Import de l'image par défaut
+import defaultCover from "../assets/fr-default-large_default.jpg";
 
 const authAxios = async () => {
   const token = await auth.currentUser?.getIdToken(true);
@@ -31,9 +31,9 @@ const PublicProfile = ({
   const [error, setError] = useState("");
   const [library, setLibrary] = useState([]);
 
-  const isMe =
-    currentUser &&
-    (currentUser.uid === targetUserId || currentUser.id === targetUserId);
+  // ✅ BUG 3 CORRIGÉ — comparaison String robuste uid vs id
+  const myId = String(currentUser?.uid || currentUser?.id || "");
+  const isMe = myId !== "" && myId === String(targetUserId);
 
   useEffect(() => {
     fetchAll();
@@ -44,39 +44,59 @@ const PublicProfile = ({
     setError("");
     try {
       const api = await authAxios();
-      const [profileRes, followingRes, followersRes, libraryRes] =
-        await Promise.all([
-          api.get(`/users/${targetUserId}/profile`),
-          api.get("/follows/me/following"),
-          api.get("/follows/me/followers"),
-          api
-            .get(`/lists/library?userId=${targetUserId}`)
-            .catch(() => ({ data: { library: [] } })),
-        ]);
 
-      // On extrait les données de l'utilisateur et les stats de la réponse
+      // On fait tous les appels en parallèle
+      const [
+        profileRes,
+        followingRes,
+        followersRes,
+        libraryRes,
+        targetFollowersRes,
+        targetFollowingRes,
+      ] = await Promise.all([
+        api.get(`/users/${targetUserId}/profile`),
+        api.get("/follows/me/following"), // les gens que MOI je suis
+        api.get("/follows/me/followers"), // les gens qui ME suivent
+        api
+          .get(`/lists/library?userId=${targetUserId}`)
+          .catch(() => ({ data: { library: [] } })),
+        api
+          .get(`/follows/${targetUserId}/followers`)
+          .catch(() => ({ data: { followers: [] } })), // abonnés de la cible
+        api
+          .get(`/follows/${targetUserId}/following`)
+          .catch(() => ({ data: { following: [] } })), // abonnements de la cible
+      ]);
+
+      // ✅ BUG 2 CORRIGÉ — le backend ne renvoie pas les compteurs, on les récupère séparément
       const data = profileRes.data;
-      if (data && data.user) {
-        setProfile({
-          ...data.user,
-          followersCount: data.followersCount,
-          followingCount: data.followingCount,
-          gamesCount: data.gamesCount,
-          avatar: data.user.avatar, // S'assure que l'avatar est bien mappé
-        });
-      } else {
-        setProfile(data);
-      }
+      const userData = data?.user || data;
 
-      setLibrary(libraryRes.data?.library || []);
-      const following = followingRes.data?.following || [];
-      const followers = followersRes.data?.followers || [];
-      // Vérification plus robuste sur uid ou id
+      const targetFollowers = targetFollowersRes.data?.followers || [];
+      const targetFollowing = targetFollowingRes.data?.following || [];
+      const lib = libraryRes.data?.library || [];
+
+      setProfile({
+        username: userData.username || userData.pseudo || "Utilisateur",
+        bio: userData.bio || "",
+        avatar: userData.avatar || userData.photoURL || null,
+        // Compteurs calculés depuis les vraies listes
+        followersCount: targetFollowers.length,
+        followingCount: targetFollowing.length,
+        gamesCount: lib.length,
+      });
+
+      setLibrary(lib);
+
+      const myFollowing = followingRes.data?.following || [];
+      const myFollowers = followersRes.data?.followers || [];
+
+      // ✅ BUG 3 CORRIGÉ — String() pour éviter problèmes de type number/string
       setIFollow(
-        following.some((u) => u.uid === targetUserId || u.id === targetUserId),
+        myFollowing.some((u) => String(u.uid || u.id) === String(targetUserId)),
       );
       setTheyFollowMe(
-        followers.some((u) => u.uid === targetUserId || u.id === targetUserId),
+        myFollowers.some((u) => String(u.uid || u.id) === String(targetUserId)),
       );
     } catch (err) {
       console.error("Erreur fetchAll:", err);
@@ -94,9 +114,18 @@ const PublicProfile = ({
       if (iFollow) {
         await api.delete(`/follows/${targetUserId}`);
         setIFollow(false);
+        // Met à jour le compteur localement
+        setProfile((prev) => ({
+          ...prev,
+          followersCount: Math.max(0, prev.followersCount - 1),
+        }));
       } else {
         await api.post(`/follows/${targetUserId}`);
         setIFollow(true);
+        setProfile((prev) => ({
+          ...prev,
+          followersCount: prev.followersCount + 1,
+        }));
       }
     } catch (err) {
       console.error("Erreur follow:", err);
@@ -105,7 +134,6 @@ const PublicProfile = ({
     }
   };
 
-  // Crée ou récupère la conversation puis redirige vers la messagerie
   const handleMessage = async () => {
     setMsgLoading(true);
     try {
@@ -187,11 +215,23 @@ const PublicProfile = ({
 
   return (
     <div className="accueil-container">
+      {/* ✅ BUG 1 CORRIGÉ — bouton retour sorti du hero, placé EN DEHORS de la zone negative margin */}
+      {/* Il est maintenant dans un conteneur avec position relative et z-index élevé */}
+      <div style={{ position: "relative", zIndex: 10, padding: "20px 20px 0" }}>
+        <button
+          className="category-btn"
+          onClick={onBack}
+          style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}
+        >
+          ← Retour
+        </button>
+      </div>
+
       {/* Hero banner */}
       <div
         className="hero-section"
         style={{
-          minHeight: "200px",
+          minHeight: "160px",
           background:
             "linear-gradient(135deg, rgba(139,92,246,0.25) 0%, rgba(59,130,246,0.1) 100%)",
         }}
@@ -202,24 +242,10 @@ const PublicProfile = ({
       <div
         style={{
           maxWidth: "640px",
-          margin: "-100px auto 0",
+          margin: "-80px auto 0",
           padding: "0 20px 60px",
         }}
       >
-        {/* Bouton retour */}
-        <button
-          className="category-btn"
-          onClick={onBack}
-          style={{
-            marginBottom: "24px",
-            display: "inline-flex",
-            alignItems: "center",
-            gap: "6px",
-          }}
-        >
-          ← Retour
-        </button>
-
         {/* Card principale */}
         <div
           className="game-card-modern"
@@ -236,9 +262,9 @@ const PublicProfile = ({
             <img
               src={
                 profile.avatar ||
-                `https://api.dicebear.com/7.x/bottts/svg?seed=${profile.username || profile.pseudo}`
+                `https://api.dicebear.com/7.x/bottts/svg?seed=${profile.username}`
               }
-              alt={profile.username || profile.pseudo}
+              alt={profile.username}
               style={{
                 width: "100px",
                 height: "100px",
@@ -256,7 +282,7 @@ const PublicProfile = ({
               className="hero-title"
               style={{ fontSize: "1.8rem", margin: "10px 0 8px" }}
             >
-              {profile.username || profile.pseudo}
+              {profile.username}
             </h2>
 
             {/* Badges statut suivi */}
@@ -327,7 +353,7 @@ const PublicProfile = ({
               </p>
             )}
 
-            {/* Stats */}
+            {/* ✅ BUG 2 CORRIGÉ — compteurs calculés depuis les vraies listes */}
             <div
               style={{
                 display: "flex",
@@ -338,9 +364,9 @@ const PublicProfile = ({
               }}
             >
               {[
-                { label: "Jeux", value: profile.gamesCount ?? "—" },
-                { label: "Abonnés", value: profile.followersCount ?? "—" },
-                { label: "Abonnements", value: profile.followingCount ?? "—" },
+                { label: "Jeux", value: profile.gamesCount },
+                { label: "Abonnés", value: profile.followersCount },
+                { label: "Abonnements", value: profile.followingCount },
               ].map((stat, i) => (
                 <div
                   key={stat.label}
@@ -371,7 +397,7 @@ const PublicProfile = ({
               ))}
             </div>
 
-            {/* Boutons d'action */}
+            {/* ✅ BUG 3 CORRIGÉ — bouton affiche le bon label selon iFollow */}
             {currentUser && !isMe ? (
               <div
                 style={{
@@ -402,7 +428,6 @@ const PublicProfile = ({
                       : "✚ Suivre"}
                 </button>
 
-                {/* Bouton message visible uniquement si suivi mutuel */}
                 {isMutual && (
                   <button
                     className="nav-user-btn"
@@ -429,7 +454,6 @@ const PublicProfile = ({
               </p>
             ) : null}
 
-            {/* Hint si on suit mais pas de retour */}
             {currentUser && !isMe && iFollow && !theyFollowMe && (
               <p
                 style={{
@@ -444,7 +468,7 @@ const PublicProfile = ({
           </div>
         </div>
 
-        {/* Affichage de la collection publique */}
+        {/* Collection publique */}
         <div style={{ marginTop: "40px" }}>
           <div className="section-header" style={{ marginBottom: "20px" }}>
             <h3 className="section-title">Sa Collection</h3>
@@ -503,7 +527,9 @@ const MyProfile = ({ user, onLoginSuccess, onLogout }) => {
     email: user?.email || "",
     bio: user?.bio || "",
     avatar:
-      user?.avatar || "https://api.dicebear.com/7.x/bottts/svg?seed=Lucky",
+      user?.avatar ||
+      user?.photoURL ||
+      "https://api.dicebear.com/7.x/bottts/svg?seed=Lucky",
   });
 
   const [favorites, setFavorites] = useState([]);
@@ -527,7 +553,7 @@ const MyProfile = ({ user, onLoginSuccess, onLogout }) => {
           ...prev,
           pseudo: u.username || u.pseudo || prev.pseudo,
           bio: u.bio || prev.bio,
-          avatar: u.avatar || prev.avatar,
+          avatar: u.avatar || u.photoURL || prev.avatar,
         }));
       }
     } catch (err) {
@@ -578,13 +604,9 @@ const MyProfile = ({ user, onLoginSuccess, onLogout }) => {
 
   const getCoverUrl = (cover) => {
     if (!cover) return defaultCover;
-
-    // Logique identique à Jeu.jsx : si c'est un objet IGDB
     if (cover.image_id) {
       return `https://images.igdb.com/igdb/image/upload/t_cover_big/${cover.image_id}.jpg`;
     }
-
-    // Logique spécifique bibliothèque : si c'est une chaîne (URL ou ID seul)
     if (
       typeof cover === "string" &&
       cover.trim() !== "" &&
@@ -593,7 +615,6 @@ const MyProfile = ({ user, onLoginSuccess, onLogout }) => {
       if (cover.startsWith("http")) return cover;
       return `https://images.igdb.com/igdb/image/upload/t_cover_big/${cover}.jpg`;
     }
-
     return defaultCover;
   };
 
@@ -641,9 +662,7 @@ const MyProfile = ({ user, onLoginSuccess, onLogout }) => {
   return (
     <div className="app-container">
       <div className="hero-gradient"></div>
-
       <div className="main-content-wrapper profile-layout">
-        {/* SECTION GAUCHE */}
         <div className="profile-sidebar">
           <div
             className="game-card-modern profile-main-card"
@@ -751,7 +770,6 @@ const MyProfile = ({ user, onLoginSuccess, onLogout }) => {
           </div>
         </div>
 
-        {/* SECTION DROITE : BIBLIOTHÈQUE */}
         <div className="profile-content">
           <div className="section-header" style={{ marginBottom: "20px" }}>
             <h2 className="section-title">Ma Collection</h2>
@@ -799,11 +817,7 @@ const MyProfile = ({ user, onLoginSuccess, onLogout }) => {
                   <div className="game-content">
                     <h4 className="game-title">{game.gameName || game.name}</h4>
                     <select
-                      className={`status-select ${
-                        statusMapping[game.status]
-                          ?.toLowerCase()
-                          .replace(" ", "-") || ""
-                      }`}
+                      className={`status-select ${statusMapping[game.status]?.toLowerCase().replace(" ", "-") || ""}`}
                       value={game.status || "to_play"}
                       onChange={(e) =>
                         handleStatusUpdate(
@@ -831,7 +845,7 @@ const MyProfile = ({ user, onLoginSuccess, onLogout }) => {
 };
 
 /* ═══════════════════════════════════════════════════════════
-   EXPORT — router entre profil public et profil personnel
+   EXPORT
 ═══════════════════════════════════════════════════════════ */
 const Utilisateur = ({
   user,
@@ -852,7 +866,6 @@ const Utilisateur = ({
       />
     );
   }
-
   return (
     <MyProfile
       user={user}

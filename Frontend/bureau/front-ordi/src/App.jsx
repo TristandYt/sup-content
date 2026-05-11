@@ -15,11 +15,7 @@ const App = () => {
   const [showSearch, setShowSearch] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [profileRefresh, setProfileRefresh] = useState(0);
-
-  // Profil public d'un autre utilisateur
   const [selectedUserId, setSelectedUserId] = useState(null);
-
-  // Conversation à présélectionner dans la messagerie
   const [preselectedConversation, setPreselectedConversation] = useState(null);
 
   const handleLoginSuccess = (userData) => {
@@ -36,21 +32,24 @@ const App = () => {
     setProfileRefresh((n) => n + 1);
   };
 
-  // Depuis Accueil → clic sur une card utilisateur
   const handleUserClick = (userId) => {
     setSelectedUserId(userId);
     setCurrentPage("utilisateur_public");
   };
 
-  // Depuis le profil public → bouton "Envoyer un message"
   const handleOpenMessaging = (conversation) => {
     setPreselectedConversation(conversation);
     setCurrentPage("messagerie");
   };
 
+  // ✅ BUG 1 CORRIGÉ — remet bien la page à "accueil" et vide l'userId
+  const handleBackFromPublicProfile = () => {
+    setSelectedUserId(null);
+    setCurrentPage("accueil");
+  };
+
   return (
     <div className="app-container">
-      {/* ── Navbar ── */}
       <nav className="modern-navbar">
         <div className="navbar-container">
           {!showSearch ? (
@@ -201,7 +200,6 @@ const App = () => {
         </div>
       </nav>
 
-      {/* ── Pages ── */}
       <main className="main-content-wrapper">
         {currentPage === "accueil" && (
           <Accueil
@@ -231,11 +229,11 @@ const App = () => {
           <Register onSwitch={() => setCurrentPage("login")} />
         )}
 
-        {/* Mon propre profil */}
         {currentPage === "utilisateur" && (
           <Utilisateur
             key={profileRefresh}
             user={user}
+            onLoginSuccess={(updatedUser) => setUser(updatedUser)}
             onLogout={() => {
               setUser(null);
               setCurrentPage("accueil");
@@ -243,14 +241,14 @@ const App = () => {
           />
         )}
 
-        {/* Profil public d'un autre utilisateur */}
+        {/* ✅ BUG 1 CORRIGÉ — onBack pointe vers la bonne fonction */}
         {currentPage === "utilisateur_public" && (
           <Utilisateur
             key={selectedUserId}
             targetUserId={selectedUserId}
             user={user}
             isPublic={true}
-            onBack={() => setCurrentPage("accueil")}
+            onBack={handleBackFromPublicProfile}
             onOpenMessaging={handleOpenMessaging}
           />
         )}
