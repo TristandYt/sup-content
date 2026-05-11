@@ -79,6 +79,8 @@ const Jeu = ({ gameId, onBack, user, onFavoriteChange, onGameClick }) => {
   useEffect(() => {
     if (!gameId) return;
 
+    setReviews([]);
+    setAverageRating(null);
     window.scrollTo(0, 0);
 
     const fetchDetails = async () => {
@@ -102,29 +104,6 @@ const Jeu = ({ gameId, onBack, user, onFavoriteChange, onGameClick }) => {
             setIsFavorite(resLib.data?.success === true);
           } catch (_) {}
         }
-
-        // Reviews — réponse : { success, averageRating, totalReviews, reviews, nextCursor }
-        try {
-          const resReviews = await axios.get(
-            `http://localhost:3000/api/reviews/game/${gameId}`,
-          );
-          if (resReviews.data?.success) {
-            const allReviews = resReviews.data.reviews || [];
-            setReviews(allReviews);
-            setAverageRating(resReviews.data.averageRating);
-
-            // Repérer la review du user connecté (id Firestore = userId_gameId)
-            if (auth.currentUser) {
-              const myId = `${auth.currentUser.uid}_${gameId}`;
-              const mine = allReviews.find((r) => r.id === myId);
-              if (mine) {
-                setMyReview(mine);
-                setRating(mine.rating);
-                setNewComment(mine.text || "");
-              }
-            }
-          }
-        } catch (_) {}
       } catch (err) {
         console.error("Erreur de chargement:", err);
       } finally {
@@ -135,8 +114,16 @@ const Jeu = ({ gameId, onBack, user, onFavoriteChange, onGameClick }) => {
     fetchDetails();
   }, [gameId]);
 
-  /* ── Recharge les reviews après une action ── */
-  const refreshReviews = async () => {
+  // Rafraîchissement "semi-réel" des avis (toutes les 1 seconde)
+  useEffect(() => {
+    if (!gameId) return;
+    refreshReviews(true); // Sync initiale
+    const interval = setInterval(() => refreshReviews(false), 1000);
+    return () => clearInterval(interval);
+  }, [gameId]);
+
+  /* ── Recharge les reviews ── */
+  const refreshReviews = async (isInitial = false) => {
     try {
       const resReviews = await axios.get(
         `http://localhost:3000/api/reviews/game/${gameId}`,
@@ -150,6 +137,11 @@ const Jeu = ({ gameId, onBack, user, onFavoriteChange, onGameClick }) => {
           const myId = `${auth.currentUser.uid}_${gameId}`;
           const mine = allReviews.find((r) => r.id === myId);
           setMyReview(mine || null);
+
+          if (isInitial && mine) {
+            setRating(mine.rating);
+            setNewComment(mine.text || "");
+          }
         }
       }
     } catch (_) {}
@@ -253,6 +245,39 @@ const Jeu = ({ gameId, onBack, user, onFavoriteChange, onGameClick }) => {
       alert("Erreur lors de la suppression.");
     } finally {
       setReviewLoading(false);
+    }
+  };
+
+  /* ── Liker une review ── */
+  const handleLikeReview = async (reviewId) => {
+    if (!auth.currentUser) {
+      alert("Connectez-vous pour aimer un avis.");
+      return;
+    }
+    try {
+      const api = await authAxios();
+      const res = await api.post(`/interactions/reviews/${reviewId}/like`);
+      if (res.data.success) {
+        // Mise à jour locale du compteur et de l'état "liked"
+        setReviews((prev) =>
+          prev.map((r) => {
+            if (r.id === reviewId) {
+              const myUid = auth.currentUser.uid;
+              const likedBy = r.likedBy || [];
+              const isNowLiked = !likedBy.includes(myUid);
+              return {
+                ...r,
+                likedBy: isNowLiked
+                  ? [...likedBy, myUid]
+                  : likedBy.filter((id) => id !== myUid),
+              };
+            }
+            return r;
+          }),
+        );
+      }
+    } catch (err) {
+      console.error("Erreur like review:", err);
     }
   };
 
@@ -564,6 +589,43 @@ const Jeu = ({ gameId, onBack, user, onFavoriteChange, onGameClick }) => {
                             (vous)
                           </span>
                         )}
+                      </div>
+
+                      {/* Bouton Like (Cœur) */}
+                      <div
+                        style={{
+                          marginTop: "12px",
+                          borderTop: "1px solid rgba(255,255,255,0.05)",
+                          paddingTop: "8px",
+                        }}
+                      >
+                        <button
+                          onClick={() => handleLikeReview(r.id)}
+                          className="nav-icon-btn"
+                          style={{
+                            padding: "4px 10px",
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "6px",
+                            color: r.likedBy?.includes(auth.currentUser?.uid)
+                              ? "#f87171"
+                              : "#94a3b8",
+                            background: r.likedBy?.includes(
+                              auth.currentUser?.uid,
+                            )
+                              ? "rgba(248,113,113,0.1)"
+                              : "transparent",
+                            border: "none",
+                            borderRadius: "6px",
+                            fontSize: "0.85rem",
+                            fontWeight: "600",
+                          }}
+                        >
+                          {r.likedBy?.includes(auth.currentUser?.uid)
+                            ? "❤️"
+                            : "🤍"}
+                          <span>{r.likedBy?.length || 0}</span>
+                        </button>
                       </div>
                     </div>
                   );

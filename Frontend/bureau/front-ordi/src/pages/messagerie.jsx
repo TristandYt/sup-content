@@ -245,6 +245,13 @@ const Messagerie = ({ user, preselectedConversation, onConversationOpen }) => {
 
   useEffect(() => {
     fetchConversations();
+
+    // Rafraîchissement silencieux de la liste des conversations (toutes les 5s)
+    const interval = setInterval(() => {
+      fetchConversations(null, true);
+    }, 5000);
+
+    return () => clearInterval(interval);
   }, []);
 
   useEffect(() => {
@@ -265,13 +272,39 @@ const Messagerie = ({ user, preselectedConversation, onConversationOpen }) => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  const fetchConversations = async (autoSelectId = null) => {
-    setLoadingConvs(true);
+  // Rafraîchissement "semi-réel" des messages (toutes les 1 seconde)
+  useEffect(() => {
+    if (!selectedConv) return;
+
+    const interval = setInterval(async () => {
+      try {
+        const api = await authAxios();
+        const res = await api.get(`/conversations/${selectedConv.id}/messages`);
+        const newMsgs = res.data.messages || [];
+
+        // On ne met à jour que si aucun message n'est en cours d'envoi pour éviter le scintillement
+        setMessages((prev) => {
+          if (prev.some((m) => m._pending)) return prev;
+          return newMsgs;
+        });
+      } catch (err) {
+        // Échec silencieux pour le rafraîchissement auto
+      }
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [selectedConv]);
+
+  const fetchConversations = async (autoSelectId = null, silent = false) => {
+    if (!silent) setLoadingConvs(true);
     try {
       const api = await authAxios();
       const res = await api.get("/conversations");
       const convs = res.data.conversations || [];
       setConversations(convs);
+
+      if (silent) return; // On ne gère pas l'auto-sélection en arrière-plan
+
       const targetId = autoSelectId || preselectedConversation?.id;
       if (targetId) {
         const target = convs.find((c) => c.id === targetId);
