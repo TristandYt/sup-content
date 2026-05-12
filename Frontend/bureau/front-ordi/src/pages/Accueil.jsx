@@ -18,6 +18,7 @@ const Accueil = ({ onGameClick, onUserClick, searchTerm }) => {
   const [games, setGames] = useState([]);
   const [users, setUsers] = useState([]);
   const [searchType, setSearchType] = useState("games");
+  const [error, setError] = useState(null);
   const [loading, setLoading] = useState(true);
   const [activeCategory, setActiveCategory] = useState("Tous");
   const [params, setParams] = useState({
@@ -44,6 +45,7 @@ const Accueil = ({ onGameClick, onUserClick, searchTerm }) => {
 
   const fetchResults = async () => {
     setLoading(true);
+    setError(null);
     try {
       const hasSearchTerm = searchTerm && searchTerm.trim() !== "";
 
@@ -79,6 +81,9 @@ const Accueil = ({ onGameClick, onUserClick, searchTerm }) => {
       }
     } catch (err) {
       console.error("Erreur fetchResults:", err);
+      setError(
+        "Impossible de contacter le service de recherche. Vérifiez votre connexion.",
+      );
     } finally {
       setLoading(false);
     }
@@ -219,6 +224,12 @@ const Accueil = ({ onGameClick, onUserClick, searchTerm }) => {
         <div className="loading-container">
           <div className="loading-spinner"></div>
           <p className="loading-text">Recherche en cours...</p>
+        </div>
+      ) : error ? (
+        <div className="empty-state">
+          <div className="empty-icon">⚠️</div>
+          <h3 className="empty-title">Erreur de connexion</h3>
+          <p className="empty-text">{error}</p>
         </div>
       ) : (searchType === "games" ? games.length : users.length) === 0 ? (
         <div className="empty-state">
