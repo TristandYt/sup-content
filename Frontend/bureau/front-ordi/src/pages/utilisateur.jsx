@@ -32,7 +32,6 @@ const PublicProfile = ({
   const [error, setError] = useState("");
   const [library, setLibrary] = useState([]);
 
-  // ✅ BUG 3 CORRIGÉ — comparaison String robuste uid vs id
   const myId = String(currentUser?.uid || currentUser?.id || "");
   const isMe = myId !== "" && myId === String(targetUserId);
 
@@ -46,59 +45,53 @@ const PublicProfile = ({
     try {
       const api = await authAxios();
 
-      // On fait tous les appels en parallèle
-      const [
-        profileRes,
-        followingRes,
-        followersRes,
-        libraryRes,
-        targetFollowersRes,
-        targetFollowingRes,
-      ] = await Promise.all([
-        api.get(`/users/${targetUserId}/profile`),
-        api.get("/follows/me/following"), // les gens que MOI je suis
-        api.get("/follows/me/followers"), // les gens qui ME suivent
-        api
-          .get(`/lists/library?userId=${targetUserId}`)
-          .catch(() => ({ data: { library: [] } })),
-        api
-          .get(`/follows/${targetUserId}/followers`)
-          .catch(() => ({ data: { followers: [] } })), // abonnés de la cible
-        api
-          .get(`/follows/${targetUserId}/following`)
-          .catch(() => ({ data: { following: [] } })), // abonnements de la cible
-      ]);
+      const [profileRes, followingRes, followersRes, libraryRes] =
+        await Promise.all([
+          api.get(`/users/${targetUserId}/profile`),
+          api.get("/follows/me/following"),
+          api.get("/follows/me/followers"),
+          api
+            .get(`/lists/library?userId=${targetUserId}`)
+            .catch(() => ({ data: { library: [] } })),
+        ]);
 
-      // ✅ BUG 2 CORRIGÉ — le backend ne renvoie pas les compteurs, on les récupère séparément
       const data = profileRes.data;
       const userData = data?.user || data;
-
-      const targetFollowers = targetFollowersRes.data?.followers || [];
-      const targetFollowing = targetFollowingRes.data?.following || [];
       const lib = libraryRes.data?.library || [];
 
       setProfile({
         username: userData.username || userData.pseudo || "Utilisateur",
         bio: userData.bio || "",
         avatar: userData.avatar || userData.photoURL || null,
-        // Compteurs calculés depuis les vraies listes
-        followersCount: targetFollowers.length,
-        followingCount: targetFollowing.length,
+        followersCount: userData.followersCount ?? "—",
+        followingCount: userData.followingCount ?? "—",
         gamesCount: lib.length,
       });
 
       setLibrary(lib);
 
+      // ✅ CORRECTION DÉFINITIVE
+      // Ton backend getMyFollowing renvoie : { following: [{ followingId, since }] }
+      // Ton backend getMyFollowers renvoie : { followers: [{ followerId, since }] }
+      // Il faut donc comparer sur ces champs précis, pas sur uid/id qui n'existent pas
+
       const myFollowing = followingRes.data?.following || [];
       const myFollowers = followersRes.data?.followers || [];
 
-      // ✅ BUG 3 CORRIGÉ — String() pour éviter problèmes de type number/string
-      setIFollow(
-        myFollowing.some((u) => String(u.uid || u.id) === String(targetUserId)),
+      // Est-ce que MOI je suis la cible ?
+      // → targetUserId doit être dans followingId de ma liste following
+      const doesIFollow = myFollowing.some(
+        (u) => String(u.followingId) === String(targetUserId),
       );
-      setTheyFollowMe(
-        myFollowers.some((u) => String(u.uid || u.id) === String(targetUserId)),
+
+      // Est-ce que la cible ME suit ?
+      // → targetUserId doit être dans followerId de ma liste followers
+      const doesTheyFollow = myFollowers.some(
+        (u) => String(u.followerId) === String(targetUserId),
       );
+
+      setIFollow(doesIFollow);
+      setTheyFollowMe(doesTheyFollow);
     } catch (err) {
       console.error("Erreur fetchAll:", err);
       setError("Impossible de charger ce profil.");
@@ -115,18 +108,9 @@ const PublicProfile = ({
       if (iFollow) {
         await api.delete(`/follows/${targetUserId}`);
         setIFollow(false);
-        // Met à jour le compteur localement
-        setProfile((prev) => ({
-          ...prev,
-          followersCount: Math.max(0, prev.followersCount - 1),
-        }));
       } else {
         await api.post(`/follows/${targetUserId}`);
         setIFollow(true);
-        setProfile((prev) => ({
-          ...prev,
-          followersCount: prev.followersCount + 1,
-        }));
       }
     } catch (err) {
       console.error("Erreur follow:", err);
@@ -216,8 +200,7 @@ const PublicProfile = ({
 
   return (
     <div className="accueil-container">
-      {/* ✅ BUG 1 CORRIGÉ — bouton retour sorti du hero, placé EN DEHORS de la zone negative margin */}
-      {/* Il est maintenant dans un conteneur avec position relative et z-index élevé */}
+      {/* Bouton retour — z-index élevé pour rester cliquable */}
       <div style={{ position: "relative", zIndex: 10, padding: "20px 20px 0" }}>
         <button
           className="category-btn"
@@ -247,7 +230,6 @@ const PublicProfile = ({
           padding: "0 20px 60px",
         }}
       >
-        {/* Card principale */}
         <div
           className="game-card-modern"
           style={{ padding: "0", cursor: "default", overflow: "visible" }}
@@ -354,7 +336,7 @@ const PublicProfile = ({
               </p>
             )}
 
-            {/* ✅ BUG 2 CORRIGÉ — compteurs calculés depuis les vraies listes */}
+            {/* Stats */}
             <div
               style={{
                 display: "flex",
@@ -398,7 +380,7 @@ const PublicProfile = ({
               ))}
             </div>
 
-            {/* ✅ BUG 3 CORRIGÉ — bouton affiche le bon label selon iFollow */}
+            {/* Boutons d'action */}
             {currentUser && !isMe ? (
               <div
                 style={{
@@ -490,7 +472,7 @@ const PublicProfile = ({
                   key={game.gameId}
                   className="game-card-modern"
                   style={{ cursor: "pointer" }}
-                  onClick={() => onGameClick(game.gameId)}
+                  onClick={() => onGameClick && onGameClick(game.gameId)}
                 >
                   <div className="game-image-container">
                     <img
@@ -811,7 +793,7 @@ const MyProfile = ({ user, onLoginSuccess, onLogout, onGameClick }) => {
                 <div
                   key={game.gameId}
                   className="game-card-modern"
-                  onClick={() => onGameClick(game.gameId)}
+                  onClick={() => onGameClick && onGameClick(game.gameId)}
                 >
                   <div className="game-image-container">
                     <img
@@ -823,7 +805,11 @@ const MyProfile = ({ user, onLoginSuccess, onLogout, onGameClick }) => {
                   <div className="game-content">
                     <h4 className="game-title">{game.gameName || game.name}</h4>
                     <select
-                      className={`status-select ${statusMapping[game.status]?.toLowerCase().replace(" ", "-") || ""}`}
+                      className={`status-select ${
+                        statusMapping[game.status]
+                          ?.toLowerCase()
+                          .replace(" ", "-") || ""
+                      }`}
                       value={game.status || "to_play"}
                       onClick={(e) => e.stopPropagation()}
                       onChange={(e) =>

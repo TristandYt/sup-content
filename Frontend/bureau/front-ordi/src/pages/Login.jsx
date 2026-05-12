@@ -1,6 +1,7 @@
 // src/pages/Login.jsx
 import React, { useState } from "react";
 import { useTranslation } from "react-i18next";
+import axios from "axios";
 import { signInWithEmailAndPassword } from "firebase/auth";
 import { auth } from "../Service/firebase";
 import "../../Style/Styles.css";
@@ -11,6 +12,8 @@ const Login = ({ onSwitch, onLoginSuccess }) => {
   const [password, setPassword] = useState("");
   const [showPass, setShowPass] = useState(false);
   const [error, setError] = useState("");
+  const [message, setMessage] = useState("");
+  const [isResetMode, setIsResetMode] = useState(false);
   const [loading, setLoading] = useState(false);
 
   const FIREBASE_ERRORS = {
@@ -53,6 +56,34 @@ const Login = ({ onSwitch, onLoginSuccess }) => {
     }
   };
 
+  const handleResetPassword = async () => {
+    if (!email.trim() || !password.trim()) {
+      setError("Veuillez remplir l'email et le nouveau mot de passe.");
+      return;
+    }
+
+    setError("");
+    setMessage("");
+    setLoading(true);
+    try {
+      const res = await axios.post(
+        "http://localhost:3000/api/users/reset-password-public",
+        {
+          email,
+          newPassword: password,
+        },
+      );
+      setMessage(res.data.msg);
+      setIsResetMode(false);
+    } catch (err) {
+      setError(
+        err.response?.data?.msg || "Erreur lors de la réinitialisation.",
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div
       className="accueil-container"
@@ -79,14 +110,14 @@ const Login = ({ onSwitch, onLoginSuccess }) => {
           style={{ justifyContent: "flex-end", marginBottom: "1rem" }}
         >
           <button
-            className={`category-btn ${i18n.language === "Français" ? "active" : ""}`}
-            onClick={() => i18n.changeLanguage("Français")}
+            className={`category-btn ${i18n.language === "fr" ? "active" : ""}`}
+            onClick={() => i18n.changeLanguage("fr")}
           >
             FR
           </button>
           <button
-            className={`category-btn ${i18n.language === "English" ? "active" : ""}`}
-            onClick={() => i18n.changeLanguage("English")}
+            className={`category-btn ${i18n.language === "en" ? "active" : ""}`}
+            onClick={() => i18n.changeLanguage("en")}
           >
             EN
           </button>
@@ -121,6 +152,22 @@ const Login = ({ onSwitch, onLoginSuccess }) => {
           </div>
         )}
 
+        {/* Message de succès */}
+        {message && (
+          <div
+            className="section-count"
+            style={{
+              display: "block",
+              textAlign: "center",
+              marginBottom: "1rem",
+              background: "rgba(34, 197, 94, 0.2)",
+              color: "#4ade80",
+            }}
+          >
+            {message}
+          </div>
+        )}
+
         {/* Champs du formulaire */}
         <div className="filters-section">
           <div style={{ marginBottom: "1.5rem" }}>
@@ -128,7 +175,7 @@ const Login = ({ onSwitch, onLoginSuccess }) => {
               className="game-genre"
               style={{ display: "inline-block", marginBottom: "0.5rem" }}
             >
-              {t("label_email")}
+              {isResetMode ? "Email du compte" : t("label_email")}
             </label>
             <input
               className="filter-select"
@@ -136,26 +183,53 @@ const Login = ({ onSwitch, onLoginSuccess }) => {
               placeholder="Ex: exemple@mail.com"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && handleLogin()}
+              onKeyDown={(e) =>
+                e.key === "Enter" &&
+                (isResetMode ? handleResetPassword() : handleLogin())
+              }
             />
           </div>
 
           <div style={{ marginBottom: "2rem" }}>
-            <label
-              className="game-genre"
-              style={{ display: "inline-block", marginBottom: "0.5rem" }}
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "baseline",
+              }}
             >
-              {t("label_password")}
-            </label>
+              <label
+                className="game-genre"
+                style={{ display: "inline-block", marginBottom: "0.5rem" }}
+              >
+                {isResetMode ? "Nouveau mot de passe" : t("label_password")}
+              </label>
+              {!isResetMode && (
+                <span
+                  onClick={() => setIsResetMode(true)}
+                  style={{
+                    fontSize: "0.75rem",
+                    color: "#c084fc",
+                    cursor: "pointer",
+                    textDecoration: "underline",
+                  }}
+                >
+                  {t("forgot_password")}
+                </span>
+              )}
+            </div>
             <div style={{ position: "relative" }}>
               <input
                 className="filter-select"
                 style={{ width: "100%", minWidth: "auto" }}
                 type={showPass ? "text" : "password"}
-                placeholder="••••••••"
+                placeholder={isResetMode ? "Nouveau mot de passe" : "••••••••"}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && handleLogin()}
+                onKeyDown={(e) =>
+                  e.key === "Enter" &&
+                  (isResetMode ? handleResetPassword() : handleLogin())
+                }
               />
               <button
                 type="button"
@@ -177,21 +251,38 @@ const Login = ({ onSwitch, onLoginSuccess }) => {
           </div>
         </div>
 
-        {/* Bouton connexion */}
-        <button
-          onClick={handleLogin}
-          disabled={loading}
-          className="category-btn active"
-          style={{
-            width: "100%",
-            padding: "1rem",
-            fontSize: "1rem",
-            opacity: loading ? 0.7 : 1,
-            cursor: loading ? "not-allowed" : "pointer",
-          }}
-        >
-          {loading ? "Connexion..." : t("button_submit")}
-        </button>
+        {/* Boutons d'action */}
+        {isResetMode ? (
+          <div style={{ display: "flex", gap: "10px" }}>
+            <button
+              onClick={handleResetPassword}
+              disabled={loading}
+              className="category-btn active"
+              style={{ flex: 2, padding: "1rem" }}
+            >
+              {loading ? "Chargement..." : "Réinitialiser"}
+            </button>
+            <button
+              onClick={() => {
+                setIsResetMode(false);
+                setError("");
+              }}
+              className="category-btn"
+              style={{ flex: 1, padding: "1rem" }}
+            >
+              Annuler
+            </button>
+          </div>
+        ) : (
+          <button
+            onClick={handleLogin}
+            disabled={loading}
+            className="category-btn active"
+            style={{ width: "100%", padding: "1rem" }}
+          >
+            {loading ? "Connexion..." : t("button_submit")}
+          </button>
+        )}
 
         {/* Séparateur */}
         <div
