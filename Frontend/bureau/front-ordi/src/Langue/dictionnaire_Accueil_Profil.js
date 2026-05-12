@@ -1,5 +1,5 @@
 export const resources = {
-  Français: {
+  fr: {
     translation: {
       profileTitle: "Mon Profil",
       bioLabel: "Ma Biographie",
@@ -12,10 +12,10 @@ export const resources = {
       genreGame: "Jeu",
       alertSuccess: "Profil mis à jour !",
       identifiedAs: "Identifié en tant que",
-      placeholderBio: "Écrivez quelques mots sur vous..."
-    }
+      placeholderBio: "Écrivez quelques mots sur vous...",
+    },
   },
-  English: {
+  en: {
     translation: {
       profileTitle: "My Profile",
       bioLabel: "My Biography",
@@ -28,7 +28,7 @@ export const resources = {
       genreGame: "Game",
       alertSuccess: "Profile updated!",
       identifiedAs: "Logged in as",
-      placeholderBio: "Write a few words about yourself..."
-    }
-  }
+      placeholderBio: "Write a few words about yourself...",
+    },
+  },
 };

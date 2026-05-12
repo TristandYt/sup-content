@@ -129,7 +129,7 @@ const Login = ({ onSwitch, onLoginSuccess }) => {
           style={{ padding: 0, textAlign: "center" }}
         >
           <h2 className="hero-title" style={{ fontSize: "2rem" }}>
-            {t("title")}
+            {isResetMode ? t("reset_title") : t("title")}
           </h2>
           <p className="hero-subtitle" style={{ marginBottom: "1.5rem" }}>
             Accédez à votre bibliothèque
@@ -175,7 +175,7 @@ const Login = ({ onSwitch, onLoginSuccess }) => {
               className="game-genre"
               style={{ display: "inline-block", marginBottom: "0.5rem" }}
             >
-              {isResetMode ? "Email du compte" : t("label_email")}
+              {isResetMode ? t("reset_email_label") : t("label_email")}
             </label>
             <input
               className="filter-select"
@@ -202,7 +202,7 @@ const Login = ({ onSwitch, onLoginSuccess }) => {
                 className="game-genre"
                 style={{ display: "inline-block", marginBottom: "0.5rem" }}
               >
-                {isResetMode ? "Nouveau mot de passe" : t("label_password")}
+                {isResetMode ? t("reset_password_label") : t("label_password")}
               </label>
               {!isResetMode && (
                 <span
@@ -260,7 +260,7 @@ const Login = ({ onSwitch, onLoginSuccess }) => {
               className="category-btn active"
               style={{ flex: 2, padding: "1rem" }}
             >
-              {loading ? "Chargement..." : "Réinitialiser"}
+              {loading ? "..." : t("reset_button")}
             </button>
             <button
               onClick={() => {
@@ -270,7 +270,7 @@ const Login = ({ onSwitch, onLoginSuccess }) => {
               className="category-btn"
               style={{ flex: 1, padding: "1rem" }}
             >
-              Annuler
+              {t("cancel_button")}
             </button>
           </div>
         ) : (
