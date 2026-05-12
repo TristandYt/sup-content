@@ -296,6 +296,7 @@ const Accueil = ({ onGameClick, onUserClick, searchTerm }) => {
                     <img
                       src={
                         u.avatar ||
+                        u.photoURL ||
                         `https://api.dicebear.com/7.x/bottts/svg?seed=${u.username || u.pseudo}`
                       }
                       alt={u.username || u.pseudo}

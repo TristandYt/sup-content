@@ -513,7 +513,7 @@ const MyProfile = ({ user, onLoginSuccess, onLogout, onGameClick }) => {
     avatar:
       user?.avatar ||
       user?.photoURL ||
-      "https://api.dicebear.com/7.x/bottts/svg?seed=Lucky",
+      `https://api.dicebear.com/7.x/bottts/svg?seed=${user?.username || user?.pseudo || user?.displayName || "Joueur"}`,
   });
 
   const [favorites, setFavorites] = useState([]);
