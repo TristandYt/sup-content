@@ -7,6 +7,7 @@ import Register from "./pages/Register";
 import Utilisateur from "./pages/utilisateur";
 import Jeu from "./pages/Jeu";
 import Messagerie from "./pages/messagerie";
+import AdminDashboard from "./pages/AdminDashboard";
 import "../Style/Styles.css";
 import "./Langue/i18n";
 
@@ -93,6 +94,10 @@ const App = () => {
   const handleOpenMessaging = (conversation) => {
     setPreselectedConversation(conversation);
     setCurrentPage("messagerie");
+  };
+
+  const handleAdminClick = () => {
+    setCurrentPage("admin");
   };
 
   // ✅ BUG 1 CORRIGÉ — remet bien la page à "accueil" et vide l'userId
@@ -324,6 +329,8 @@ const App = () => {
             onGameClick={handleShowGame}
             onUserClick={handleUserClick}
             searchTerm={searchTerm}
+            user={user}
+            onAdminClick={handleAdminClick}
           />
         )}
 
@@ -358,6 +365,7 @@ const App = () => {
               setCurrentPage("accueil");
             }}
             onGameClick={handleShowGame}
+            onAdminClick={handleAdminClick}
           />
         )}
 
@@ -380,6 +388,10 @@ const App = () => {
             preselectedConversation={preselectedConversation}
             onConversationOpen={() => setPreselectedConversation(null)}
           />
+        )}
+
+        {currentPage === "admin" && (
+          <AdminDashboard onBack={() => setCurrentPage("accueil")} />
         )}
       </main>
     </div>

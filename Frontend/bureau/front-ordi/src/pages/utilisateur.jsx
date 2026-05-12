@@ -503,13 +503,20 @@ const PublicProfile = ({
 /* ═══════════════════════════════════════════════════════════
    MON PROFIL PERSONNEL — isPublic !== true
 ═══════════════════════════════════════════════════════════ */
-const MyProfile = ({ user, onLoginSuccess, onLogout, onGameClick }) => {
+const MyProfile = ({
+  user,
+  onLoginSuccess,
+  onLogout,
+  onGameClick,
+  onAdminClick,
+}) => {
   const { t, i18n } = useTranslation();
 
   const [profileData, setProfileData] = useState({
     pseudo: user?.username || user?.pseudo || user?.displayName || "Joueur",
     email: user?.email || "",
     bio: user?.bio || "",
+    role: user?.role || "",
     avatar:
       user?.avatar ||
       user?.photoURL ||
@@ -533,12 +540,16 @@ const MyProfile = ({ user, onLoginSuccess, onLogout, onGameClick }) => {
       const res = await api.get("/users/profile");
       if (res.data.success && res.data.user) {
         const u = res.data.user;
-        setProfileData((prev) => ({
-          ...prev,
-          pseudo: u.username || u.pseudo || prev.pseudo,
-          bio: u.bio || prev.bio,
-          avatar: u.avatar || u.photoURL || prev.avatar,
-        }));
+        const fullProfile = {
+          ...profileData,
+          pseudo: u.username || u.pseudo || profileData.pseudo,
+          bio: u.bio || profileData.bio,
+          avatar: u.avatar || u.photoURL || profileData.avatar,
+          role: u.role || "",
+        };
+        setProfileData(fullProfile);
+        // Indispensable pour mettre à jour l'état global du user dans App.jsx
+        if (onLoginSuccess) onLoginSuccess(fullProfile);
       }
     } catch (err) {
       console.warn("Erreur fetch profile perso", err);
@@ -737,6 +748,20 @@ const MyProfile = ({ user, onLoginSuccess, onLogout, onGameClick }) => {
                 >
                   {saveLabel}
                 </button>
+                {profileData.role === "admin" && (
+                  <button
+                    className="nav-user-btn"
+                    style={{
+                      width: "100%",
+                      justifyContent: "center",
+                      background: "rgba(167, 139, 250, 0.2)",
+                      borderColor: "#a78bfa",
+                    }}
+                    onClick={onAdminClick}
+                  >
+                    🛡️ Dashboard Admin
+                  </button>
+                )}
                 <button
                   className="category-btn"
                   style={{
@@ -849,6 +874,7 @@ const Utilisateur = ({
   onBack,
   onOpenMessaging,
   onGameClick,
+  onAdminClick,
 }) => {
   if (isPublic) {
     return (
@@ -867,6 +893,7 @@ const Utilisateur = ({
       onLoginSuccess={onLoginSuccess}
       onLogout={onLogout}
       onGameClick={onGameClick}
+      onAdminClick={onAdminClick}
     />
   );
 };

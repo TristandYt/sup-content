@@ -13,7 +13,13 @@ const authAxios = async () => {
   });
 };
 
-const Accueil = ({ onGameClick, onUserClick, searchTerm }) => {
+const Accueil = ({
+  onGameClick,
+  onUserClick,
+  searchTerm,
+  user,
+  onAdminClick,
+}) => {
   const { t } = useTranslation();
   const [games, setGames] = useState([]);
   const [users, setUsers] = useState([]);
@@ -134,6 +140,15 @@ const Accueil = ({ onGameClick, onUserClick, searchTerm }) => {
         >
           👥 Membres
         </button>
+        {user?.role === "admin" && (
+          <button
+            className="category-btn"
+            style={{ borderColor: "#a78bfa", color: "#a78bfa" }}
+            onClick={onAdminClick}
+          >
+            🛡️ Administration
+          </button>
+        )}
       </div>
 
       {/* Categories Navigation (uniquement pour les jeux) */}
