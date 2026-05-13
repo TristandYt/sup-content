@@ -15,6 +15,12 @@ const axios = require('axios');
 const { db, admin } = require('../Services/Firebase');
 const { calculateAge, getMinAgeFromRating, isAgeAllowed, filterGamesByAge } = require('../utils/pegiHelper');
 
+// --- Mock de la vérification de token pour les routes publiques ---
+jest.spyOn(admin.auth(), 'verifyIdToken').mockImplementation(async (token) => {
+    if (token === 'fake-token') return { uid: 'user_alice_001' };
+    return Promise.reject(new Error('Mocked invalid token for test'));
+});
+
 // --- Mocks ---
 
 jest.mock('../middlewares/auth', () => (req, res, next) => {
@@ -214,6 +220,7 @@ beforeAll(async () => {
             name: 'Trine',
             total_rating: 79.5,
             cover: { image_id: 'co1r76' },
+            age_ratings: [{ category: 2, rating: 17 }], // On ajoute la classification PEGI 18 !
             supcontent_cached_at: admin.firestore.FieldValue.serverTimestamp()
         });
 
