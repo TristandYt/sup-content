@@ -33,17 +33,25 @@ exports.getProfile = async (req, res, next) => {
 exports.updateProfile = async (req, res, next) => {
     try {
         const userId = req.user.id;
-        const { username, bio, preferences } = req.body;
+        const { username, bio, preferences, avatarUrl, website } = req.body;
 
         const updates = { updatedAt: admin.firestore.FieldValue.serverTimestamp() };
         if (username !== undefined) updates.username = username;
         if (bio !== undefined) updates.bio = bio;
         if (preferences !== undefined) updates.preferences = preferences;
+        if (avatarUrl !== undefined) updates['profileData.avatarUrl'] = avatarUrl;
+        if (website !== undefined) updates['profileData.website'] = website;
 
         await db.collection('users').doc(userId).update(updates);
 
         // Logger la mise à jour du profil
-        await Logger.log('profile_updated', userId, { updates: { username, bio } });
+        const logUpdates = {};
+        if (username !== undefined) logUpdates.username = username;
+        if (bio !== undefined) logUpdates.bio = bio;
+        if (avatarUrl !== undefined) logUpdates.avatarUrl = avatarUrl;
+        if (website !== undefined) logUpdates.website = website;
+
+        await Logger.log('profile_updated', userId, { updates: logUpdates });
 
         res.json({ success: true, msg: 'Profil mis à jour' });
     } catch (error) {
@@ -144,7 +152,7 @@ exports.addFavorite = async (req, res, next) => {
         // Logger l'ajout aux favoris
         await Logger.log('favorite_added', userId, { gameId, gameName });
 
-        // Recommandation automatique basée sur le goût (Cahier des charges 2.2.6)
+        // Recommandation automatique en fonction du jeu
         try {
             const similarGames = await IGDBService.getSimilarGames(gameId);
             if (similarGames && similarGames.length > 0 && similarGames[0].similar_games && similarGames[0].similar_games.length > 0) {

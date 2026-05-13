@@ -34,13 +34,12 @@ service cloud.firestore {
     // --- users ---
     match /users/{userId} {
       allow read: if isOwner(userId) || isAdmin();
-      allow create: if isOwner(userId);
-      allow update: if isOwner(userId) || isAdmin();
-      allow delete: if isOwner(userId) || isAdmin();
+      allow write: if false; // Sécurisé : Passage obligatoire par l'API Express
 
       // Bibliothèque personnelle (sous-collection)
       match /library/{gameId} {
-        allow read, write: if isSignedIn() && isOwner(userId);
+        allow read: if isSignedIn() && isOwner(userId);
+        allow write: if false;
       }
     }
 
@@ -53,32 +52,19 @@ service cloud.firestore {
     // --- reviews ---
     match /reviews/{reviewId} {
       allow read: if isSignedIn();
-      allow create: if isSignedIn() && notBanned() &&
-                       request.resource.data.userId == request.auth.uid;
-      allow update: if isSignedIn() &&
-                       (resource.data.userId == request.auth.uid || isAdmin());
-      allow delete: if isSignedIn() &&
-                       (resource.data.userId == request.auth.uid || isAdmin());
+      allow write: if false;
 
       // Commentaires d'une critique (sous-collection)
       match /comments/{commentId} {
         allow read: if isSignedIn();
-        allow create: if isSignedIn() && notBanned() &&
-                         request.resource.data.userId == request.auth.uid;
-        allow update, delete: if isSignedIn() &&
-                                  resource.data.userId == request.auth.uid;
+        allow write: if false;
       }
     }
 
     // --- follows ---
     match /follows/{followId} {
       allow read: if isSignedIn();
-      allow create: if isSignedIn() && notBanned() &&
-                       request.resource.data.followerId == request.auth.uid &&
-                       request.resource.data.followerId != request.resource.data.followingId;
-      allow delete: if isSignedIn() &&
-                       resource.data.followerId == request.auth.uid;
-      allow update: if false;
+      allow write: if false;
     }
 
     // --- notifications ---
@@ -86,13 +72,7 @@ service cloud.firestore {
       // Lecture : uniquement le destinataire
       allow read: if isSignedIn() &&
                      resource.data.userId == request.auth.uid;
-      // Création : uniquement le backend (via Admin SDK) — jamais le client directement
-      allow create: if false;
-      // Mise à jour : uniquement le destinataire (pour marquer comme lu)
-      allow update: if isSignedIn() &&
-                       resource.data.userId == request.auth.uid &&
-                       request.resource.data.diff(resource.data).affectedKeys().hasOnly(['isRead']);
-      allow delete: if false;
+      allow write: if false;
     }
 
     // --- conversations ---
@@ -102,16 +82,7 @@ service cloud.firestore {
       }
 
       allow read: if isParticipant();
-      // Création : les deux participants doivent se suivre mutuellement
-      allow create: if isSignedIn() && notBanned() &&
-                       request.auth.uid in request.resource.data.participants &&
-                       request.resource.data.participants.size() == 2 &&
-                       mutualFollow(
-                         request.resource.data.participants[0],
-                         request.resource.data.participants[1]
-                       );
-      allow update: if isParticipant();
-      allow delete: if false;
+      allow write: if false;
 
       // Messages (sous-collection)
       match /messages/{messageId} {
@@ -121,15 +92,20 @@ service cloud.firestore {
         }
 
         allow read: if isConvParticipant();
-        allow create: if isConvParticipant() && notBanned() &&
-                         request.resource.data.senderId == request.auth.uid &&
-                         (request.resource.data.text.size() > 0 ||
-                          request.resource.data.attachments.size() > 0);
-        // Mise à jour : uniquement pour marquer comme lu (readBy)
-        allow update: if isConvParticipant() &&
-                         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['readBy']);
-        allow delete: if false;
+        allow write: if false;
       }
+    }
+
+    // --- threads (Forum) ---
+    match /threads/{threadId} {
+      allow read: if isSignedIn();
+      allow write: if false;
+    }
+
+    // --- posts (Réponses Forum) ---
+    match /posts/{postId} {
+      allow read: if isSignedIn();
+      allow write: if false;
     }
 
     // --- custom_lists ---
@@ -137,24 +113,14 @@ service cloud.firestore {
       // Lecture : propriétaire toujours, autres utilisateurs si la liste est publique
       allow read: if isSignedIn() &&
                      (resource.data.userId == request.auth.uid || resource.data.isPrivate == false);
-      allow create: if isSignedIn() && notBanned() &&
-                       request.resource.data.userId == request.auth.uid;
-      allow update: if isSignedIn() &&
-                       resource.data.userId == request.auth.uid;
-      allow delete: if isSignedIn() &&
-                       (resource.data.userId == request.auth.uid || isAdmin());
+      allow write: if false;
     }
 
     // --- reports ---
     match /reports/{reportId} {
       // Lecture : admins uniquement
       allow read: if isAdmin();
-      // Création : tout utilisateur connecté non banni
-      allow create: if isSignedIn() && notBanned() &&
-                       request.resource.data.reporterId == request.auth.uid;
-      // Mise à jour du statut : admins uniquement
-      allow update: if isAdmin();
-      allow delete: if false;
+      allow write: if false;
     }
 
     // --- logs (historique des actions) ---

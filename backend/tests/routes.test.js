@@ -111,6 +111,8 @@ const buildApp = () => {
     app.post('/api/moderation/users/:userId/ban', authMiddleware, isAdmin, require('../controllers/moderationController').adminBanUser);
     app.get('/api/users/me/stats', authMiddleware, require('../controllers/listController').getMyLibraryStats);
 
+    app.use('/api/forum', authMiddleware, require('../Routes/forumRouter'));
+
     app.use(errorHandler);
     return app;
 };
@@ -311,6 +313,16 @@ describe('POST /api/auth/register', () => {
         });
         expect(res.status).toBe(400);
     });
+
+    it('409 — rejette l\'inscription si le pseudo est déjà pris', async () => {
+        const res = await request(app).post('/api/auth/register').send({
+            username: 'alice_plays', // Alice existe déjà grâce au beforeAll
+            email: 'fake_email@example.com',
+            password: 'Password1!',
+            birthDate: '1990-01-01'
+        });
+        expect(res.status).toBe(409);
+    });
 });
 
 describe('POST /api/auth/login', () => {
@@ -402,16 +414,60 @@ describe('GET /api/games/search', () => {
 });
 
 describe('GET /api/games/details/:id', () => {
-    it('200 — retourne les détails d\'un jeu', async () => {
-        const res = await request(app).get('/api/games/details/1020');
+    it('200 — retourne les détails d\'un jeu (connecté majeur)', async () => {
+        const res = await request(app).get('/api/games/details/1020').set(AUTH_HEADER);
         expect(res.status).toBe(200);
+    });
+
+    it('401 — bloque l\'accès public à un jeu PEGI 18', async () => {
+        const res = await request(app).get('/api/games/details/1020');
+        expect(res.status).toBe(401);
+        expect(res.body.msg).toMatch(/connecté/i);
+    });
+
+    it('403 — bloque l\'accès aux détails d\'un jeu PEGI 18 pour un mineur', async () => {
+        // On rend Alice mineure (née en 2015)
+        await db.collection('users').doc('user_alice_001').update({ birthDate: '2015-01-01' });
+        
+        try {
+            const res = await request(app).get('/api/games/details/1020').set(AUTH_HEADER);
+            expect(res.status).toBe(403);
+            expect(res.body.success).toBe(false);
+        } finally {
+            // Restauration de l'âge d'Alice
+            await db.collection('users').doc('user_alice_001').update({ birthDate: '1990-01-01' });
+        }
     });
 });
 
 describe('GET /api/games/:id (Alias)', () => {
-    it('200 — retourne les détails d\'un jeu via l\'alias', async () => {
-        const res = await request(app).get('/api/games/1020');
+    it('200 — retourne les détails d\'un jeu via l\'alias (connecté majeur)', async () => {
+        const res = await request(app).get('/api/games/1020').set(AUTH_HEADER);
         expect(res.status).toBe(200);
+    });
+});
+
+describe('GET /api/games/upcoming', () => {
+    it('200 — retourne une liste de jeux qui vont sortir', async () => {
+        const res = await request(app).get('/api/games/upcoming').set(AUTH_HEADER);
+        expect(res.status).toBe(200);
+        expect(Array.isArray(res.body)).toBe(true);
+    });
+});
+
+describe('GET /api/games/filtered', () => {
+    it('200 — retourne une liste de jeux filtrés par style, genre, plateforme', async () => {
+        const res = await request(app).get('/api/games/filtered?genre=12&platform=6&style=3').set(AUTH_HEADER);
+        expect(res.status).toBe(200);
+        expect(Array.isArray(res.body)).toBe(true);
+    });
+});
+
+describe('GET /api/games/:id/similar', () => {
+    it('200 — retourne des jeux similaires via IGDB ou fallback local', async () => {
+        const res = await request(app).get('/api/games/1020/similar').set(AUTH_HEADER);
+        expect(res.status).toBe(200);
+        expect(Array.isArray(res.body)).toBe(true);
     });
 });
 
@@ -437,6 +493,19 @@ describe('PUT /api/users/profile', () => {
             .send({ username: 'alice_updated', bio: 'Nouvelle bio', preferences: { theme: 'light', language: 'en', emailNotifications: false, pushNotifications: false } });
         expect(res.status).toBe(200);
         expect(res.body.success).toBe(true);
+    });
+
+    it('200 — met à jour le profil avec l\'avatar (PP) et le site web', async () => {
+        const res = await request(app)
+            .put('/api/users/profile')
+            .set(AUTH_HEADER)
+            .send({ avatarUrl: 'https://example.com/avatar.jpg', website: 'https://monsite.com' });
+        expect(res.status).toBe(200);
+        expect(res.body.success).toBe(true);
+        
+        const doc = await db.collection('users').doc('user_alice_001').get();
+        expect(doc.data().profileData.avatarUrl).toBe('https://example.com/avatar.jpg');
+        expect(doc.data().profileData.website).toBe('https://monsite.com');
     });
 });
 
@@ -595,6 +664,84 @@ describe('GET /api/lists/library/:gameId', () => {
     });
 });
 
+describe('Forum (Sujets et Réponses)', () => {
+    let threadId = '';
+    
+    it('201 — crée un sujet de forum avec l\'avatar de l\'utilisateur', async () => {
+        const res = await request(app)
+            .post('/api/forum/threads')
+            .set(AUTH_HEADER)
+            .send({ title: 'Avis sur Trine ?', content: 'Qu\'en pensez-vous ?', gameId: '1020', pseudo: 'Alice', avatarUrl: 'https://avatar.com/alice.png' });
+        expect(res.status).toBe(201);
+        expect(res.body.success).toBe(true);
+        expect(res.body.threadId).toBeDefined();
+        threadId = res.body.threadId;
+    });
+
+    it('201 — ajoute une réponse à un sujet avec l\'avatar de l\'utilisateur', async () => {
+        if (!threadId) throw new Error("Thread non créé lors de l'étape précédente");
+        const res = await request(app)
+            .post('/api/forum/posts')
+            .set(AUTH_HEADER)
+            .send({ threadId, content: 'Excellent jeu !', pseudo: 'Bob', avatarUrl: 'https://avatar.com/bob.png' });
+        expect(res.status).toBe(201);
+        expect(res.body.success).toBe(true);
+    });
+
+    it('400 — rejette la création d\'un sujet si le titre ou le contenu est vide', async () => {
+        const res = await request(app)
+            .post('/api/forum/threads')
+            .set(AUTH_HEADER)
+            .send({ title: '', content: '', gameId: '1020', pseudo: 'Alice' });
+        expect(res.status).toBe(400);
+        expect(res.body.success).toBe(false);
+    });
+
+    it('400 — rejette l\'ajout d\'une réponse si le contenu est vide', async () => {
+        const res = await request(app)
+            .post('/api/forum/posts')
+            .set(AUTH_HEADER)
+            .send({ threadId: 'un_id_valide', content: '', pseudo: 'Alice' });
+        expect(res.status).toBe(400);
+        expect(res.body.success).toBe(false);
+    });
+
+    it('200 — récupère la liste des sujets de forum (globaux)', async () => {
+        const res = await request(app).get('/api/forum/threads').set(AUTH_HEADER);
+        expect(res.status).toBe(200);
+        expect(res.body.success).toBe(true);
+        expect(Array.isArray(res.body.threads)).toBe(true);
+        expect(res.body.threads.length).toBeGreaterThan(0);
+    });
+
+    it('200 — récupère les sujets filtrés par jeu (gameId)', async () => {
+        const res = await request(app).get('/api/forum/threads?gameId=1020').set(AUTH_HEADER);
+        expect(res.status).toBe(200);
+        expect(res.body.success).toBe(true);
+        expect(res.body.threads.every(t => t.gameId === '1020')).toBe(true);
+    });
+
+    it('200 — récupère les détails d\'un sujet précis', async () => {
+        const res = await request(app).get(`/api/forum/threads/${threadId}`).set(AUTH_HEADER);
+        expect(res.status).toBe(200);
+        expect(res.body.success).toBe(true);
+        expect(res.body.thread.id).toBe(threadId);
+    });
+
+    it('404 — rejette la lecture si le sujet n\'existe pas', async () => {
+        const res = await request(app).get('/api/forum/threads/ghost_thread').set(AUTH_HEADER);
+        expect(res.status).toBe(404);
+    });
+
+    it('200 — récupère les réponses d\'un sujet précis', async () => {
+        const res = await request(app).get(`/api/forum/threads/${threadId}/posts`).set(AUTH_HEADER);
+        expect(res.status).toBe(200);
+        expect(res.body.success).toBe(true);
+        expect(Array.isArray(res.body.posts)).toBe(true);
+        expect(res.body.posts.length).toBeGreaterThan(0);
+    });
+});
+
 describe('DELETE /api/lists/library/:gameId', () => {
     it('200 — supprime un jeu de la bibliothèque', async () => {
         // On crée un jeu jetable pour ne pas affecter les autres tests
@@ -676,6 +823,12 @@ describe('GET /api/reviews/me', () => {
         expect(res.status).toBe(200);
     });
 
+    it('200 — retourne les reviews avec pagination (limit)', async () => {
+        const res = await request(app).get('/api/reviews/me?page=1&limit=2').set(AUTH_HEADER);
+        expect(res.status).toBe(200);
+        expect(res.body.limit).toBe(2);
+    });
+
     it('401 — refusé sans token', async () => {
         const res = await request(app).get('/api/reviews/me');
         expect(res.status).toBe(401);
@@ -732,6 +885,14 @@ describe('Interactions Sociales', () => {
             .set(AUTH_HEADER);
         expect(res.status).toBe(200);
         expect(res.body.success).toBe(true);
+    });
+
+    it('200 — permet de retirer un like sur une critique (toggle)', async () => {
+        const res = await request(app)
+            .post('/api/interactions/reviews/user_alice_001_1020/like')
+            .set(AUTH_HEADER);
+        expect(res.status).toBe(200);
+        expect(res.body.msg).toBe('Like retiré');
     });
 
     it('201 — permet de commenter une critique', async () => {
@@ -907,6 +1068,11 @@ describe('Listes personnalisées (2.2.2)', () => {
         expect(res.body.success).toBe(true);
     });
 
+    it('400 — rejette la création d\'une liste sans nom', async () => {
+        const res = await request(app).post('/api/lists/custom').set(AUTH_HEADER).send({ description: 'Sans nom' });
+        expect(res.status).toBe(400);
+    });
+
     it('200 — retourne les listes personnalisées de l\'utilisateur', async () => {
         const res = await request(app).get('/api/lists/custom/me').set(AUTH_HEADER);
         expect(res.status).toBe(200);
@@ -924,6 +1090,12 @@ describe('Listes personnalisées (2.2.2)', () => {
         const detailsRes = await request(app).get(`/api/lists/custom/${listId}`).set(AUTH_HEADER);
         expect(detailsRes.status).toBe(200);
         expect(detailsRes.body.list.games.length).toBeGreaterThan(0);
+    });
+
+    it('403 — rejette l\'ajout d\'un jeu à une liste qui ne nous appartient pas', async () => {
+        const docRef = await db.collection('custom_lists').add({ userId: 'user_bob_999', name: 'Bob List', isPrivate: false, games: [] });
+        const res = await request(app).post(`/api/lists/custom/${docRef.id}/games`).set(AUTH_HEADER).send({ gameId: '1020' });
+        expect(res.status).toBe(403);
     });
 
     it('404 — ajoute un jeu : rejette si liste inexistante', async () => {
@@ -952,12 +1124,14 @@ describe('Recommandations (2.2.6)', () => {
         // 1. On modifie l'âge d'Alice pour la rendre mineure (née en 2015)
         await db.collection('users').doc('user_alice_001').update({ birthDate: '2015-01-01' });
         
-        const res = await request(app).get('/api/recommendations').set(AUTH_HEADER);
-        expect(res.status).toBe(200);
-        expect(res.body.recommendations.length).toBe(0); // Le jeu mocké +18 lui est masqué !
-        
-        // 2. Restauration de l'âge d'Alice pour les tests suivants
-        await db.collection('users').doc('user_alice_001').update({ birthDate: '1990-01-01' });
+        try {
+            const res = await request(app).get('/api/recommendations').set(AUTH_HEADER);
+            expect(res.status).toBe(200);
+            expect(res.body.recommendations.length).toBe(0); // Le jeu mocké +18 lui est masqué !
+        } finally {
+            // 2. Restauration de l'âge d'Alice pour les tests suivants
+            await db.collection('users').doc('user_alice_001').update({ birthDate: '1990-01-01' });
+        }
     });
 });
 
@@ -1017,6 +1191,14 @@ describe('POST /api/conversations/:id/messages', () => {
     it('404 — rejette si la conversation n\'existe pas pour un message', async () => {
         const res = await request(app).post('/api/conversations/ghost_conv/messages').set(AUTH_HEADER).send({ text: 'Hello' });
         expect(res.status).toBe(404);
+    });
+});
+
+describe('Sécurité globale (Middlewares)', () => {
+    it('401 — bloque l\'accès sans token sur les routes privées', async () => {
+        const res = await request(app).post('/api/lists/status').send({ gameId: '1020', status: 'playing' });
+        expect(res.status).toBe(401);
+        expect(res.body.success).toBe(false);
     });
 });
 

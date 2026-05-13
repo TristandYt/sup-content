@@ -1,11 +1,10 @@
 // Routes des critiques
-// GET /game/:gameId est publique — montée AVANT le middleware auth
 const express = require('express');
 const router = express.Router();
 const auth = require('../middlewares/auth');
 const reviewController = require('../controllers/reviewController');
 
-// Route publique — déclarée avant router.use(auth)
+// Route publique
 router.get('/game/:gameId', reviewController.getGameReviews);
 
 // Routes privées

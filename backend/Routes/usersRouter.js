@@ -1,13 +1,13 @@
 /*
  * Routes utilisateur.
- * Toutes les autres routes sont protégées par auth (géré dans server.js).
+ * Toutes les autres routes sont protégées par auth.
  */
 const express = require('express');
 const router = express.Router();
-const { isAdmin } = require('../backend/middlewares/roleMiddleware');
-const userController = require('../backend/controllers/userController');
+const { isAdmin } = require('../middlewares/roleMiddleware');
+const userController = require('../controllers/userController');
 
-// Routes privées (auth + ensureFirestoreProfile appliqués dans server.js)
+// Routes privées
 router.get('/profile', userController.getProfile);
 router.put('/profile', userController.updateProfile);
 router.put('/password', userController.updatePassword);
