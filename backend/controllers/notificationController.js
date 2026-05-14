@@ -44,3 +44,39 @@ exports.markAsRead = async (req, res, next) => {
         next(error);
     }
 };
+
+exports.streamNotifications = (req, res) => {
+    // 1. Configuration des en-têtes (Server-Sent Events)
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+    res.flushHeaders(); // Envoie header
+
+    const userId = req.user.id;
+
+    // Écoute en temps réel de Firestore
+    const unsubscribe = db.collection('notifications')
+        .where('userId', '==', userId)
+        .orderBy('createdAt', 'desc')
+        .limit(30)
+        .onSnapshot(
+            (snapshot) => {
+                const notifications = snapshot.docs.map(doc => ({
+                    id: doc.id,
+                    ...doc.data()
+                }));
+
+                // Envoi des données au client sous le format SSE
+                res.write(`data: ${JSON.stringify({ type: 'UPDATE', notifications })}\n\n`);
+            },
+            (error) => {
+                console.error("Erreur SSE Notifications:", error);
+                res.write(`data: ${JSON.stringify({ type: 'ERROR', msg: error.message })}\n\n`);
+            }
+        );
+
+    // ferme la connexion
+    req.on('close', () => {
+        unsubscribe();
+    });
+};

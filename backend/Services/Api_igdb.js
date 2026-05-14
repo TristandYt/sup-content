@@ -81,6 +81,33 @@ class IGDBService {
         return this.request('games', query);
     }
 
+    // Jeux qui vont sortir
+    async getUpcomingGames() {
+        const now = Math.floor(Date.now() / 1000);
+        const query = `
+            fields name, cover.image_id, first_release_date, total_rating, age_ratings.category, age_ratings.rating;
+            where first_release_date > ${now};
+            sort first_release_date asc;
+            limit 20;
+        `;
+        return this.request('games', query);
+    }
+
+    // Filtrer par genre, plateforme, et style(theme)
+    async getGamesFiltered({ style, genre, platform }) {
+        let query = `fields name, cover.image_id, first_release_date, total_rating, age_ratings.category, age_ratings.rating; limit 40;`;
+        let whereClauses = [];
+
+        if (genre) whereClauses.push(`genres = (${genre})`);
+        if (platform) whereClauses.push(`platforms = (${platform})`);
+        if (style) whereClauses.push(`themes = (${style})`);
+
+        if (whereClauses.length > 0) {
+            query += ` where ${whereClauses.join(' & ')};`;
+        }
+        return this.request('games', query);
+    }
+
     // Détails d'un jeu
     async getGameDetails(gameId) {
         const query = `

@@ -6,104 +6,134 @@ Le projet permet de rechercher des jeux, de gérer sa progression, d'interagir a
 
 ---
 
-## Comment marche le projet ?
+## 🚀 Installation & Lancement (Docker)
 
-Le projet est divisé en deux parties principales interagissant via une API REST :
+Le projet utilise **Docker** pour orchestrer simultanément l'API, le client Web et les émulateurs de la base de données.
 
-1. **Frontend (React) :** Interface utilisateur dynamique (thème sombre/clair, multilingue) qui s'occupe de l'authentification directe avec le SDK Firebase.
-2. **Backend (Node.js / Express) :** Serveur API sécurisé. Il vérifie les tokens JWT de Firebase pour chaque requête protégée, communique avec la base de données Firestore, et fait le pont avec l'API externe des jeux vidéo (**IGDB / Twitch**).
-3. **Infrastructure (Docker) :** L'environnement de développement repose sur des conteneurs Docker émulant la base de données Firestore et l'Authentification Firebase en local, ce qui permet de tester l'application sans risquer de polluer une base de données de production.
+### 1. Pré-requis
+- [Git](https://git-scm.com/) installé sur votre machine.
+- [Docker Desktop](https://www.docker.com/products/docker-desktop) installé et en cours d'exécution.
+- Node.js (optionnel, uniquement pour lancer la suite de tests en local).
 
----
+### 2. Cloner et configurer le projet
+Ouvrez votre terminal et exécutez les commandes suivantes :
+```bash
+# Cloner le dépôt Git
+git clone <VOTRE_URL_GIT_ICI>
+cd sup-content
 
-## Fonctionnalités Principales
 
-### Gestion des Utilisateurs et Profils
-- **Authentification sécurisée :** Inscription et connexion via Firebase Auth (Email/Mot de passe ou OAuth via Google, GitHub, Facebook).
-- **Préférences & RGPD :** Thème (Clair/Sombre), langue, options de notifications (Push/Email) et export JSON de toutes les données.
-- **Jeux Favoris :** Mise en avant de ses jeux "coup de cœur" sur son profil.
+```
+Créer et configurer le fichier d'environnement pour le backend.
+Assurez-vous d'avoir un fichier .env dans le dossier /backend avec vos clés IGDB/Firebase.
 
-### Catalogue de Jeux (Propulsé par IGDB)
-- **Base de données mondiale :** Recherche de jeux, consultation des jeux populaires et recommandations intelligentes basées sur les favoris.
-- **Mise en cache (Performances) :** Les résultats d'IGDB sont sauvegardés dans Firestore pour réduire le temps d'attente et économiser les quotas d'API.
-- **Bouclier PEGI (Contrôle parental) :** Blocage automatique et masquage des jeux inappropriés (ex: +18) selon l'âge calculé à partir de la date de naissance de l'utilisateur.
+### 3. Lancer l'infrastructure
+À la racine du projet, lancez la commande Docker Compose :
+```bash
+docker compose up --build -d
+```
+*Cette commande télécharge les images, installe les dépendances via les volumes virtuels et lance 3 conteneurs :*
+- `supcontent-db` : Émulateur Firestore & Auth (Accessible sur http://localhost:4000)
+- `supcontent-api` : Backend Express (Accessible sur http://localhost:3000)
+- `supcontent-front` : Frontend React/Vite (Accessible sur http://localhost:3001)
 
-### Bibliothèque et Listes Personnalisées
-- **Tracking de progression :** Ajout de jeux à sa bibliothèque avec un statut précis (`to_play`, `playing`, `finished`, `dropped`).
-- **Tableau de bord :** Statistiques globales de la bibliothèque.
-- **Listes personnalisées :** Création de listes thématiques (ex: "Mes jeux d'horreur", "À faire en coop") qui peuvent être publiques ou privées.
-
-### Critiques et Interactions Sociales
-- **Système d'avis :** Rédaction de critiques avec une note de 1 à 5 étoiles.
-- **Interactions :** Possibilité de "Liker" ou de "Commenter" les critiques des autres joueurs.
-- **Réseau d'abonnements :** Suivi (Follow/Unfollow) d'autres utilisateurs pour ne rien rater de leur activité.
-- **Fil d'actualité (Feed) :** Flux personnalisé affichant chronologiquement les **critiques publiées** ET les **ajouts en bibliothèque** des amis.
-- **Notifications intelligentes :** Alertes in-app (nouveaux abonnés, likes, commentaires) et système de recommandation automatique basée sur l'ajout de favoris.
-
-### Messagerie Privée (Chat)
-- **Conversations 1-to-1 :** Échange de messages texte ou de pièces jointes.
-- **Anti-Harcelement (Mutual Follow) :** Le chat est bloqué si les deux utilisateurs ne se suivent pas mutuellement.
-- **Accusés de réception :** Suivi de lecture des messages (système de *Read Receipts*).
-
-### Modération & Administration
-- **Signalements :** Les utilisateurs peuvent signaler un comportement toxique ou du contenu inapproprié.
-- **Outils Admin :** 
-  - Bannissement d'utilisateurs (`adminBanUser`).
-  - Suppression forcée de critiques (`adminDeleteReview`).
-  - Mise en avant ("Highlight") de critiques pertinentes.
-  - Accès à l'historique complet des actions de sécurité (`Logs`).
+Pour arrêter proprement les serveurs et supprimer les conteneurs : `docker compose down`
 
 ---
 
-## Guide des Codes d'Erreurs HTTP (API)
+## 🏗️ Architecture Technique
 
-L'API backend est standardisée. Voici comment interpréter les erreurs renvoyées :
+Le projet repose sur une architecture moderne séparant strictement les responsabilités :
+1. **Frontend (React / Vite) :** Interface utilisateur dynamique et multilingue gérant la connexion initiale via le SDK client Firebase.
+2. **Backend API (Node.js / Express) :** Architecture MVC robuste. L'API vérifie les jetons JWT, traite la logique métier, et s'interface avec l'API externe (IGDB).
+3. **Base de données NoSQL (Firestore) :** Structure de données hiérarchique protégée par des règles de sécurité très strictes (`firestore.rules`). L'accès aux données des autres utilisateurs est limité côté client.
 
-### `200 OK` / `201 Created`
-La requête a réussi. Les données demandées sont renvoyées ou la ressource a bien été créée (ex: envoi d'un message, création d'une liste).
+---
+
+## ✨ Fonctionnalités Détaillées
+
+### 👤 Utilisateurs, Authentification & Sécurité
+- **Connexion Multi-fournisseurs :** Création de compte locale (Email/Mot de passe) ou OAuth2 (Google, GitHub, Facebook) avec provisionnement automatique du profil.
+- **Conformité RGPD :** Endpoint dédié permettant à l'utilisateur d'exporter l'intégralité de ses données (Profil, Bibliothèque, Critiques, Abonnements) au format JSON. Option de suppression complète de compte.
+- **Bouclier PEGI Dynamique :** Algorithme calculant l'âge de l'utilisateur à partir de sa date de naissance pour filtrer et bloquer l'affichage des jeux inadaptés (+18 ans) en provenance d'IGDB.
+
+### 🎮 Catalogue de Jeux (Intégration IGDB)
+- **Mise en cache intelligente :** Les requêtes à l'API IGDB sont d'abord recherchées en base de données locale (`supcontent_cached_at`). Si le jeu est récent en base, l'API tierce n'est pas sollicitée (économie de quotas et performances).
+- **Recherche unifiée :** Un contrôleur de recherche global qui croise les jeux IGDB, les utilisateurs locaux et les listes publiques.
+- **Recommandations Automatiques :** Moteur suggérant de nouveaux jeux en fonction de l'ajout d'œuvres dans les favoris du joueur.
+
+### 📚 Bibliothèque & Listes de jeux
+- **Statuts de Progression :** L'utilisateur peut ajouter n'importe quel jeu à sa ludothèque sous 4 statuts stricts : `to_play`, `playing`, `finished`, ou `dropped`.
+- **Tableau de bord :** Calcul des statistiques globales de la ludothèque (Dashboard).
+- **Listes personnalisées :** Création de listes thématiques de jeux. Intègre un flag de confidentialité `isPrivate` (protégé par le backend et les rules Firestore).
+
+### 💬 Réseau Social, Critiques et Messagerie
+- **Système de notes et commentaires :** Rédaction de critiques (1 à 5 étoiles) associées à un texte, possibilité de *Liker* et *Commenter* les avis des autres membres.
+- **Abonnements (Followers/Following) :** Possibilité de s'abonner aux profils d'autres joueurs.
+- **Messagerie Anti-harcèlement :** Le chat privé `1-to-1` est sécurisé : il requiert obligatoirement un *Mutual Follow* (suivi mutuel) pour être initié. Intégration d'un système d'accusés de réception (`readBy`).
+- **Fil d'actualité Paginé :** Algorithme agrégeant et triant chronologiquement (par `page` et `limit`) les critiques publiées et les ajouts en bibliothèque des personnes suivies.
+
+### 🔔 Temps Réel (Notifications)
+- **Server-Sent Events (SSE) :** Le Backend expose une route de streaming `/api/notifications/stream` qui écoute Firestore et "pousse" les mises à jour directement au frontend.
+- **Déclencheurs :** Le système alerte instantanément lors d'un nouveau like, d'un nouveau commentaire, ou pousse une recommandation IGDB lorsqu'un jeu est mis en favori.
+
+### 🛡️ Administration & Modération
+- **Modération Communautaire :** Route de signalement d'un contenu inapproprié par les membres.
+- **Espace Admin :** Les administrateurs peuvent :
+  - Bannir des utilisateurs (`adminBanUser`).
+  - Supprimer de force des critiques (`adminDeleteReview`).
+  - Mettre en avant ("Highlight") des critiques pertinentes.
+  - Accéder aux `Logs` générés par les actions sensibles de l'API.
+
+---
+
+## 📖 Guide des Codes d'Erreurs HTTP de l'API
+
+### `200 OK` & `201 Created`
+Succès. Les données sont renvoyées ou la ressource a été créée avec succès.
 
 ### `400 Bad Request` (Requête invalide)
-Renvoié lorsque les données envoyées par le client sont incomplètes ou illogiques.
-- **Validation Zod :** Mot de passe trop court, email mal formaté.
-- **Erreurs métier :** 
+Renvoyé si les données transmises par le client sont incomplètes ou illogiques.
+- Format invalide intercepté par les schémas **Zod** (mot de passe faible, email malformé).
+- Erreurs métier de l'API :
   - Essayer de s'abonner à soi-même (`/api/follows`).
   - Envoyer un message vide dans le chat.
-  - Fournir un statut de bibliothèque invalide (autre que `playing`, `finished`, etc.).
+  - Statut de jeu inconnu (différent de `playing`, `finished`, etc.).
 
 ### `401 Unauthorized` (Non authentifié)
-Renvoié lorsqu'une route privée est appelée sans jeton d'authentification valide.
-- **Causes :** Token Firebase absent, expiré ou invalide dans le header `Authorization: Bearer <token>`.
+Renvoyé si une route privée est appelée sans jeton valide.
+- **Cause :** Token JWT Firebase absent, expiré ou corrompu dans l'en-tête `Authorization: Bearer`.
 
 ### `403 Forbidden` (Accès refusé)
 L'utilisateur est bien connecté, mais n'a **pas les droits nécessaires** pour l'action demandée.
-- **Bouclier PEGI :** L'utilisateur est mineur et tente d'afficher un jeu classé PEGI 18.
+- **Bouclier PEGI :** Un mineur tente d'accéder aux données d'un jeu classé PEGI 18.
 - **Messagerie :** Tentative de création de chat avec une personne sans *suivi mutuel*.
-- **Confidentialité :** Tentative de lecture d'une liste personnalisée réglée sur "Privée" appartenant à un autre utilisateur, ou lecture d'une conversation à laquelle on ne participe pas.
+- **Confidentialité :** Lecture d'une liste personnalisée marquée `isPrivate` appartenant à un autre joueur.
 - **Administration :** Tentative d'utilisation d'une route de modération sans avoir le rôle `admin`.
 
 ### `404 Not Found` (Introuvable)
 La ressource demandée n'existe pas dans la base de données.
-- **Causes :** 
-  - Identifiant de jeu IGDB inconnu.
-  - Profil utilisateur supprimé ou inexistant.
-  - Retrait d'un jeu de la bibliothèque qui n'y figurait déjà plus.
+- **Causes :** Jeu IGDB inconnu, Profil supprimé, ou erreur sur un identifiant de route.
 
 ### `409 Conflict` (Conflit de données)
 L'action entre en conflit avec l'état actuel du serveur.
-- **Causes :** 
-  - Tentative de s'abonner à un utilisateur que l'on suit déjà.
+- **Causes :** Tentative de création d'un compte avec un pseudo déjà pris, ou tentative de s'abonner à un utilisateur déjà suivi.
 
 ### `500 Internal Server Error` (Erreur Serveur)
 Un problème inattendu s'est produit côté serveur.
-- **Causes :** 
-  - Crash de la base de données (Firestore).
-  - Panne ou timeout de l'API IGDB / Twitch.
-  - Erreur de logique non attrapée dans le code.
+- **Causes :** Panne de Firestore, Timeout de l'API IGDB, ou exception fatale du serveur Node.js.
 
 ---
 
-## Scripts et Commandes
+## 🛠️ Scripts & Tests
 
-- `npm start` : Lance l'infrastructure Docker en arrière plan.
-- `npm test` : Exécute la suite de tests complète (Jest + Supertest) avec purge et peuplement de la BDD d'émulation.
-- `npm run clean` : Supprime les conteneurs et vide les volumes de données Docker.
+Le backend est doté d'une suite de **Tests d'Intégration** (`routes.test.js`) basée sur **Jest** et **Supertest** extrêmement complète. Elle mock l'API IGDB, initialise les bases de données émulées, teste l'OAuth et nettoie automatiquement les collections à la fin.
+
+Dans le dossier `backend`, vous pouvez utiliser :
+
+- `npm test` : Exécute l'ensemble de la suite de tests d'intégration.
+- `npm start` : Lance le serveur en mode classique hors-docker.
+- `npm run dev` : Lance le serveur en mode développement (Nodemon).
+
+À la racine du projet :
+- `docker compose down -v` : Arrête les serveurs locaux et supprime les volumes pour réinitialiser la BDD.

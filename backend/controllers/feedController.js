@@ -6,7 +6,8 @@ const FEED_PAGE_SIZE = 20;
 exports.getNewsFeed = async (req, res, next) => {
     try {
         const userId = req.user.id;
-        const { cursor } = req.query;
+        const page = parseInt(req.query.page) || 1;
+        const limitSize = parseInt(req.query.limit) || FEED_PAGE_SIZE;
 
         const followsSnapshot = await db.collection('follows')
             .where('followerId', '==', userId)
@@ -18,7 +19,8 @@ exports.getNewsFeed = async (req, res, next) => {
             return res.json({
                 success: true,
                 feed: [],
-                nextCursor: null,
+                page,
+                totalPages: 0,
                 msg: 'Suivez des utilisateurs pour voir leur activité',
             });
         }
@@ -75,25 +77,20 @@ exports.getNewsFeed = async (req, res, next) => {
         // Tri chronologique global (Critiques + Bibliothèque combinées)
         allFeedItems.sort((a, b) => (b.updatedAt?.getTime() || 0) - (a.updatedAt?.getTime() || 0));
         
-        if (cursor) {
-            const cursorTime = new Date(cursor).getTime();
-            allFeedItems = allFeedItems.filter(item => (item.updatedAt?.getTime() || 0) < cursorTime);
-        }
-
-        const feed = allFeedItems.slice(0, FEED_PAGE_SIZE);
-
-        const lastItem = feed[feed.length - 1];
-        const nextCursor = feed.length === FEED_PAGE_SIZE && lastItem
-            ? lastItem.updatedAt?.toISOString()
-            : null;
+        const startIndex = (page - 1) * limitSize;
+        const endIndex = page * limitSize;
+        const feed = allFeedItems.slice(startIndex, endIndex);
+        const totalPages = Math.ceil(allFeedItems.length / limitSize);
 
         feed.forEach(item => delete item.updatedAt);
 
         res.json({
             success: true,
-            total: feed.length,
+            totalItems: allFeedItems.length,
+            page,
+            totalPages,
+            limit: limitSize,
             feed,
-            nextCursor,
         });
     } catch (error) {
         next(error);

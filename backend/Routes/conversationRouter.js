@@ -1,7 +1,6 @@
 /*
  * Routes conversations.
  * Messagerie privée 1-to-1 entre utilisateurs qui se suivent mutuellement.
- * Auth appliqué dans server.js — pas besoin de router.use(auth) ici.
  */
 const express = require("express");
 const router = express.Router();
