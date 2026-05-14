@@ -1,0 +1,380 @@
+import React, { useState, useEffect } from "react";
+import axios from "axios";
+import { auth } from "../Service/firebase";
+import "../../Style/Styles.css";
+
+const authAxios = async () => {
+  const token = await auth.currentUser?.getIdToken(true);
+  return axios.create({
+    baseURL: "http://localhost:3000/api",
+    headers: { Authorization: `Bearer ${token}` },
+  });
+};
+
+const Forum = ({ user, onGameClick }) => {
+  const [threads, setThreads] = useState([]);
+  const [selectedThread, setSelectedThread] = useState(null);
+  const [posts, setPosts] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [view, setView] = useState("list"); // "list" ou "detail"
+
+  // Formulaires
+  const [showCreateForm, setShowCreateForm] = useState(false);
+  const [newThread, setNewThread] = useState({
+    title: "",
+    content: "",
+    gameId: "",
+  });
+  const [newPostContent, setNewPostContent] = useState("");
+
+  useEffect(() => {
+    fetchThreads();
+  }, []);
+
+  const fetchThreads = async () => {
+    setLoading(true);
+    try {
+      const api = await authAxios();
+      const res = await api.get("/forum/threads");
+      if (res.data.success) {
+        setThreads(res.data.threads);
+      }
+    } catch (err) {
+      console.error("Erreur fetchThreads:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchThreadDetail = async (thread) => {
+    setLoading(true);
+    setSelectedThread(thread);
+    try {
+      const api = await authAxios();
+      const res = await api.get(`/forum/threads/${thread.id}/posts`);
+      if (res.data.success) {
+        setPosts(res.data.posts);
+        setView("detail");
+      }
+    } catch (err) {
+      console.error("Erreur fetchThreadDetail:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleCreateThread = async (e) => {
+    e.preventDefault();
+    try {
+      const api = await authAxios();
+      const res = await api.post("/forum/threads", {
+        ...newThread,
+        pseudo: user?.pseudo || user?.username,
+        avatarUrl: user?.avatar || user?.photoURL,
+      });
+      if (res.data.success) {
+        setNewThread({ title: "", content: "", gameId: "" });
+        setShowCreateForm(false);
+        fetchThreads();
+      }
+    } catch (err) {
+      alert("Erreur lors de la création du sujet.");
+    }
+  };
+
+  const handleAddPost = async (e) => {
+    e.preventDefault();
+    if (!newPostContent.trim()) return;
+    try {
+      const api = await authAxios();
+      const res = await api.post("/forum/posts", {
+        threadId: selectedThread.id,
+        content: newPostContent,
+        pseudo: user?.pseudo || user?.username,
+        avatarUrl: user?.avatar || user?.photoURL,
+      });
+      if (res.data.success) {
+        setNewPostContent("");
+        fetchThreadDetail(selectedThread);
+      }
+    } catch (err) {
+      alert("Erreur lors de l'ajout de la réponse.");
+    }
+  };
+
+  if (loading && view === "list") {
+    return (
+      <div className="loading-container">
+        <div className="loading-spinner" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="accueil-container">
+      <div className="hero-section" style={{ minHeight: "150px" }}>
+        <div className="hero-gradient" />
+        <div className="hero-content">
+          <h2 className="hero-title">Forum Communautaire</h2>
+          <p className="hero-subtitle">
+            Discutez de vos jeux préférés avec la communauté.
+          </p>
+        </div>
+      </div>
+
+      <div className="main-content-wrapper">
+        {view === "list" ? (
+          <>
+            <div className="section-header">
+              <h3 className="section-title">Discussions récentes</h3>
+              {user && (
+                <button
+                  className="category-btn active"
+                  onClick={() => setShowCreateForm(!showCreateForm)}
+                >
+                  {showCreateForm ? "Annuler" : "+ Nouveau sujet"}
+                </button>
+              )}
+            </div>
+
+            {showCreateForm && (
+              <form
+                className="game-card-modern"
+                style={{
+                  padding: "20px",
+                  marginBottom: "20px",
+                  cursor: "default",
+                }}
+                onSubmit={handleCreateThread}
+              >
+                <input
+                  className="filter-select"
+                  style={{ width: "100%", marginBottom: "10px" }}
+                  placeholder="Titre du sujet"
+                  value={newThread.title}
+                  onChange={(e) =>
+                    setNewThread({ ...newThread, title: e.target.value })
+                  }
+                  required
+                />
+                <textarea
+                  className="filter-select"
+                  style={{
+                    width: "100%",
+                    minHeight: "100px",
+                    marginBottom: "10px",
+                    paddingTop: "10px",
+                  }}
+                  placeholder="Contenu de votre message..."
+                  value={newThread.content}
+                  onChange={(e) =>
+                    setNewThread({ ...newThread, content: e.target.value })
+                  }
+                  required
+                />
+                <button
+                  type="submit"
+                  className="nav-user-btn"
+                  style={{ width: "100%", justifyContent: "center" }}
+                >
+                  Publier
+                </button>
+              </form>
+            )}
+
+            <div className="comments-list-modern">
+              {threads.map((thread) => (
+                <div
+                  key={thread.id}
+                  className="game-card-modern"
+                  style={{ padding: "15px", marginBottom: "10px" }}
+                  onClick={() => fetchThreadDetail(thread)}
+                >
+                  <div
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "flex-start",
+                    }}
+                  >
+                    <div>
+                      <h4 style={{ margin: "0 0 5px 0", color: "#fff" }}>
+                        {thread.title}
+                      </h4>
+                      <p
+                        style={{
+                          fontSize: "0.85rem",
+                          color: "#94a3b8",
+                          margin: 0,
+                        }}
+                      >
+                        Par {thread.authorName} • {thread.replyCount} réponses
+                      </p>
+                    </div>
+                    <span className="game-genre">
+                      {thread.lastReplyAt?.seconds
+                        ? new Date(
+                            thread.lastReplyAt.seconds * 1000,
+                          ).toLocaleDateString()
+                        : "Récemment"}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </>
+        ) : (
+          <>
+            <button
+              className="category-btn"
+              onClick={() => setView("list")}
+              style={{ marginBottom: "20px" }}
+            >
+              ← Retour à la liste
+            </button>
+
+            <div
+              className="game-card-modern"
+              style={{
+                padding: "20px",
+                marginBottom: "30px",
+                borderLeft: "4px solid #9333ea",
+                cursor: "default",
+              }}
+            >
+              <div
+                style={{ display: "flex", gap: "15px", marginBottom: "15px" }}
+              >
+                <img
+                  src={
+                    selectedThread.authorAvatarUrl ||
+                    `https://api.dicebear.com/7.x/bottts/svg?seed=${selectedThread.authorName}`
+                  }
+                  alt=""
+                  style={{ width: "40px", height: "40px", borderRadius: "50%" }}
+                />
+                <div>
+                  <h3 style={{ margin: 0 }}>{selectedThread.title}</h3>
+                  <span style={{ fontSize: "0.8rem", color: "#9333ea" }}>
+                    Par {selectedThread.authorName}
+                  </span>
+                </div>
+              </div>
+              <p style={{ color: "#e2e8f0", lineHeight: "1.6" }}>
+                {selectedThread.content}
+              </p>
+            </div>
+
+            <div className="section-header">
+              <h4 className="section-title">Réponses</h4>
+              <span className="section-count">{posts.length}</span>
+            </div>
+
+            <div
+              className="comments-list-modern"
+              style={{ marginBottom: "30px" }}
+            >
+              {posts.map((post) => (
+                <div
+                  key={post.id}
+                  className="game-card-modern"
+                  style={{
+                    padding: "15px",
+                    marginBottom: "10px",
+                    background: "rgba(255,255,255,0.02)",
+                    cursor: "default",
+                  }}
+                >
+                  <div style={{ display: "flex", gap: "12px" }}>
+                    <img
+                      src={
+                        post.authorAvatarUrl ||
+                        `https://api.dicebear.com/7.x/bottts/svg?seed=${post.authorName}`
+                      }
+                      alt=""
+                      style={{
+                        width: "32px",
+                        height: "32px",
+                        borderRadius: "50%",
+                      }}
+                    />
+                    <div style={{ flex: 1 }}>
+                      <div
+                        style={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                          marginBottom: "5px",
+                        }}
+                      >
+                        <span
+                          style={{
+                            fontWeight: "600",
+                            fontSize: "0.9rem",
+                            color: "#c084fc",
+                          }}
+                        >
+                          {post.authorName}
+                        </span>
+                        <span style={{ fontSize: "0.75rem", color: "#64748b" }}>
+                          {post.createdAt?.seconds
+                            ? new Date(
+                                post.createdAt.seconds * 1000,
+                              ).toLocaleString()
+                            : "Maintenant"}
+                        </span>
+                      </div>
+                      <p
+                        style={{
+                          margin: 0,
+                          fontSize: "0.9rem",
+                          color: "#cbd5e1",
+                        }}
+                      >
+                        {post.content}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {user ? (
+              <form
+                className="game-card-modern"
+                style={{ padding: "20px", cursor: "default" }}
+                onSubmit={handleAddPost}
+              >
+                <textarea
+                  className="filter-select"
+                  style={{
+                    width: "100%",
+                    minHeight: "80px",
+                    marginBottom: "10px",
+                    paddingTop: "10px",
+                  }}
+                  placeholder="Votre réponse..."
+                  value={newPostContent}
+                  onChange={(e) => setNewPostContent(e.target.value)}
+                  required
+                />
+                <button
+                  type="submit"
+                  className="nav-user-btn"
+                  style={{ width: "100%", justifyContent: "center" }}
+                >
+                  Répondre
+                </button>
+              </form>
+            ) : (
+              <p style={{ textAlign: "center", color: "#64748b" }}>
+                Connectez-vous pour participer à la discussion.
+              </p>
+            )}
+          </>
+        )}
+      </div>
+    </div>
+  );
+};
+
+export default Forum;

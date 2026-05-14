@@ -8,6 +8,7 @@ import Utilisateur from "./pages/utilisateur";
 import Jeu from "./pages/Jeu";
 import Messagerie from "./pages/messagerie";
 import AdminDashboard from "./pages/AdminDashboard";
+import Forum from "./pages/Forum";
 import "../Style/Styles.css";
 import "./Langue/i18n";
 
@@ -236,6 +237,23 @@ const App = () => {
                 )}
 
                 <button
+                  className="nav-icon-btn"
+                  onClick={() => setCurrentPage("forum")}
+                  title="Forum"
+                >
+                  <svg
+                    width="20"
+                    height="20"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                  >
+                    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+                  </svg>
+                </button>
+
+                <button
                   className="nav-user-btn"
                   onClick={() => setCurrentPage(user ? "utilisateur" : "login")}
                 >
@@ -388,6 +406,10 @@ const App = () => {
             preselectedConversation={preselectedConversation}
             onConversationOpen={() => setPreselectedConversation(null)}
           />
+        )}
+
+        {currentPage === "forum" && (
+          <Forum user={user} onGameClick={handleShowGame} />
         )}
 
         {currentPage === "admin" && (
