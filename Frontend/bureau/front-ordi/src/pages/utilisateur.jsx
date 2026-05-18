@@ -43,17 +43,31 @@ const PublicProfile = ({
     setLoading(true);
     setError("");
     try {
-      const api = await authAxios();
+      // Utilise authAxios si connecté (pour les infos de suivi), sinon axios simple pour le profil public
+      const api = currentUser
+        ? await authAxios()
+        : axios.create({ baseURL: "http://localhost:3000/api" });
 
-      const [profileRes, followingRes, followersRes, libraryRes] =
-        await Promise.all([
-          api.get(`/users/${targetUserId}/profile`),
-          api.get("/follows/me/following"),
-          api.get("/follows/me/followers"),
-          api
-            .get(`/lists/library?userId=${targetUserId}`)
-            .catch(() => ({ data: { library: [] } })),
-        ]);
+      // Requêtes de base accessibles à tous
+      const profileReq = api.get(`/users/${targetUserId}/profile`);
+      const libraryReq = api
+        .get(`/lists/library?userId=${targetUserId}`)
+        .catch(() => ({ data: { library: [] } }));
+
+      // Requêtes de suivi uniquement si l'utilisateur est connecté (évite les erreurs 401 pour les visiteurs)
+      const followingReq = currentUser
+        ? api
+            .get("/follows/me/following")
+            .catch(() => ({ data: { following: [] } }))
+        : Promise.resolve({ data: { following: [] } });
+      const followersReq = currentUser
+        ? api
+            .get("/follows/me/followers")
+            .catch(() => ({ data: { followers: [] } }))
+        : Promise.resolve({ data: { followers: [] } });
+
+      const [profileRes, libraryRes, followingRes, followersRes] =
+        await Promise.all([profileReq, libraryReq, followingReq, followersReq]);
 
       const data = profileRes.data;
       const userData = data?.user || data;
@@ -63,8 +77,8 @@ const PublicProfile = ({
         username: userData.username || userData.pseudo || "Utilisateur",
         bio: userData.bio || "",
         avatar: userData.avatar || userData.photoURL || null,
-        followersCount: userData.followersCount ?? "—",
-        followingCount: userData.followingCount ?? "—",
+        followersCount: userData.followersCount || 0,
+        followingCount: userData.followingCount || 0,
         gamesCount: lib.length,
       });
 
@@ -108,9 +122,19 @@ const PublicProfile = ({
       if (iFollow) {
         await api.delete(`/follows/${targetUserId}`);
         setIFollow(false);
+        // Mise à jour locale du compteur pour un retour immédiat
+        setProfile((prev) => ({
+          ...prev,
+          followersCount: Math.max(0, (Number(prev.followersCount) || 0) - 1),
+        }));
       } else {
         await api.post(`/follows/${targetUserId}`);
         setIFollow(true);
+        // Incrémentation locale du compteur
+        setProfile((prev) => ({
+          ...prev,
+          followersCount: (Number(prev.followersCount) || 0) + 1,
+        }));
       }
     } catch (err) {
       console.error("Erreur follow:", err);
@@ -513,6 +537,7 @@ const MyProfile = ({
   const { t, i18n } = useTranslation();
 
   const [profileData, setProfileData] = useState({
+    uid: user?.uid || user?.id || "",
     pseudo: user?.username || user?.pseudo || user?.displayName || "Joueur",
     email: user?.email || "",
     bio: user?.bio || "",
@@ -541,6 +566,7 @@ const MyProfile = ({
       if (res.data.success && res.data.user) {
         const u = res.data.user;
         const fullProfile = {
+          uid: u.uid || u.userId || profileData.uid,
           ...profileData,
           pseudo: u.username || u.pseudo || profileData.pseudo,
           bio: u.bio || profileData.bio,
@@ -620,6 +646,7 @@ const MyProfile = ({
       await api.put("/users/profile", {
         username: profileData.pseudo || profileData.username,
         bio: profileData.bio,
+        avatar: profileData.avatar,
       });
       if (onLoginSuccess) onLoginSuccess(profileData);
       setSaveStatus("saved");

@@ -256,21 +256,44 @@ const App = () => {
                 <button
                   className="nav-user-btn"
                   onClick={() => setCurrentPage(user ? "utilisateur" : "login")}
+                  style={{
+                    padding:
+                      user?.avatar || user?.photoURL
+                        ? "4px 12px 4px 4px"
+                        : "0.5rem 1rem",
+                    display: "flex",
+                    alignItems: "center",
+                  }}
                 >
                   {user ? (
                     <>
-                      <svg
-                        width="18"
-                        height="18"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                      >
-                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-                        <circle cx="12" cy="7" r="4"></circle>
-                      </svg>
-                      <span>{user.username || user.pseudo}</span>
+                      {user.avatar || user.photoURL ? (
+                        <img
+                          src={user.avatar || user.photoURL}
+                          alt=""
+                          style={{
+                            width: "32px",
+                            height: "32px",
+                            borderRadius: "50%",
+                            objectFit: "cover",
+                          }}
+                        />
+                      ) : (
+                        <svg
+                          width="18"
+                          height="18"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                        >
+                          <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                          <circle cx="12" cy="7" r="4"></circle>
+                        </svg>
+                      )}
+                      <span>
+                        {user.username || user.pseudo || user.displayName}
+                      </span>
                     </>
                   ) : (
                     <>
@@ -377,7 +400,9 @@ const App = () => {
           <Utilisateur
             key={profileRefresh}
             user={user}
-            onLoginSuccess={(updatedUser) => setUser(updatedUser)}
+            onLoginSuccess={(updatedUser) =>
+              setUser((prev) => ({ ...prev, ...updatedUser }))
+            }
             onLogout={() => {
               setUser(null);
               setCurrentPage("accueil");

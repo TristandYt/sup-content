@@ -96,7 +96,17 @@ const Jeu = ({ gameId, onBack, user, onFavoriteChange, onGameClick }) => {
         );
         if (res.data) {
           setGame(res.data);
-          setSimilarGames(res.data.similar_games || []);
+        }
+
+        // Récupération des jeux similaires via l'API dédiée (plus complète, gère le fallback et le filtrage PEGI)
+        try {
+          const api = auth.currentUser
+            ? await authAxios()
+            : axios.create({ baseURL: "http://localhost:3000/api" });
+          const resSimilar = await api.get(`/games/${gameId}/similar`);
+          setSimilarGames(resSimilar.data || []);
+        } catch (errSimilar) {
+          console.warn("Impossible de charger les jeux similaires", errSimilar);
         }
 
         // Statut collection

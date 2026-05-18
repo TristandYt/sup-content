@@ -459,14 +459,19 @@ const Messagerie = ({ user, preselectedConversation, onConversationOpen }) => {
         const updated = prev.map((m) =>
           m.id === messageId ? { ...m, text: newText.trim() } : m,
         );
-        // Mise à jour instantanée de la sidebar
-        setConversations((convs) =>
-          convs.map((c) =>
-            c.id === selectedConv.id && c.lastMessage === msgToEdit.text
-              ? { ...c, lastMessage: newText.trim() }
-              : c,
-          ),
-        );
+
+        // Mise à jour de la sidebar si c'est le dernier message
+        const isLast =
+          prev.length > 0 && prev[prev.length - 1].id === messageId;
+        if (isLast) {
+          setConversations((convs) =>
+            convs.map((c) =>
+              c.id === selectedConv.id
+                ? { ...c, lastMessage: newText.trim() }
+                : c,
+            ),
+          );
+        }
         return updated;
       });
     } catch (err) {
@@ -479,11 +484,17 @@ const Messagerie = ({ user, preselectedConversation, onConversationOpen }) => {
 
   const getOtherUser = (conv) => {
     if (!conv) return { pseudo: "Inconnu", avatar: null };
+    const name =
+      conv.otherUserPseudo ||
+      conv.otherUserUsername ||
+      conv.otherUserDisplayName ||
+      "Utilisateur";
     return {
-      pseudo: conv.otherUserPseudo || "Utilisateur",
+      pseudo: name,
       avatar:
         conv.otherUserAvatar ||
-        `https://api.dicebear.com/7.x/bottts/svg?seed=${conv.otherUserPseudo || "user"}`,
+        conv.otherUserPhotoURL ||
+        `https://api.dicebear.com/7.x/bottts/svg?seed=${name}`,
     };
   };
 

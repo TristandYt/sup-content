@@ -26,12 +26,15 @@ const Accueil = ({
   const [searchType, setSearchType] = useState("games");
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [upcomingGames, setUpcomingGames] = useState([]);
+  const [upcomingLoading, setUpcomingLoading] = useState(true);
   const [activeCategory, setActiveCategory] = useState("Tous");
   const [params, setParams] = useState({
     sortBy: "total_rating",
     sortOrder: "desc",
     genre: "",
     platform: "",
+    style: "",
   });
 
   const categories = [
@@ -62,24 +65,35 @@ const Accueil = ({
           setLoading(false);
           return;
         }
-        const api = await authAxios();
+        const api = auth.currentUser
+          ? await authAxios()
+          : axios.create({ baseURL: "http://localhost:3000/api" });
         const res = await api.get(`/search`, {
-          params: { q: searchTerm.trim() },
+          params: { q: searchTerm.trim(), type: "users" },
         });
         // Le moteur de recherche unifié renvoie { results: { users: [...], ... } }
         setUsers(res.data.results?.users || []);
       } else {
         setUsers([]);
-        const endpoint = hasSearchTerm ? "search" : "popular";
+
+        // Détermination de l'endpoint : search si texte, filtered si filtres actifs, sinon popular
+        let endpoint = "popular";
+        if (hasSearchTerm) endpoint = "search";
+        else if (params.genre || params.platform || params.style)
+          endpoint = "filtered";
+
         const res = await axios.get(
           `http://localhost:3000/api/games/${endpoint}`,
           {
             params: {
               ...(hasSearchTerm && { q: searchTerm.trim() }),
-              genre: params.genre,
-              platform: params.platform,
-              sortBy: params.sortBy,
-              order: params.sortOrder,
+              ...(!hasSearchTerm && {
+                genre: params.genre,
+                platform: params.platform,
+                style: params.style,
+                sortBy: params.sortBy,
+                order: params.sortOrder,
+              }),
             },
           },
         );
@@ -104,6 +118,25 @@ const Accueil = ({
     );
     return () => clearTimeout(delay);
   }, [searchTerm, params, searchType]);
+
+  // Chargement des jeux à venir
+  useEffect(() => {
+    const fetchUpcomingGames = async () => {
+      setUpcomingLoading(true);
+      try {
+        const api = auth.currentUser
+          ? await authAxios()
+          : axios.create({ baseURL: "http://localhost:3000/api" });
+        const res = await api.get("/games/upcoming");
+        setUpcomingGames(res.data || []);
+      } catch (err) {
+        console.error("Erreur fetchUpcomingGames:", err);
+      } finally {
+        setUpcomingLoading(false);
+      }
+    };
+    fetchUpcomingGames();
+  }, [user]); // Re-fetch si l'utilisateur change (pour le filtrage PEGI)
 
   const handleCategoryChange = (value) => {
     setActiveCategory(
@@ -186,6 +219,21 @@ const Accueil = ({
               <option value="49">🎮 Xbox One</option>
               <option value="169">🎮 Xbox Series X|S</option>
               <option value="130">🎮 Nintendo Switch</option>
+            </select>
+
+            <select
+              value={params.style}
+              onChange={(e) =>
+                setParams((prev) => ({ ...prev, style: e.target.value }))
+              }
+              className="filter-select"
+            >
+              <option value="">🎭 Tous les Styles</option>
+              <option value="1">💥 Action</option>
+              <option value="18">🚀 Science-Fiction</option>
+              <option value="19">👻 Horreur</option>
+              <option value="21">🏕️ Survie</option>
+              <option value="22">🌍 Open World</option>
             </select>
 
             <select
@@ -342,6 +390,74 @@ const Accueil = ({
               ))}
         </div>
       )}
+
+      {/* Section Jeux à venir */}
+      {searchType === "games" &&
+        !searchTerm && ( // Afficher uniquement si on est sur la recherche de jeux et qu'il n'y a pas de terme de recherche actif
+          <div style={{ marginTop: "3rem" }}>
+            <div className="section-header">
+              <div className="section-icon">🚀</div>
+              <h3 className="section-title">Jeux à venir</h3>
+              <div className="section-count">{upcomingGames.length} jeux</div>
+            </div>
+
+            {upcomingLoading ? (
+              <div className="loading-container">
+                <div className="loading-spinner"></div>
+                <p className="loading-text">Chargement des jeux à venir...</p>
+              </div>
+            ) : upcomingGames.length === 0 ? (
+              <div className="empty-state">
+                <div className="empty-icon">📅</div>
+                <h3 className="empty-title">Aucun jeu à venir</h3>
+                <p className="empty-text">
+                  Restez à l'écoute, de nouveaux titres arrivent bientôt !
+                </p>
+              </div>
+            ) : (
+              <div className="games-grid">
+                {upcomingGames.map((game) => (
+                  <div
+                    key={game.id}
+                    onClick={() => onGameClick(game.id)}
+                    className="game-card-modern"
+                  >
+                    <div className="game-image-container">
+                      <img
+                        src={getImageUrl(game)}
+                        alt={game.name}
+                        className="game-image"
+                      />
+                      <div className="game-overlay"></div>
+
+                      {game.total_rating && (
+                        <div className="rating-badge">
+                          <span className="rating-star">⭐</span>
+                          <span className="rating-value">
+                            {(game.total_rating / 20).toFixed(1)}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="game-content">
+                      <h3 className="game-title">{game.name}</h3>
+                      <div className="game-meta">
+                        <span className="game-year">
+                          {game.first_release_date
+                            ? new Date(
+                                game.first_release_date * 1000,
+                              ).getFullYear()
+                            : "TBA"}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
     </div>
   );
 };
