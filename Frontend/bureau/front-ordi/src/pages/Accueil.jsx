@@ -114,7 +114,7 @@ const Accueil = ({
       () => {
         fetchResults();
       },
-      searchTerm ? 500 : 0,
+      500, // On applique un délai de 500ms systématique pour protéger l'API
     );
     return () => clearTimeout(delay);
   }, [searchTerm, params, searchType]);
@@ -136,7 +136,7 @@ const Accueil = ({
       }
     };
     fetchUpcomingGames();
-  }, [user]); // Re-fetch si l'utilisateur change (pour le filtrage PEGI)
+  }, [user?.uid]); // Dépendre de l'ID uniquement
 
   const handleCategoryChange = (value) => {
     setActiveCategory(

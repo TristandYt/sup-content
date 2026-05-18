@@ -290,7 +290,7 @@ const Messagerie = ({ user, preselectedConversation, onConversationOpen }) => {
       } catch (err) {
         // Échec silencieux pour le rafraîchissement auto
       }
-    }, 1000);
+    }, 4000); // 4 secondes au lieu d'une
 
     return () => clearInterval(interval);
   }, [selectedConv, activeMenu]);

@@ -557,7 +557,7 @@ const MyProfile = ({
       fetchMyFullProfile();
       fetchLibrary();
     }
-  }, [user]);
+  }, [user?.uid]);
 
   const fetchMyFullProfile = async () => {
     try {

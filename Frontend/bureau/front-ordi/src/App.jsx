@@ -54,7 +54,7 @@ const App = () => {
     } else {
       setNotifications([]);
     }
-  }, [user]);
+  }, [user?.uid]);
 
   const handleNotificationClick = async (notif) => {
     if (!notif.isRead) {

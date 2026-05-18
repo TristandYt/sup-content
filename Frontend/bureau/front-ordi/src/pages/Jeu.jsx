@@ -131,7 +131,7 @@ const Jeu = ({ gameId, onBack, user, onFavoriteChange, onGameClick }) => {
   useEffect(() => {
     if (!gameId) return;
     refreshReviews(true); // Sync initiale
-    const interval = setInterval(() => refreshReviews(false), 1000);
+    const interval = setInterval(() => refreshReviews(false), 10000); // 10 secondes au lieu d'une
     return () => clearInterval(interval);
   }, [gameId]);
 
