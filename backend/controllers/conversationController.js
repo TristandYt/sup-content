@@ -23,10 +23,33 @@ exports.getMyConversations = async (req, res, next) => {
       .orderBy("lastMessageAt", "desc")
       .get();
 
-    const conversations = snapshot.docs.map((doc) => ({
-      id: doc.id,
-      ...doc.data(),
-    }));
+    const conversations = await Promise.all(
+      snapshot.docs.map(async (doc) => {
+        const data = doc.data();
+        const otherUserId = data.participants.find(
+          (p) => String(p) !== String(userId),
+        );
+
+        let otherUserInfo = {};
+        if (otherUserId) {
+          const userDoc = await db.collection("users").doc(otherUserId).get();
+          if (userDoc.exists) {
+            const u = userDoc.data();
+            otherUserInfo = {
+              otherUserPseudo: u.username || u.pseudo || "Utilisateur",
+              otherUserAvatar:
+                u.avatar || u.photoURL || u.profileData?.avatarUrl || null,
+            };
+          }
+        }
+
+        return {
+          id: doc.id,
+          ...data,
+          ...otherUserInfo,
+        };
+      }),
+    );
 
     res.json({ success: true, total: conversations.length, conversations });
   } catch (error) {
@@ -72,10 +95,22 @@ exports.getOrCreateConversation = async (req, res, next) => {
     const convDoc = await convRef.get();
 
     if (convDoc.exists) {
+      const data = convDoc.data();
+      const userDoc = await db.collection("users").doc(targetUserId).get();
+      let otherUserInfo = {};
+      if (userDoc.exists) {
+        const u = userDoc.data();
+        otherUserInfo = {
+          otherUserPseudo: u.username || u.pseudo || "Utilisateur",
+          otherUserAvatar:
+            u.avatar || u.photoURL || u.profileData?.avatarUrl || null,
+        };
+      }
+
       return res.json({
         success: true,
         created: false,
-        conversation: { id: convDoc.id, ...convDoc.data() },
+        conversation: { id: convDoc.id, ...data, ...otherUserInfo },
       });
     }
 
@@ -86,6 +121,17 @@ exports.getOrCreateConversation = async (req, res, next) => {
       lastMessageSender: null,
       createdAt: admin.firestore.FieldValue.serverTimestamp(),
     };
+
+    const userDoc = await db.collection("users").doc(targetUserId).get();
+    let otherUserInfo = {};
+    if (userDoc.exists) {
+      const u = userDoc.data();
+      otherUserInfo = {
+        otherUserPseudo: u.username || u.pseudo || "Utilisateur",
+        otherUserAvatar:
+          u.avatar || u.photoURL || u.profileData?.avatarUrl || null,
+      };
+    }
 
     await convRef.set(newConversation);
 
