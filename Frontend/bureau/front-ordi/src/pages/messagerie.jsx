@@ -484,16 +484,23 @@ const Messagerie = ({ user, preselectedConversation, onConversationOpen }) => {
 
   const getOtherUser = (conv) => {
     if (!conv) return { pseudo: "Inconnu", avatar: null };
+
+    // Récupération flexible du nom (supporte les préfixes 'otherUser' ou les champs directs)
     const name =
       conv.otherUserPseudo ||
       conv.otherUserUsername ||
       conv.otherUserDisplayName ||
+      conv.pseudo ||
+      conv.username ||
       "Utilisateur";
+
     return {
       pseudo: name,
       avatar:
         conv.otherUserAvatar ||
         conv.otherUserPhotoURL ||
+        conv.avatar ||
+        conv.photoURL ||
         `https://api.dicebear.com/7.x/bottts/svg?seed=${name}`,
     };
   };
@@ -870,14 +877,22 @@ const Messagerie = ({ user, preselectedConversation, onConversationOpen }) => {
       {showSearchModal && (
         <UserSearchModal
           onClose={() => setShowSearchModal(false)}
-          onSelectConversation={(conv) => {
+          onSelectConversation={(conv, userInfo) => {
             setShowSearchModal(false);
+
+            // On injecte les infos de l'utilisateur dans la conversation pour un affichage immédiat
+            const enrichedConv = {
+              ...conv,
+              otherUserPseudo: userInfo?.username || userInfo?.pseudo,
+              otherUserAvatar: userInfo?.avatar || userInfo?.photoURL,
+            };
+
             setConversations((prev) => {
-              const exists = prev.find((c) => c.id === conv.id);
+              const exists = prev.find((c) => c.id === enrichedConv.id);
               if (exists) return prev;
-              return [conv, ...prev];
+              return [enrichedConv, ...prev];
             });
-            selectConversation(conv);
+            selectConversation(enrichedConv);
           }}
         />
       )}

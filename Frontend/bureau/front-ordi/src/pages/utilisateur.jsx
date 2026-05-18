@@ -40,28 +40,31 @@ const PublicProfile = ({
   }, [targetUserId]);
 
   const fetchAll = async () => {
+    if (!targetUserId) return;
+
     setLoading(true);
     setError("");
     try {
-      // Utilise authAxios si connecté (pour les infos de suivi), sinon axios simple pour le profil public
-      const api = currentUser
-        ? await authAxios()
-        : axios.create({ baseURL: "http://localhost:3000/api" });
+      // Instance de base pour les requêtes publiques
+      const baseApi = axios.create({ baseURL: "http://localhost:3000/api" });
+      // Instance authentifiée si possible pour le suivi
+      const authApi = currentUser ? await authAxios() : baseApi;
 
-      // Requêtes de base accessibles à tous
-      const profileReq = api.get(`/users/${targetUserId}/profile`);
-      const libraryReq = api
+      // Utilisation systématique de authApi pour inclure le token si l'utilisateur est connecté
+      // Cela évite les erreurs 401 sur certaines configurations de backend
+      const profileReq = authApi.get(`/users/${targetUserId}/profile`);
+      const libraryReq = authApi
         .get(`/lists/library?userId=${targetUserId}`)
         .catch(() => ({ data: { library: [] } }));
 
       // Requêtes de suivi uniquement si l'utilisateur est connecté (évite les erreurs 401 pour les visiteurs)
       const followingReq = currentUser
-        ? api
+        ? authApi
             .get("/follows/me/following")
             .catch(() => ({ data: { following: [] } }))
         : Promise.resolve({ data: { following: [] } });
       const followersReq = currentUser
-        ? api
+        ? authApi
             .get("/follows/me/followers")
             .catch(() => ({ data: { followers: [] } }))
         : Promise.resolve({ data: { followers: [] } });
