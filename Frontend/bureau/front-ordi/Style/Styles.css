@@ -2131,3 +2131,36 @@ select {
   font-size: 0.9rem;
   color: #e2e8f0;
 }
+
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+.slider-nav-btn {
+  position: absolute;
+  z-index: 10;
+  background: rgba(10, 10, 15, 0.8);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: white;
+  width: 60px; /* Augmenté pour plus de visibilité */
+  height: 140px; /* Prend environ la moitié de la hauteur d'une carte */
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s ease;
+  backdrop-filter: blur(4px);
+}
+
+.slider-nav-btn:hover {
+  background: rgba(147, 51, 234, 0.6);
+  border-color: #9333ea;
+}
+.slider-nav-btn.left {
+  left: -25px;
+  border-radius: 8px 0 0 8px;
+}
+.slider-nav-btn.right {
+  right: -25px;
+  border-radius: 0 8px 8px 0;
+}

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import axios from "axios";
 import { auth } from "../Service/firebase";
 import "../../Style/Styles.css";
@@ -77,6 +77,21 @@ const Jeu = ({ gameId, onBack, user, onFavoriteChange, onGameClick }) => {
 
   // Jeux similaires
   const [similarGames, setSimilarGames] = useState([]);
+
+  const scrollSimilar = (direction) => {
+    setSimilarGames((prev) => {
+      if (prev.length <= 5) return prev;
+      const newArr = [...prev];
+      if (direction === "right") {
+        const first = newArr.shift(); // Retire le premier
+        newArr.push(first); // Le met à la fin
+      } else {
+        const last = newArr.pop(); // Retire le dernier
+        newArr.unshift(last); // Le met au début
+      }
+      return newArr;
+    });
+  };
 
   /* ── Chargement initial ── */
   useEffect(() => {
@@ -771,63 +786,112 @@ const Jeu = ({ gameId, onBack, user, onFavoriteChange, onGameClick }) => {
             {/* ══ JEUX SIMILAIRES ══ */}
             {similarGames.length > 0 && (
               <div style={{ marginTop: "3rem" }}>
-                <div
-                  className="section-header"
+                <h3
+                  className="section-title"
                   style={{ marginBottom: "1.5rem" }}
                 >
-                  <h3 className="section-title">Jeux similaires</h3>
-                </div>
+                  Jeux similaires
+                </h3>
                 <div
                   style={{
-                    display: "grid",
-                    gridTemplateColumns:
-                      "repeat(auto-fill, minmax(140px, 1fr))",
-                    gap: "1rem",
+                    position: "relative",
+                    display: "flex",
+                    alignItems: "center",
                   }}
                 >
-                  {similarGames.slice(0, 8).map((sg) => (
-                    <div
-                      key={sg.id}
-                      className="game-card-modern"
-                      style={{ cursor: "pointer" }}
-                      onClick={() => onGameClick?.(sg.id)}
+                  <button
+                    onClick={() => scrollSimilar("left")}
+                    className="slider-nav-btn left"
+                    title="Précédent"
+                  >
+                    <svg /* Taille de l'icône augmentée */
+                      width="24"
+                      height="24"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="3"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
                     >
-                      <div className="game-image-container">
-                        <img
-                          src={getCoverUrl(sg.cover)}
-                          alt={sg.name}
-                          className="game-image"
-                        />
-                      </div>
+                      <polyline points="15 18 9 12 15 6"></polyline>
+                    </svg>
+                  </button>
+
+                  <div
+                    style={{
+                      display: "flex",
+                      gap: "1rem",
+                      overflow: "hidden", // Cache tout ce qui dépasse des 5 jeux
+                      // Largeur = (5 cartes * 160px) + (4 gaps * 1rem/16px) = 864px
+                      width: "calc((160px * 5) + (1rem * 4))",
+                      margin: "0 auto",
+                      padding: "10px 0",
+                    }}
+                  >
+                    {similarGames.map((sg) => (
                       <div
-                        className="game-content"
-                        style={{ padding: "0.5rem" }}
+                        key={sg.id}
+                        className="game-card-modern"
+                        style={{ cursor: "pointer", flex: "0 0 160px" }}
+                        onClick={() => onGameClick?.(sg.id)}
                       >
-                        <p
-                          className="game-title"
-                          style={{
-                            fontSize: "0.8rem",
-                            whiteSpace: "nowrap",
-                            overflow: "hidden",
-                            textOverflow: "ellipsis",
-                          }}
+                        <div className="game-image-container">
+                          <img
+                            src={getCoverUrl(sg.cover)}
+                            alt={sg.name}
+                            className="game-image"
+                          />
+                        </div>
+                        <div
+                          className="game-content"
+                          style={{ padding: "0.5rem" }}
                         >
-                          {sg.name}
-                        </p>
-                        {sg.total_rating && (
                           <p
+                            className="game-title"
                             style={{
-                              fontSize: "0.75rem",
-                              color: "#9ca3af",
-                              margin: 0,
+                              fontSize: "0.8rem",
+                              whiteSpace: "nowrap",
+                              overflow: "hidden",
+                              textOverflow: "ellipsis",
                             }}
                           >
-                            ⭐ {(sg.total_rating / 20).toFixed(1)}
+                            {sg.name}
                           </p>
-                        )}
+                          {sg.total_rating && (
+                            <p
+                              style={{
+                                fontSize: "0.75rem",
+                                color: "#9ca3af",
+                                margin: 0,
+                              }}
+                            >
+                              ⭐ {(sg.total_rating / 20).toFixed(1)}
+                            </p>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    ))}
+                  </div>
+
+                  <button
+                    onClick={() => scrollSimilar("right")}
+                    className="slider-nav-btn right"
+                    title="Suivant"
+                  >
+                    <svg /* Taille de l'icône augmentée */
+                      width="24"
+                      height="24"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="3"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <polyline points="9 18 15 12 9 6"></polyline>
+                    </svg>
+                  </button>
                 </div>
               </div>
             )}

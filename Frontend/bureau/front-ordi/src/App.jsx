@@ -124,7 +124,7 @@ const App = () => {
                   className="logo-text"
                   onClick={() => setCurrentPage("accueil")}
                 >
-                  SUPCONTENT
+                  TGMF
                 </h1>
               </div>
 
