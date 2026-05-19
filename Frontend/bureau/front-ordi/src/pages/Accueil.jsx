@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import axios from "axios";
 import { auth } from "../Service/firebase";
@@ -26,9 +26,19 @@ const Accueil = ({
   const [searchType, setSearchType] = useState("games");
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(true);
+
+  // Upcoming carousel state
   const [upcomingGames, setUpcomingGames] = useState([]);
   const [upcomingLoading, setUpcomingLoading] = useState(true);
+  const [upcomingPage, setUpcomingPage] = useState(1);
+  const [upcomingHasMore, setUpcomingHasMore] = useState(true);
+  const [upcomingLoadingMore, setUpcomingLoadingMore] = useState(false);
+  const UPCOMING_PAGE_SIZE = 20;
+
   const [activeCategory, setActiveCategory] = useState("Tous");
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
+  const PAGE_SIZE = 12;
   const [params, setParams] = useState({
     sortBy: "total_rating",
     sortOrder: "desc",
@@ -37,7 +47,9 @@ const Accueil = ({
     style: "",
   });
 
-  const categories = [
+  const upcomingRef = useRef(null);
+
+  const CATEGORIES = [
     { label: "Tous", value: "" },
     { label: "Combat", value: "4" },
     { label: "Shooter", value: "5" },
@@ -52,40 +64,67 @@ const Accueil = ({
     return defaultCover;
   };
 
-  const fetchResults = async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const hasSearchTerm = searchTerm && searchTerm.trim() !== "";
+  const scrollCarousel = (direction) => {
+    if (upcomingRef.current) {
+      upcomingRef.current.scrollBy({
+        left: direction === "left" ? -620 : 620,
+        behavior: "smooth",
+      });
+    }
+  };
 
-      if (searchType === "users") {
+  // ─── Fetch grille principale ─────────────────────────────────────────────────
+  const fetchResults = useCallback(
+    async (targetPage = 1, append = false) => {
+      if (!append) {
         setGames([]);
-        if (!hasSearchTerm) {
-          setUsers([]);
-          setLoading(false);
-          return;
-        }
-        const api = auth.currentUser
-          ? await authAxios()
-          : axios.create({ baseURL: "http://localhost:3000/api" });
-        const res = await api.get(`/search`, {
-          params: { q: searchTerm.trim(), type: "users" },
-        });
-        // Le moteur de recherche unifié renvoie { results: { users: [...], ... } }
-        setUsers(res.data.results?.users || []);
-      } else {
         setUsers([]);
+        setError(null);
+      }
+      setLoading(true);
 
-        // Détermination de l'endpoint : search si texte, filtered si filtres actifs, sinon popular
-        let endpoint = "popular";
-        if (hasSearchTerm) endpoint = "search";
-        else if (params.genre || params.platform || params.style)
-          endpoint = "filtered";
+      try {
+        const hasSearchTerm = searchTerm && searchTerm.trim() !== "";
 
-        const res = await axios.get(
-          `http://localhost:3000/api/games/${endpoint}`,
-          {
+        if (searchType === "users") {
+          if (!hasSearchTerm) {
+            setUsers([]);
+            setGames([]);
+            setLoading(false);
+            setPage(1);
+            return;
+          }
+          const api = auth.currentUser
+            ? await authAxios()
+            : axios.create({ baseURL: "http://localhost:3000/api" });
+
+          const res = await api.get(`/search`, {
             params: {
+              q: searchTerm.trim(),
+              type: "users",
+              page: targetPage,
+              limit: PAGE_SIZE,
+            },
+          });
+          const newUsers = res.data.results?.users || [];
+          setUsers(append ? (prev) => [...prev, ...newUsers] : newUsers);
+          setGames([]);
+          setHasMore(newUsers.length === PAGE_SIZE);
+        } else {
+          setUsers([]);
+          let endpoint = "popular";
+          if (hasSearchTerm) endpoint = "search";
+          else if (params.genre || params.platform || params.style)
+            endpoint = "filtered";
+
+          const api = auth.currentUser
+            ? await authAxios()
+            : axios.create({ baseURL: "http://localhost:3000/api" });
+
+          const res = await api.get(`/games/${endpoint}`, {
+            params: {
+              page: targetPage,
+              limit: PAGE_SIZE,
               ...(hasSearchTerm && { q: searchTerm.trim() }),
               ...(!hasSearchTerm && {
                 genre: params.genre,
@@ -95,52 +134,82 @@ const Accueil = ({
                 order: params.sortOrder,
               }),
             },
-          },
+          });
+
+          const newGames = Array.isArray(res.data)
+            ? res.data
+            : res.data.games || res.data.results || [];
+
+          setGames(append ? (prev) => [...prev, ...newGames] : newGames);
+          setHasMore(newGames.length === PAGE_SIZE);
+        }
+
+        setPage(targetPage);
+        if (!append) {
+          window.scrollTo({ top: 0, behavior: "smooth" });
+        }
+      } catch (err) {
+        console.error("Erreur API:", err);
+        setError(
+          "Impossible de contacter le service de recherche. Vérifiez votre connexion.",
         );
-        setGames(res.data);
+      } finally {
+        setLoading(false);
       }
-    } catch (err) {
-      console.error("Erreur fetchResults:", err);
-      setError(
-        "Impossible de contacter le service de recherche. Vérifiez votre connexion.",
-      );
-    } finally {
-      setLoading(false);
-    }
-  };
+    },
+    [searchTerm, params, searchType],
+  );
 
   useEffect(() => {
-    const delay = setTimeout(
-      () => {
-        fetchResults();
-      },
-      500, // On applique un délai de 500ms systématique pour protéger l'API
-    );
+    const delay = setTimeout(() => {
+      setPage(1);
+      fetchResults(1, false);
+    }, 500);
     return () => clearTimeout(delay);
   }, [searchTerm, params, searchType]);
 
-  // Chargement des jeux à venir
-  useEffect(() => {
-    const fetchUpcomingGames = async () => {
-      setUpcomingLoading(true);
-      try {
-        const api = auth.currentUser
-          ? await authAxios()
-          : axios.create({ baseURL: "http://localhost:3000/api" });
-        const res = await api.get("/games/upcoming");
-        setUpcomingGames(res.data || []);
-      } catch (err) {
-        console.error("Erreur fetchUpcomingGames:", err);
-      } finally {
-        setUpcomingLoading(false);
+  // ─── Fetch jeux à venir (page initiale) ─────────────────────────────────────
+  const fetchUpcoming = useCallback(async (targetPage = 1, append = false) => {
+    if (append) setUpcomingLoadingMore(true);
+    else setUpcomingLoading(true);
+
+    try {
+      const api = auth.currentUser
+        ? await authAxios()
+        : axios.create({ baseURL: "http://localhost:3000/api" });
+
+      const res = await api.get("/games/upcoming", {
+        params: { page: targetPage, limit: UPCOMING_PAGE_SIZE },
+      });
+
+      const newGames = res.data || [];
+      setUpcomingGames(append ? (prev) => [...prev, ...newGames] : newGames);
+      setUpcomingHasMore(newGames.length === UPCOMING_PAGE_SIZE);
+      setUpcomingPage(targetPage);
+
+      // Scroll vers les nouvelles cartes après chargement
+      if (append) {
+        setTimeout(() => {
+          if (upcomingRef.current) {
+            upcomingRef.current.scrollBy({ left: 620, behavior: "smooth" });
+          }
+        }, 100);
       }
-    };
-    fetchUpcomingGames();
-  }, [user?.uid]); // Dépendre de l'ID uniquement
+    } catch (err) {
+      console.error("Erreur fetchUpcomingGames:", err);
+    } finally {
+      setUpcomingLoading(false);
+      setUpcomingLoadingMore(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchUpcoming(1, false);
+  }, [user?.uid]);
 
   const handleCategoryChange = (value) => {
     setActiveCategory(
-      categories.find((c) => c.value === value)?.label || "Tous",
+      CATEGORIES.find((c) => c.value === value)?.label || "Tous",
     );
     setParams((prev) => ({ ...prev, genre: value }));
   };
@@ -153,13 +222,13 @@ const Accueil = ({
         <div className="hero-content">
           <h2 className="hero-title">Découvrez les meilleurs jeux</h2>
           <p className="hero-subtitle">
-            Tout le contenu SUPCONTENT à portée de clic. Explorez, filtrez et
+            Tout le contenu sur TGMF à portée de clic. Explorez, filtrez et
             trouvez votre prochain jeu préféré.
           </p>
         </div>
       </div>
 
-      {/* Type de recherche Selector */}
+      {/* Type de recherche */}
       <div className="categories-nav" style={{ marginBottom: "1rem" }}>
         <button
           className={`category-btn ${searchType === "games" ? "active" : ""}`}
@@ -184,10 +253,10 @@ const Accueil = ({
         )}
       </div>
 
-      {/* Categories Navigation (uniquement pour les jeux) */}
+      {/* Categories Navigation */}
       {searchType === "games" && (
         <div className="categories-nav">
-          {categories.map((category) => (
+          {CATEGORIES.map((category) => (
             <button
               key={category.value}
               onClick={() => handleCategoryChange(category.value)}
@@ -201,7 +270,7 @@ const Accueil = ({
         </div>
       )}
 
-      {/* Filters Section (uniquement pour les jeux) */}
+      {/* Filters Section */}
       {searchType === "games" && (
         <div className="filters-section">
           <div className="filters-container">
@@ -283,7 +352,7 @@ const Accueil = ({
       </div>
 
       {/* Résultats */}
-      {loading ? (
+      {loading && games.length === 0 ? (
         <div className="loading-container">
           <div className="loading-spinner"></div>
           <p className="loading-text">Recherche en cours...</p>
@@ -320,7 +389,6 @@ const Accueil = ({
                       className="game-image"
                     />
                     <div className="game-overlay"></div>
-
                     {game.total_rating && (
                       <div className="rating-badge">
                         <span className="rating-star">⭐</span>
@@ -330,7 +398,6 @@ const Accueil = ({
                       </div>
                     )}
                   </div>
-
                   <div className="game-content">
                     <h3 className="game-title">{game.name}</h3>
                     <div className="game-meta">
@@ -391,36 +458,141 @@ const Accueil = ({
         </div>
       )}
 
-      {/* Section Jeux à venir */}
-      {searchType === "games" &&
-        !searchTerm && ( // Afficher uniquement si on est sur la recherche de jeux et qu'il n'y a pas de terme de recherche actif
-          <div style={{ marginTop: "3rem" }}>
-            <div className="section-header">
-              <div className="section-icon">🚀</div>
-              <h3 className="section-title">Jeux à venir</h3>
-              <div className="section-count">{upcomingGames.length} jeux</div>
-            </div>
+      {/* ── Afficher plus + Pagination ─────────────────────────────────────── */}
+      {(games.length > 0 || users.length > 0) && (
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            gap: "16px",
+            marginTop: "40px",
+            padding: "20px",
+            borderTop: "1px solid rgba(255,255,255,0.05)",
+          }}
+        >
+          {/* Afficher plus : append sans remonter */}
+          {hasMore && searchType === "games" && (
+            <button
+              className="category-btn active"
+              disabled={loading}
+              onClick={() => fetchResults(page + 1, true)}
+              style={{ padding: "12px 60px", fontSize: "1rem" }}
+            >
+              {loading ? "Chargement..." : "Afficher plus"}
+            </button>
+          )}
 
-            {upcomingLoading ? (
-              <div className="loading-container">
-                <div className="loading-spinner"></div>
-                <p className="loading-text">Chargement des jeux à venir...</p>
-              </div>
-            ) : upcomingGames.length === 0 ? (
-              <div className="empty-state">
-                <div className="empty-icon">📅</div>
-                <h3 className="empty-title">Aucun jeu à venir</h3>
-                <p className="empty-text">
-                  Restez à l'écoute, de nouveaux titres arrivent bientôt !
-                </p>
-              </div>
-            ) : (
-              <div className="games-grid">
+          {/* Précédent / Page X / Suivant : recharge et remonte */}
+          <div style={{ display: "flex", gap: "12px", alignItems: "center" }}>
+            <button
+              className="category-btn"
+              disabled={page === 1 || loading}
+              onClick={() => fetchResults(page - 1, false)}
+              style={{
+                opacity: page === 1 || loading ? 0.4 : 1,
+                padding: "8px 20px",
+              }}
+            >
+              Précédent
+            </button>
+            <span
+              className="section-count"
+              style={{
+                padding: "8px 24px",
+                minWidth: "120px",
+                textAlign: "center",
+              }}
+            >
+              Page {page}
+            </span>
+            <button
+              className="category-btn"
+              disabled={!hasMore || loading}
+              onClick={() => fetchResults(page + 1, false)}
+              style={{
+                opacity: !hasMore || loading ? 0.4 : 1,
+                padding: "8px 20px",
+              }}
+            >
+              Suivant
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ── Jeux à venir : carrousel horizontal avec chargement infini ────── */}
+      {searchType === "games" && !searchTerm && (
+        <div style={{ marginTop: "3rem" }}>
+          <div className="section-header">
+            <div className="section-icon">🚀</div>
+            <h3 className="section-title">Jeux à venir</h3>
+            <div className="section-count">{upcomingGames.length} jeux</div>
+          </div>
+
+          {upcomingLoading ? (
+            <div className="loading-container">
+              <div className="loading-spinner"></div>
+              <p className="loading-text">Chargement des jeux à venir...</p>
+            </div>
+          ) : upcomingGames.length === 0 ? (
+            <div className="empty-state">
+              <div className="empty-icon">📅</div>
+              <h3 className="empty-title">Aucun jeu à venir</h3>
+              <p className="empty-text">
+                Restez à l'écoute, de nouveaux titres arrivent bientôt !
+              </p>
+            </div>
+          ) : (
+            <div style={{ position: "relative", padding: "0 28px" }}>
+              {/* Flèche gauche */}
+              <button
+                onClick={() => scrollCarousel("left")}
+                style={{
+                  position: "absolute",
+                  left: "0",
+                  top: "50%",
+                  transform: "translateY(-50%)",
+                  zIndex: 10,
+                  background: "rgba(20,20,35,0.92)",
+                  border: "1px solid rgba(167,139,250,0.3)",
+                  borderRadius: "50%",
+                  width: "40px",
+                  height: "40px",
+                  cursor: "pointer",
+                  color: "#a78bfa",
+                  fontSize: "1.3rem",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  boxShadow: "0 4px 15px rgba(0,0,0,0.4)",
+                }}
+              >
+                ‹
+              </button>
+
+              {/* Track scrollable */}
+              <div
+                ref={upcomingRef}
+                style={{
+                  display: "flex",
+                  gap: "14px",
+                  overflowX: "auto",
+                  scrollbarWidth: "none",
+                  msOverflowStyle: "none",
+                  paddingBottom: "8px",
+                }}
+              >
                 {upcomingGames.map((game) => (
                   <div
                     key={game.id}
                     onClick={() => onGameClick(game.id)}
                     className="game-card-modern"
+                    style={{
+                      minWidth: "160px",
+                      maxWidth: "160px",
+                      flexShrink: 0,
+                    }}
                   >
                     <div className="game-image-container">
                       <img
@@ -429,7 +601,6 @@ const Accueil = ({
                         className="game-image"
                       />
                       <div className="game-overlay"></div>
-
                       {game.total_rating && (
                         <div className="rating-badge">
                           <span className="rating-star">⭐</span>
@@ -439,9 +610,10 @@ const Accueil = ({
                         </div>
                       )}
                     </div>
-
                     <div className="game-content">
-                      <h3 className="game-title">{game.name}</h3>
+                      <h3 className="game-title" style={{ fontSize: "0.8rem" }}>
+                        {game.name}
+                      </h3>
                       <div className="game-meta">
                         <span className="game-year">
                           {game.first_release_date
@@ -454,10 +626,92 @@ const Accueil = ({
                     </div>
                   </div>
                 ))}
+
+                {/* Carte "Charger plus" en fin de carrousel */}
+                {upcomingHasMore && (
+                  <div
+                    style={{
+                      minWidth: "160px",
+                      maxWidth: "160px",
+                      flexShrink: 0,
+                      display: "flex",
+                      flexDirection: "column",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      cursor: upcomingLoadingMore ? "default" : "pointer",
+                      border: "1px solid rgba(167,139,250,0.3)",
+                      borderRadius: "12px",
+                      gap: "10px",
+                      color: "#a78bfa",
+                      opacity: upcomingLoadingMore ? 0.6 : 1,
+                      transition: "all 0.2s",
+                    }}
+                    onClick={() => {
+                      if (!upcomingLoadingMore)
+                        fetchUpcoming(upcomingPage + 1, true);
+                    }}
+                  >
+                    {upcomingLoadingMore ? (
+                      <>
+                        <div
+                          className="loading-spinner"
+                          style={{ width: "24px", height: "24px" }}
+                        />
+                        <span style={{ fontSize: "0.75rem" }}>
+                          Chargement...
+                        </span>
+                      </>
+                    ) : (
+                      <>
+                        <span style={{ fontSize: "1.8rem" }}>›</span>
+                        <span
+                          style={{
+                            fontSize: "0.75rem",
+                            textAlign: "center",
+                            padding: "0 10px",
+                          }}
+                        >
+                          Voir plus
+                        </span>
+                      </>
+                    )}
+                  </div>
+                )}
               </div>
-            )}
-          </div>
-        )}
+
+              {/* Flèche droite */}
+              <button
+                onClick={() => scrollCarousel("right")}
+                style={{
+                  position: "absolute",
+                  right: "0",
+                  top: "50%",
+                  transform: "translateY(-50%)",
+                  zIndex: 10,
+                  background: "rgba(20,20,35,0.92)",
+                  border: "1px solid rgba(167,139,250,0.3)",
+                  borderRadius: "50%",
+                  width: "40px",
+                  height: "40px",
+                  cursor: "pointer",
+                  color: "#a78bfa",
+                  fontSize: "1.3rem",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  boxShadow: "0 4px 15px rgba(0,0,0,0.4)",
+                }}
+              >
+                ›
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+
+      <style>{`
+        div[style*="overflowX: auto"]::-webkit-scrollbar { display: none; }
+      `}</style>
     </div>
   );
 };
