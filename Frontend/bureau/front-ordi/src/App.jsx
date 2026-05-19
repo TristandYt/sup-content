@@ -30,6 +30,9 @@ const App = () => {
   const [selectedUserId, setSelectedUserId] = useState(null);
   const [preselectedConversation, setPreselectedConversation] = useState(null);
 
+  // Forum : fil de discussion pré-sélectionné (depuis la page Jeu)
+  const [forumInitialThread, setForumInitialThread] = useState(null);
+
   const [notifications, setNotifications] = useState([]);
   const [showNotifications, setShowNotifications] = useState(false);
 
@@ -49,7 +52,7 @@ const App = () => {
   useEffect(() => {
     if (user) {
       fetchNotifications();
-      const interval = setInterval(fetchNotifications, 30000); // Polling toutes les 30s
+      const interval = setInterval(fetchNotifications, 30000);
       return () => clearInterval(interval);
     } else {
       setNotifications([]);
@@ -101,10 +104,22 @@ const App = () => {
     setCurrentPage("admin");
   };
 
-  // ✅ BUG 1 CORRIGÉ — remet bien la page à "accueil" et vide l'userId
   const handleBackFromPublicProfile = () => {
     setSelectedUserId(null);
     setCurrentPage("accueil");
+  };
+
+  // Ouvre le forum : soit sur un fil existant, soit filtré sur un jeu
+  // payload = { thread } ou { gameId, gameName }
+  const handleForumClick = (payload) => {
+    setForumInitialThread(payload);
+    setCurrentPage("forum");
+  };
+
+  // Quand on navigue vers le forum depuis la navbar, pas de fil pré-sélectionné
+  const handleOpenForum = () => {
+    setForumInitialThread(null);
+    setCurrentPage("forum");
   };
 
   return (
@@ -238,7 +253,7 @@ const App = () => {
 
                 <button
                   className="nav-icon-btn"
-                  onClick={() => setCurrentPage("forum")}
+                  onClick={handleOpenForum}
                   title="Forum"
                 >
                   <svg
@@ -382,6 +397,7 @@ const App = () => {
             user={user}
             onFavoriteChange={handleFavoriteChange}
             onGameClick={handleShowGame}
+            onForumClick={handleForumClick}
           />
         )}
 
@@ -412,7 +428,6 @@ const App = () => {
           />
         )}
 
-        {/* ✅ BUG 1 CORRIGÉ — onBack pointe vers la bonne fonction */}
         {currentPage === "utilisateur_public" && (
           <Utilisateur
             key={selectedUserId}
@@ -434,7 +449,11 @@ const App = () => {
         )}
 
         {currentPage === "forum" && (
-          <Forum user={user} onGameClick={handleShowGame} />
+          <Forum
+            user={user}
+            onGameClick={handleShowGame}
+            initialThread={forumInitialThread}
+          />
         )}
 
         {currentPage === "admin" && (

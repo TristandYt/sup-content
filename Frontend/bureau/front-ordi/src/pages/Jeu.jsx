@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import axios from "axios";
 import { auth } from "../Service/firebase";
 import "../../Style/Styles.css";
-import defaultCover from "../assets/fr-default-large_default.jpg"; // Import de l'image par défaut
+import defaultCover from "../assets/fr-default-large_default.jpg";
 
 const authAxios = async () => {
   const token = await auth.currentUser?.getIdToken(true);
@@ -41,10 +41,6 @@ const StarRating = ({
   </div>
 );
 
-/*
- * Formatte un timestamp Firestore.
- * Après sérialisation JSON, Firestore renvoie { _seconds, _nanoseconds }.
- */
 const formatDate = (updatedAt) => {
   if (!updatedAt) return "";
   const ts = updatedAt?._seconds
@@ -54,7 +50,14 @@ const formatDate = (updatedAt) => {
 };
 
 /* ════════════════════════════════════════════════ */
-const Jeu = ({ gameId, onBack, user, onFavoriteChange, onGameClick }) => {
+const Jeu = ({
+  gameId,
+  onBack,
+  user,
+  onFavoriteChange,
+  onGameClick,
+  onForumClick,
+}) => {
   const [game, setGame] = useState(null);
   const [loading, setLoading] = useState(true);
   const [isFavorite, setIsFavorite] = useState(false);
@@ -78,16 +81,19 @@ const Jeu = ({ gameId, onBack, user, onFavoriteChange, onGameClick }) => {
   // Jeux similaires
   const [similarGames, setSimilarGames] = useState([]);
 
+  // Fil de discussion du jeu sur le forum
+  const [gameThread, setGameThread] = useState(null);
+
   const scrollSimilar = (direction) => {
     setSimilarGames((prev) => {
       if (prev.length <= 5) return prev;
       const newArr = [...prev];
       if (direction === "right") {
-        const first = newArr.shift(); // Retire le premier
-        newArr.push(first); // Le met à la fin
+        const first = newArr.shift();
+        newArr.push(first);
       } else {
-        const last = newArr.pop(); // Retire le dernier
-        newArr.unshift(last); // Le met au début
+        const last = newArr.pop();
+        newArr.unshift(last);
       }
       return newArr;
     });
@@ -99,13 +105,13 @@ const Jeu = ({ gameId, onBack, user, onFavoriteChange, onGameClick }) => {
 
     setReviews([]);
     setAverageRating(null);
+    setGameThread(null);
     window.scrollTo(0, 0);
 
     const fetchDetails = async () => {
       try {
         setLoading(true);
 
-        // Détails du jeu (IGDB)
         const res = await axios.get(
           `http://localhost:3000/api/games/details/${gameId}`,
         );
@@ -113,7 +119,7 @@ const Jeu = ({ gameId, onBack, user, onFavoriteChange, onGameClick }) => {
           setGame(res.data);
         }
 
-        // Récupération des jeux similaires via l'API dédiée (plus complète, gère le fallback et le filtrage PEGI)
+        // Jeux similaires
         try {
           const api = auth.currentUser
             ? await authAxios()
@@ -132,6 +138,21 @@ const Jeu = ({ gameId, onBack, user, onFavoriteChange, onGameClick }) => {
             setIsFavorite(resLib.data?.success === true);
           } catch (_) {}
         }
+
+        // Fil de discussion lié au jeu
+        try {
+          const api = auth.currentUser
+            ? await authAxios()
+            : axios.create({ baseURL: "http://localhost:3000/api" });
+          const resThreads = await api.get(`/forum/threads?gameId=${gameId}`);
+          if (resThreads.data?.success && resThreads.data.threads.length > 0) {
+            setGameThread(resThreads.data.threads[0]); // Premier fil lié au jeu
+          } else {
+            setGameThread(false);
+          }
+        } catch (_) {
+          setGameThread(false);
+        }
       } catch (err) {
         console.error("Erreur de chargement:", err);
       } finally {
@@ -142,15 +163,14 @@ const Jeu = ({ gameId, onBack, user, onFavoriteChange, onGameClick }) => {
     fetchDetails();
   }, [gameId]);
 
-  // Rafraîchissement "semi-réel" des avis (toutes les 1 seconde)
+  // Rafraîchissement des avis
   useEffect(() => {
     if (!gameId) return;
-    refreshReviews(true); // Sync initiale
-    const interval = setInterval(() => refreshReviews(false), 10000); // 10 secondes au lieu d'une
+    refreshReviews(true);
+    const interval = setInterval(() => refreshReviews(false), 10000);
     return () => clearInterval(interval);
   }, [gameId]);
 
-  /* ── Recharge les reviews ── */
   const refreshReviews = async (isInitial = false) => {
     try {
       const resReviews = await axios.get(
@@ -175,7 +195,15 @@ const Jeu = ({ gameId, onBack, user, onFavoriteChange, onGameClick }) => {
     } catch (_) {}
   };
 
-  /* ── Favori ── */
+  /* ── Ouvrir le forum (fil existant ou liste filtrée sur le jeu) ── */
+  const handleForumButtonClick = () => {
+    if (gameThread) {
+      onForumClick?.({ thread: gameThread });
+    } else {
+      onForumClick?.({ gameId: String(gameId), gameName: game.name });
+    }
+  };
+
   const toggleFavorite = async () => {
     if (!auth.currentUser) {
       alert("Connectez-vous pour ajouter un favori.");
@@ -209,10 +237,6 @@ const Jeu = ({ gameId, onBack, user, onFavoriteChange, onGameClick }) => {
     }
   };
 
-  /* ── Soumettre / mettre à jour une review ──
-   * POST /api/reviews   → body { gameId, rating, text }
-   * PUT  /api/reviews/:gameId → body { rating, text }
-   */
   const handleSaveReview = async () => {
     if (!auth.currentUser) {
       alert("Connectez-vous pour laisser un avis.");
@@ -257,7 +281,6 @@ const Jeu = ({ gameId, onBack, user, onFavoriteChange, onGameClick }) => {
     }
   };
 
-  /* ── Supprimer sa review ── */
   const handleDeleteReview = async () => {
     if (!window.confirm("Supprimer votre avis ?")) return;
     setReviewLoading(true);
@@ -276,7 +299,6 @@ const Jeu = ({ gameId, onBack, user, onFavoriteChange, onGameClick }) => {
     }
   };
 
-  /* ── Liker une review ── */
   const handleLikeReview = async (reviewId) => {
     if (!auth.currentUser) {
       alert("Connectez-vous pour aimer un avis.");
@@ -286,7 +308,6 @@ const Jeu = ({ gameId, onBack, user, onFavoriteChange, onGameClick }) => {
       const api = await authAxios();
       const res = await api.post(`/interactions/reviews/${reviewId}/like`);
       if (res.data.success) {
-        // Mise à jour locale du compteur et de l'état "liked"
         setReviews((prev) =>
           prev.map((r) => {
             if (r.id === reviewId) {
@@ -309,7 +330,6 @@ const Jeu = ({ gameId, onBack, user, onFavoriteChange, onGameClick }) => {
     }
   };
 
-  /* ── Commenter une review ── */
   const handleSendComment = async (reviewId) => {
     if (!auth.currentUser) {
       alert("Connectez-vous pour commenter.");
@@ -333,7 +353,6 @@ const Jeu = ({ gameId, onBack, user, onFavoriteChange, onGameClick }) => {
     }
   };
 
-  /* ── Rendu ── */
   if (loading)
     return (
       <div className="app-container">
@@ -347,7 +366,7 @@ const Jeu = ({ gameId, onBack, user, onFavoriteChange, onGameClick }) => {
     if (coverObj && coverObj.image_id) {
       return `https://images.igdb.com/igdb/image/upload/t_cover_big/${coverObj.image_id}.jpg`;
     }
-    return defaultCover; // Retourne l'image par défaut
+    return defaultCover;
   };
 
   return (
@@ -385,7 +404,14 @@ const Jeu = ({ gameId, onBack, user, onFavoriteChange, onGameClick }) => {
                   </span>
                 </div>
               </div>
-              <div className="game-content">
+              <div
+                className="game-content"
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: "10px",
+                }}
+              >
                 <button
                   onClick={toggleFavorite}
                   disabled={favLoading}
@@ -403,6 +429,40 @@ const Jeu = ({ gameId, onBack, user, onFavoriteChange, onGameClick }) => {
                     : isFavorite
                       ? "❤️ Dans la collection"
                       : "🤍 Ajouter aux favoris"}
+                </button>
+
+                {/* ── BOUTON FIL DE DISCUSSION ── toujours visible */}
+                <button
+                  onClick={handleForumButtonClick}
+                  className="category-btn"
+                  style={{
+                    width: "100%",
+                    justifyContent: "center",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "8px",
+                    borderColor: "#9333ea",
+                    color: "#c084fc",
+                  }}
+                >
+                  💬{" "}
+                  {gameThread
+                    ? "Voir le fil de discussion"
+                    : "Ouvrir une discussion"}
+                  {gameThread?.replyCount > 0 && (
+                    <span
+                      style={{
+                        background: "#9333ea",
+                        color: "#fff",
+                        borderRadius: "99px",
+                        fontSize: "0.7rem",
+                        fontWeight: "700",
+                        padding: "1px 7px",
+                      }}
+                    >
+                      {gameThread.replyCount}
+                    </span>
+                  )}
                 </button>
               </div>
             </div>
@@ -458,7 +518,6 @@ const Jeu = ({ gameId, onBack, user, onFavoriteChange, onGameClick }) => {
               <div className="section-header">
                 <h3 className="section-title">Avis des joueurs</h3>
 
-                {/* Note moyenne renvoyée par le controller */}
                 {averageRating && (
                   <span
                     className="section-count"
@@ -495,7 +554,6 @@ const Jeu = ({ gameId, onBack, user, onFavoriteChange, onGameClick }) => {
                 )}
               </div>
 
-              {/* Formulaire d'avis */}
               {showCommentBox && (
                 <div
                   className="game-card-modern"
@@ -575,7 +633,6 @@ const Jeu = ({ gameId, onBack, user, onFavoriteChange, onGameClick }) => {
                 </div>
               )}
 
-              {/* Liste des avis */}
               <div className="comments-list-modern">
                 {reviews.length === 0 && (
                   <p
@@ -643,7 +700,6 @@ const Jeu = ({ gameId, onBack, user, onFavoriteChange, onGameClick }) => {
                         )}
                       </div>
 
-                      {/* Bouton Like (Cœur) */}
                       <div
                         style={{
                           marginTop: "12px",
@@ -703,7 +759,6 @@ const Jeu = ({ gameId, onBack, user, onFavoriteChange, onGameClick }) => {
                         </button>
                       </div>
 
-                      {/* Liste des réponses/commentaires (affichée en plus petit) */}
                       {r.comments && r.comments.length > 0 && (
                         <div
                           style={{
@@ -804,7 +859,7 @@ const Jeu = ({ gameId, onBack, user, onFavoriteChange, onGameClick }) => {
                     className="slider-nav-btn left"
                     title="Précédent"
                   >
-                    <svg /* Taille de l'icône augmentée */
+                    <svg
                       width="24"
                       height="24"
                       viewBox="0 0 24 24"
@@ -822,8 +877,7 @@ const Jeu = ({ gameId, onBack, user, onFavoriteChange, onGameClick }) => {
                     style={{
                       display: "flex",
                       gap: "1rem",
-                      overflow: "hidden", // Cache tout ce qui dépasse des 5 jeux
-                      // Largeur = (5 cartes * 160px) + (4 gaps * 1rem/16px) = 864px
+                      overflow: "hidden",
                       width: "calc((160px * 5) + (1rem * 4))",
                       margin: "0 auto",
                       padding: "10px 0",
@@ -879,7 +933,7 @@ const Jeu = ({ gameId, onBack, user, onFavoriteChange, onGameClick }) => {
                     className="slider-nav-btn right"
                     title="Suivant"
                   >
-                    <svg /* Taille de l'icône augmentée */
+                    <svg
                       width="24"
                       height="24"
                       viewBox="0 0 24 24"
