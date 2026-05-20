@@ -18,14 +18,50 @@ const authAxios = async () => {
 const UserSearchModal = ({ onClose, onSelectConversation }) => {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState([]);
+  const [friends, setFriends] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [loadingFriends, setLoadingFriends] = useState(false);
   const [actionLoading, setActionLoading] = useState(null);
   const [error, setError] = useState("");
   const inputRef = useRef(null);
 
   useEffect(() => {
     inputRef.current?.focus();
+    fetchFriends();
   }, []);
+
+  const fetchFriends = async () => {
+    setLoadingFriends(true);
+    try {
+      const api = await authAxios();
+      const [ingRes, ersRes] = await Promise.all([
+        api.get("/follows/me/following"),
+        api.get("/follows/me/followers"),
+      ]);
+      const following = ingRes.data?.following || [];
+      const followers = ersRes.data?.followers || [];
+
+      // Intersection pour trouver les amis mutuels (Mutual Follows)
+      const mutuals = following
+        .filter((f) =>
+          followers.some(
+            (fol) => String(fol.followerId) === String(f.followingId),
+          ),
+        )
+        .map((f) => ({
+          id: f.followingId,
+          uid: f.followingId,
+          username: f.username || f.pseudo,
+          avatar: f.avatar || f.photoURL,
+          bio: f.bio,
+        }));
+      setFriends(mutuals);
+    } catch (err) {
+      console.error("Erreur chargement amis:", err);
+    } finally {
+      setLoadingFriends(false);
+    }
+  };
 
   useEffect(() => {
     if (!query.trim()) {
