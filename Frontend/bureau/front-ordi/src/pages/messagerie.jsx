@@ -806,10 +806,16 @@ const Messagerie = ({ user, preselectedConversation, onConversationOpen }) => {
                 onSubmit={handleSendMessage}
               >
                 <input
+                  autoFocus
                   type="text"
                   className="messaging-input"
                   value={newMessage}
                   onChange={(e) => setNewMessage(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      handleSendMessage(e);
+                    }
+                  }}
                   placeholder="Écrivez votre message…"
                 />
                 {/* ✅ ELEMENT 2 : BOUTON D'ENVOI AVEC AVION */}
