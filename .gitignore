@@ -17,3 +17,5 @@ ui-debug.log
 firebase-debug.log
 backend/.env
 /coverage
+*.export_metadata
+/firebase-export-*
