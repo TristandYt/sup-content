@@ -2,11 +2,20 @@
    ACCUEIL PAGE - MODERN GAMING STYLE
    ============================================ */
 
+html,
+body {
+  margin: 0;
+  padding: 0;
+  background: #0a0a0f;
+  min-height: 100%;
+}
+
 .accueil-container {
   width: 100%;
   min-height: 100vh;
   background: #0a0a0f;
   color: white;
+  position: relative;
 }
 
 /* ============================================
@@ -447,6 +456,7 @@
   min-height: 100vh;
   background: #0a0a0f;
   color: white;
+  position: relative;
 }
 
 .main-content-wrapper {

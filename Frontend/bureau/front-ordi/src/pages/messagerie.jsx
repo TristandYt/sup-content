@@ -712,20 +712,15 @@ const Messagerie = ({ user, preselectedConversation, onConversationOpen }) => {
                                   <button
                                     className="messaging-options-btn"
                                     style={{
-                                      background: "#ffffff",
-                                      color: "#9333ea",
+                                      background: "none",
+                                      color: "#ffffff",
                                       border: "none",
-                                      borderRadius: "50%",
-                                      width: "28px", // Taille augmentée
-                                      height: "28px", // Taille augmentée
                                       display: "flex",
                                       alignItems: "center",
                                       justifyContent: "center",
                                       cursor: "pointer",
-                                      fontWeight: "bold",
-                                      boxShadow: "0 2px 4px rgba(0,0,0,0.3)",
                                       marginLeft: "8px",
-                                      fontSize: "1.2rem", // Taille du texte "..." augmentée
+                                      fontSize: "1.1rem",
                                     }}
                                     onClick={() =>
                                       setActiveMenu(
