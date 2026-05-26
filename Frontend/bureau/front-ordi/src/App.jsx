@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import axios from "axios";
 import { auth } from "./Service/firebase";
 import Accueil from "./pages/Accueil";
@@ -21,29 +21,49 @@ const authAxios = async () => {
 };
 
 const App = () => {
-  const [currentPage, setCurrentPage] = useState("accueil");
+  // ── Navigation stack ──────────────────────────────────────────────────────
+  // Chaque entrée : { page, gameId?, userId?, forumThread? }
+  const [navStack, setNavStack] = useState([{ page: "accueil" }]);
+  const current = navStack[navStack.length - 1];
+  const currentPage = current.page;
+
+  const navigate = (entry) => {
+    setNavStack((prev) => [...prev, entry]);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  const goBack = () => {
+    setNavStack((prev) => {
+      if (prev.length <= 1) return [{ page: "accueil" }];
+      return prev.slice(0, -1);
+    });
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  const goHome = () => {
+    setNavStack([{ page: "accueil" }]);
+  };
+
+  // ── User ──────────────────────────────────────────────────────────────────
   const [user, setUser] = useState(null);
-  const [selectedGameId, setSelectedGameId] = useState(null);
-  const [showSearch, setShowSearch] = useState(false);
-  const [searchTerm, setSearchTerm] = useState("");
   const [profileRefresh, setProfileRefresh] = useState(0);
-  const [selectedUserId, setSelectedUserId] = useState(null);
   const [preselectedConversation, setPreselectedConversation] = useState(null);
 
-  // Forum : fil de discussion pré-sélectionné (depuis la page Jeu)
-  const [forumInitialThread, setForumInitialThread] = useState(null);
+  // ── Search ────────────────────────────────────────────────────────────────
+  const [showSearch, setShowSearch] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
 
+  // ── Notifications ─────────────────────────────────────────────────────────
   const [notifications, setNotifications] = useState([]);
   const [showNotifications, setShowNotifications] = useState(false);
+  const notifRef = useRef(null);
 
   const fetchNotifications = async () => {
-    if (!user) return;
+    if (!auth.currentUser) return;
     try {
       const api = await authAxios();
       const res = await api.get("/notifications");
-      if (res.data.success) {
-        setNotifications(res.data.notifications);
-      }
+      if (res.data.success) setNotifications(res.data.notifications);
     } catch (err) {
       console.error("Erreur notifications:", err);
     }
@@ -58,6 +78,51 @@ const App = () => {
       setNotifications([]);
     }
   }, [user?.uid]);
+
+  // Fermer notifs si clic dehors
+  useEffect(() => {
+    const handle = (e) => {
+      if (notifRef.current && !notifRef.current.contains(e.target))
+        setShowNotifications(false);
+    };
+    document.addEventListener("mousedown", handle);
+    return () => document.removeEventListener("mousedown", handle);
+  }, []);
+
+  // Fermer search quand on change de page
+  useEffect(() => {
+    setShowSearch(false);
+    setSearchTerm("");
+  }, [currentPage]);
+
+  // ── Handlers ──────────────────────────────────────────────────────────────
+  const handleLoginSuccess = (userData) => {
+    setUser(userData);
+    goHome();
+  };
+
+  const handleShowGame = (id) => {
+    navigate({ page: "jeu", gameId: id });
+  };
+
+  const handleUserClick = (userId) => {
+    navigate({ page: "utilisateur_public", userId });
+  };
+
+  const handleOpenMessaging = (conversation) => {
+    setPreselectedConversation(conversation);
+    navigate({ page: "messagerie" });
+  };
+
+  const handleAdminClick = () => navigate({ page: "admin" });
+
+  const handleForumClick = (payload) => {
+    navigate({ page: "forum", forumThread: payload });
+  };
+
+  const handleOpenForum = () => {
+    navigate({ page: "forum", forumThread: null });
+  };
 
   const handleNotificationClick = async (notif) => {
     if (!notif.isRead) {
@@ -76,77 +141,81 @@ const App = () => {
     setShowNotifications(false);
   };
 
-  const handleLoginSuccess = (userData) => {
-    setUser(userData);
-    setCurrentPage("accueil");
+  const unreadCount = notifications.filter((n) => !n.isRead).length;
+
+  // Libellé humain des types de notif
+  const notifLabel = (n) => {
+    const map = {
+      follow: "Un nouvel utilisateur vous suit !",
+      NEW_FOLLOWER: "Un nouvel utilisateur vous suit !",
+      like: "Quelqu'un a aimé votre avis.",
+      NEW_LIKE: "Quelqu'un a aimé votre critique.",
+      comment: "Un nouveau commentaire sur votre avis.",
+      NEW_COMMENT: "Un nouveau commentaire sur votre avis.",
+      message: "Vous avez un nouveau message.",
+      thread_reply: "Nouvelle réponse dans un fil.",
+    };
+    return map[n.type] || n.message || "Nouvelle notification";
   };
 
-  const handleShowGame = (id) => {
-    setSelectedGameId(id);
-    setCurrentPage("jeu");
-  };
-
-  const handleFavoriteChange = () => {
-    setProfileRefresh((n) => n + 1);
-  };
-
-  const handleUserClick = (userId) => {
-    setSelectedUserId(userId);
-    setCurrentPage("utilisateur_public");
-  };
-
-  const handleOpenMessaging = (conversation) => {
-    setPreselectedConversation(conversation);
-    setCurrentPage("messagerie");
-  };
-
-  const handleAdminClick = () => {
-    setCurrentPage("admin");
-  };
-
-  const handleBackFromPublicProfile = () => {
-    setSelectedUserId(null);
-    setCurrentPage("accueil");
-  };
-
-  // Ouvre le forum : soit sur un fil existant, soit filtré sur un jeu
-  // payload = { thread } ou { gameId, gameName }
-  const handleForumClick = (payload) => {
-    setForumInitialThread(payload);
-    setCurrentPage("forum");
-  };
-
-  // Quand on navigue vers le forum depuis la navbar, pas de fil pré-sélectionné
-  const handleOpenForum = () => {
-    setForumInitialThread(null);
-    setCurrentPage("forum");
-  };
-
+  // ── Render ────────────────────────────────────────────────────────────────
   return (
     <div className="app-container">
+      {/* ══ NAVBAR ══════════════════════════════════════════════════════════ */}
       <nav className="modern-navbar">
         <div className="navbar-container">
           {!showSearch ? (
             <>
+              {/* Logo */}
               <div className="navbar-logo-section">
                 <div
                   className="logo-icon"
-                  onClick={() => setCurrentPage("accueil")}
+                  onClick={goHome}
+                  style={{ cursor: "pointer" }}
                 >
                   <span className="logo-emoji">🎮</span>
                 </div>
                 <h1
                   className="logo-text"
-                  onClick={() => setCurrentPage("accueil")}
+                  onClick={goHome}
+                  style={{ cursor: "pointer" }}
                 >
                   TGMF
                 </h1>
               </div>
 
+              {/* Actions */}
               <div className="navbar-actions">
+                {/* Bouton retour — visible dès qu'on n'est pas à la racine */}
+                {navStack.length > 1 && (
+                  <button
+                    className="nav-icon-btn"
+                    onClick={goBack}
+                    title="Retour"
+                    style={{ color: "#c084fc" }}
+                  >
+                    <svg
+                      width="20"
+                      height="20"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2.5"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <polyline points="15 18 9 12 15 6" />
+                    </svg>
+                  </button>
+                )}
+
+                {/* Recherche */}
                 <button
                   className="nav-icon-btn"
-                  onClick={() => setShowSearch(true)}
+                  onClick={() => {
+                    setShowSearch(true);
+                    goHome();
+                  }}
                   title="Rechercher"
                 >
                   <svg
@@ -162,12 +231,14 @@ const App = () => {
                   </svg>
                 </button>
 
+                {/* Notifications */}
                 {user && (
-                  <div style={{ position: "relative" }}>
+                  <div ref={notifRef} style={{ position: "relative" }}>
                     <button
                       className="nav-icon-btn"
-                      onClick={() => setShowNotifications(!showNotifications)}
+                      onClick={() => setShowNotifications((v) => !v)}
                       title="Notifications"
+                      style={{ position: "relative" }}
                     >
                       <svg
                         width="20"
@@ -177,47 +248,202 @@ const App = () => {
                         stroke="currentColor"
                         strokeWidth="2"
                       >
-                        <path d="M22 12H16L14 15H10L8 12H2" />
-                        <path d="M5.45 5.11L2 12V18A2 2 0 0 0 4 20H20A2 2 0 0 0 22 18V12L18.55 5.11A2 2 0 0 0 16.76 4H7.24A2 2 0 0 0 5.45 5.11Z" />
+                        <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+                        <path d="M13.73 21a2 2 0 0 1-3.46 0" />
                       </svg>
-                      {notifications.some((n) => !n.isRead) && (
-                        <span className="notification-dot"></span>
+                      {unreadCount > 0 && (
+                        <span
+                          style={{
+                            position: "absolute",
+                            top: "-4px",
+                            right: "-4px",
+                            background: "#9333ea",
+                            color: "#fff",
+                            borderRadius: "99px",
+                            fontSize: "0.62rem",
+                            fontWeight: "700",
+                            padding: "1px 5px",
+                            minWidth: "16px",
+                            textAlign: "center",
+                            boxShadow: "0 0 0 2px #0f0f1a",
+                          }}
+                        >
+                          {unreadCount > 9 ? "9+" : unreadCount}
+                        </span>
                       )}
                     </button>
 
                     {showNotifications && (
-                      <div className="notifications-dropdown">
-                        <div className="notifications-header">
-                          <h3>Notifications</h3>
+                      <div
+                        style={{
+                          position: "absolute",
+                          top: "calc(100% + 10px)",
+                          right: 0,
+                          width: "320px",
+                          maxHeight: "420px",
+                          background: "#1a1a2e",
+                          border: "1px solid rgba(147,51,234,0.3)",
+                          borderRadius: "16px",
+                          boxShadow: "0 20px 60px rgba(0,0,0,0.5)",
+                          zIndex: 9999,
+                          overflow: "hidden",
+                          display: "flex",
+                          flexDirection: "column",
+                        }}
+                      >
+                        {/* Header dropdown */}
+                        <div
+                          style={{
+                            display: "flex",
+                            justifyContent: "space-between",
+                            alignItems: "center",
+                            padding: "12px 16px",
+                            borderBottom: "1px solid rgba(255,255,255,0.07)",
+                          }}
+                        >
+                          <span
+                            style={{
+                              fontWeight: "600",
+                              fontSize: "0.9rem",
+                              color: "#e2e8f0",
+                            }}
+                          >
+                            Notifications
+                            {unreadCount > 0 && (
+                              <span
+                                style={{
+                                  marginLeft: "8px",
+                                  background: "rgba(147,51,234,0.2)",
+                                  color: "#c084fc",
+                                  borderRadius: "99px",
+                                  fontSize: "0.68rem",
+                                  padding: "1px 7px",
+                                }}
+                              >
+                                {unreadCount} nouvelles
+                              </span>
+                            )}
+                          </span>
+                          {unreadCount > 0 && (
+                            <button
+                              onClick={async () => {
+                                try {
+                                  const api = await authAxios();
+                                  await api.patch("/notifications/read-all");
+                                  setNotifications((prev) =>
+                                    prev.map((n) => ({ ...n, isRead: true })),
+                                  );
+                                } catch (_) {}
+                              }}
+                              style={{
+                                background: "none",
+                                border: "none",
+                                cursor: "pointer",
+                                color: "#9333ea",
+                                fontSize: "0.72rem",
+                                fontWeight: "600",
+                              }}
+                            >
+                              Tout lire
+                            </button>
+                          )}
                         </div>
-                        <div className="notifications-list">
+
+                        {/* Liste notifs */}
+                        <div style={{ overflowY: "auto", flex: 1 }}>
                           {notifications.length === 0 ? (
-                            <p className="no-notifications">
-                              Pas de notifications
-                            </p>
+                            <div
+                              style={{
+                                padding: "32px 20px",
+                                textAlign: "center",
+                              }}
+                            >
+                              <div
+                                style={{
+                                  fontSize: "1.8rem",
+                                  marginBottom: "8px",
+                                }}
+                              >
+                                🔕
+                              </div>
+                              <p
+                                style={{
+                                  color: "rgba(255,255,255,0.3)",
+                                  fontSize: "0.82rem",
+                                }}
+                              >
+                                Aucune notification
+                              </p>
+                            </div>
                           ) : (
                             notifications.map((n) => (
                               <div
                                 key={n.id}
-                                className={`notification-item ${n.isRead ? "read" : "unread"}`}
                                 onClick={() => handleNotificationClick(n)}
+                                style={{
+                                  display: "flex",
+                                  alignItems: "flex-start",
+                                  gap: "10px",
+                                  padding: "11px 16px",
+                                  background: n.isRead
+                                    ? "transparent"
+                                    : "rgba(147,51,234,0.07)",
+                                  borderBottom:
+                                    "1px solid rgba(255,255,255,0.04)",
+                                  cursor: "pointer",
+                                }}
+                                onMouseEnter={(e) =>
+                                  (e.currentTarget.style.background =
+                                    "rgba(255,255,255,0.04)")
+                                }
+                                onMouseLeave={(e) =>
+                                  (e.currentTarget.style.background = n.isRead
+                                    ? "transparent"
+                                    : "rgba(147,51,234,0.07)")
+                                }
                               >
-                                <p>
-                                  {n.type === "NEW_FOLLOWER"
-                                    ? "Un nouvel utilisateur vous suit !"
-                                    : n.type === "NEW_LIKE"
-                                      ? "Quelqu'un a aimé votre critique."
-                                      : n.type === "NEW_COMMENT"
-                                        ? "Un nouveau commentaire sur votre avis."
-                                        : n.message || "Nouvelle notification"}
-                                </p>
-                                <span className="notification-time">
-                                  {n.createdAt?.seconds
-                                    ? new Date(
-                                        n.createdAt.seconds * 1000,
-                                      ).toLocaleDateString()
-                                    : "Récemment"}
-                                </span>
+                                <div style={{ flex: 1, minWidth: 0 }}>
+                                  <p
+                                    style={{
+                                      margin: 0,
+                                      fontSize: "0.8rem",
+                                      color: "#cbd5e1",
+                                      lineHeight: "1.4",
+                                    }}
+                                  >
+                                    {notifLabel(n)}
+                                  </p>
+                                  <span
+                                    style={{
+                                      fontSize: "0.68rem",
+                                      color: "rgba(255,255,255,0.25)",
+                                      marginTop: "3px",
+                                      display: "block",
+                                    }}
+                                  >
+                                    {n.createdAt?.seconds
+                                      ? new Date(
+                                          n.createdAt.seconds * 1000,
+                                        ).toLocaleDateString()
+                                      : n.createdAt?._seconds
+                                        ? new Date(
+                                            n.createdAt._seconds * 1000,
+                                          ).toLocaleDateString()
+                                        : "Récemment"}
+                                  </span>
+                                </div>
+                                {!n.isRead && (
+                                  <div
+                                    style={{
+                                      width: "7px",
+                                      height: "7px",
+                                      borderRadius: "50%",
+                                      background: "#9333ea",
+                                      flexShrink: 0,
+                                      marginTop: "4px",
+                                    }}
+                                  />
+                                )}
                               </div>
                             ))
                           )}
@@ -227,12 +453,13 @@ const App = () => {
                   </div>
                 )}
 
+                {/* Messagerie */}
                 {user && (
                   <button
                     className="nav-icon-btn"
                     onClick={() => {
                       setPreselectedConversation(null);
-                      setCurrentPage("messagerie");
+                      navigate({ page: "messagerie" });
                     }}
                     title="Messagerie"
                   >
@@ -247,10 +474,10 @@ const App = () => {
                       <line x1="22" y1="2" x2="11" y2="13"></line>
                       <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
                     </svg>
-                    <span className="notification-dot"></span>
                   </button>
                 )}
 
+                {/* Forum */}
                 <button
                   className="nav-icon-btn"
                   onClick={handleOpenForum}
@@ -268,9 +495,12 @@ const App = () => {
                   </svg>
                 </button>
 
+                {/* Profil / Connexion */}
                 <button
                   className="nav-user-btn"
-                  onClick={() => setCurrentPage(user ? "utilisateur" : "login")}
+                  onClick={() =>
+                    navigate({ page: user ? "utilisateur" : "login" })
+                  }
                   style={{
                     padding:
                       user?.avatar || user?.photoURL
@@ -331,6 +561,7 @@ const App = () => {
               </div>
             </>
           ) : (
+            /* ── Mode recherche ── */
             <div className="navbar-search-mode">
               <div className="search-bar-wrapper">
                 <input
@@ -379,6 +610,7 @@ const App = () => {
         </div>
       </nav>
 
+      {/* ══ CONTENU ══════════════════════════════════════════════════════════ */}
       <main className="main-content-wrapper">
         {currentPage === "accueil" && (
           <Accueil
@@ -392,10 +624,10 @@ const App = () => {
 
         {currentPage === "jeu" && (
           <Jeu
-            gameId={selectedGameId}
-            onBack={() => setCurrentPage("accueil")}
+            gameId={current.gameId}
+            onBack={goBack}
             user={user}
-            onFavoriteChange={handleFavoriteChange}
+            onFavoriteChange={() => setProfileRefresh((n) => n + 1)}
             onGameClick={handleShowGame}
             onForumClick={handleForumClick}
           />
@@ -403,13 +635,13 @@ const App = () => {
 
         {currentPage === "login" && (
           <Login
-            onSwitch={() => setCurrentPage("register")}
+            onSwitch={() => navigate({ page: "register" })}
             onLoginSuccess={handleLoginSuccess}
           />
         )}
 
         {currentPage === "register" && (
-          <Register onSwitch={() => setCurrentPage("login")} />
+          <Register onSwitch={() => navigate({ page: "login" })} />
         )}
 
         {currentPage === "utilisateur" && (
@@ -421,7 +653,7 @@ const App = () => {
             }
             onLogout={() => {
               setUser(null);
-              setCurrentPage("accueil");
+              goHome();
             }}
             onGameClick={handleShowGame}
             onAdminClick={handleAdminClick}
@@ -430,11 +662,11 @@ const App = () => {
 
         {currentPage === "utilisateur_public" && (
           <Utilisateur
-            key={selectedUserId}
-            targetUserId={selectedUserId}
+            key={current.userId}
+            targetUserId={current.userId}
             user={user}
             isPublic={true}
-            onBack={handleBackFromPublicProfile}
+            onBack={goBack}
             onOpenMessaging={handleOpenMessaging}
             onGameClick={handleShowGame}
           />
@@ -452,13 +684,11 @@ const App = () => {
           <Forum
             user={user}
             onGameClick={handleShowGame}
-            initialThread={forumInitialThread}
+            initialThread={current.forumThread}
           />
         )}
 
-        {currentPage === "admin" && (
-          <AdminDashboard onBack={() => setCurrentPage("accueil")} />
-        )}
+        {currentPage === "admin" && <AdminDashboard onBack={goBack} />}
       </main>
     </div>
   );
