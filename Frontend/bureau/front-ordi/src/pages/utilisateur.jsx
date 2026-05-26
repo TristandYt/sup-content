@@ -31,6 +31,7 @@ const PublicProfile = ({
   const [msgLoading, setMsgLoading] = useState(false);
   const [error, setError] = useState("");
   const [library, setLibrary] = useState([]);
+  const [customLists, setCustomLists] = useState([]);
 
   const myId = String(currentUser?.uid || currentUser?.id || "");
   const isMe = myId !== "" && myId === String(targetUserId);
@@ -41,23 +42,19 @@ const PublicProfile = ({
 
   const fetchAll = async () => {
     if (!targetUserId) return;
-
     setLoading(true);
     setError("");
     try {
-      // Instance de base pour les requêtes publiques
       const baseApi = axios.create({ baseURL: "http://localhost:3000/api" });
-      // Instance authentifiée si possible pour le suivi
       const authApi = currentUser ? await authAxios() : baseApi;
 
-      // Utilisation systématique de authApi pour inclure le token si l'utilisateur est connecté
-      // Cela évite les erreurs 401 sur certaines configurations de backend
       const profileReq = authApi.get(`/users/${targetUserId}/profile`);
       const libraryReq = authApi
         .get(`/lists/library?userId=${targetUserId}`)
         .catch(() => ({ data: { library: [] } }));
-
-      // Requêtes de suivi uniquement si l'utilisateur est connecté (évite les erreurs 401 pour les visiteurs)
+      const customListsReq = authApi
+        .get(`/custom-lists?userId=${targetUserId}`)
+        .catch(() => ({ data: { lists: [] } }));
       const followingReq = currentUser
         ? authApi
             .get("/follows/me/following")
@@ -69,8 +66,19 @@ const PublicProfile = ({
             .catch(() => ({ data: { followers: [] } }))
         : Promise.resolve({ data: { followers: [] } });
 
-      const [profileRes, libraryRes, followingRes, followersRes] =
-        await Promise.all([profileReq, libraryReq, followingReq, followersReq]);
+      const [
+        profileRes,
+        libraryRes,
+        customListsRes,
+        followingRes,
+        followersRes,
+      ] = await Promise.all([
+        profileReq,
+        libraryReq,
+        customListsReq,
+        followingReq,
+        followersReq,
+      ]);
 
       const data = profileRes.data;
       const userData = data?.user || data;
@@ -86,29 +94,18 @@ const PublicProfile = ({
       });
 
       setLibrary(lib);
-
-      // ✅ CORRECTION DÉFINITIVE
-      // Ton backend getMyFollowing renvoie : { following: [{ followingId, since }] }
-      // Ton backend getMyFollowers renvoie : { followers: [{ followerId, since }] }
-      // Il faut donc comparer sur ces champs précis, pas sur uid/id qui n'existent pas
+      setCustomLists(
+        (customListsRes.data?.lists || []).filter((l) => !l.isPrivate),
+      );
 
       const myFollowing = followingRes.data?.following || [];
       const myFollowers = followersRes.data?.followers || [];
-
-      // Est-ce que MOI je suis la cible ?
-      // → targetUserId doit être dans followingId de ma liste following
-      const doesIFollow = myFollowing.some(
-        (u) => String(u.followingId) === String(targetUserId),
+      setIFollow(
+        myFollowing.some((u) => String(u.followingId) === String(targetUserId)),
       );
-
-      // Est-ce que la cible ME suit ?
-      // → targetUserId doit être dans followerId de ma liste followers
-      const doesTheyFollow = myFollowers.some(
-        (u) => String(u.followerId) === String(targetUserId),
+      setTheyFollowMe(
+        myFollowers.some((u) => String(u.followerId) === String(targetUserId)),
       );
-
-      setIFollow(doesIFollow);
-      setTheyFollowMe(doesTheyFollow);
     } catch (err) {
       console.error("Erreur fetchAll:", err);
       setError("Impossible de charger ce profil.");
@@ -125,7 +122,6 @@ const PublicProfile = ({
       if (iFollow) {
         await api.delete(`/follows/${targetUserId}`);
         setIFollow(false);
-        // Mise à jour locale du compteur pour un retour immédiat
         setProfile((prev) => ({
           ...prev,
           followersCount: Math.max(0, (Number(prev.followersCount) || 0) - 1),
@@ -133,7 +129,6 @@ const PublicProfile = ({
       } else {
         await api.post(`/follows/${targetUserId}`);
         setIFollow(true);
-        // Incrémentation locale du compteur
         setProfile((prev) => ({
           ...prev,
           followersCount: (Number(prev.followersCount) || 0) + 1,
@@ -164,9 +159,8 @@ const PublicProfile = ({
 
   const getCoverUrl = (cover) => {
     if (!cover) return defaultCover;
-    if (cover.image_id) {
+    if (cover.image_id)
       return `https://images.igdb.com/igdb/image/upload/t_cover_big/${cover.image_id}.jpg`;
-    }
     if (
       typeof cover === "string" &&
       cover.trim() !== "" &&
@@ -227,7 +221,6 @@ const PublicProfile = ({
 
   return (
     <div className="accueil-container">
-      {/* Bouton retour — z-index élevé pour rester cliquable */}
       <div style={{ position: "relative", zIndex: 10, padding: "20px 20px 0" }}>
         <button
           className="category-btn"
@@ -238,7 +231,6 @@ const PublicProfile = ({
         </button>
       </div>
 
-      {/* Hero banner */}
       <div
         className="hero-section"
         style={{
@@ -261,7 +253,6 @@ const PublicProfile = ({
           className="game-card-modern"
           style={{ padding: "0", cursor: "default", overflow: "visible" }}
         >
-          {/* Avatar flottant */}
           <div
             style={{
               display: "flex",
@@ -295,7 +286,6 @@ const PublicProfile = ({
               {profile.username}
             </h2>
 
-            {/* Badges statut suivi */}
             <div
               style={{
                 display: "flex",
@@ -363,7 +353,6 @@ const PublicProfile = ({
               </p>
             )}
 
-            {/* Stats */}
             <div
               style={{
                 display: "flex",
@@ -407,7 +396,6 @@ const PublicProfile = ({
               ))}
             </div>
 
-            {/* Boutons d'action */}
             {currentUser && !isMe ? (
               <div
                 style={{
@@ -437,7 +425,6 @@ const PublicProfile = ({
                       ? "✗ Se désabonner"
                       : "✚ Suivre"}
                 </button>
-
                 {isMutual && (
                   <button
                     className="nav-user-btn"
@@ -478,13 +465,12 @@ const PublicProfile = ({
           </div>
         </div>
 
-        {/* Collection publique */}
+        {/* ── Collection publique ── */}
         <div style={{ marginTop: "40px" }}>
           <div className="section-header" style={{ marginBottom: "20px" }}>
             <h3 className="section-title">Sa Collection</h3>
             <span className="section-count">{library.length}</span>
           </div>
-
           {library.length === 0 ? (
             <p
               className="empty-text"
@@ -522,7 +508,672 @@ const PublicProfile = ({
             </div>
           )}
         </div>
+
+        {/* ── Listes personnalisées publiques ── */}
+        {customLists.length > 0 && (
+          <div style={{ marginTop: "40px" }}>
+            <div className="section-header" style={{ marginBottom: "20px" }}>
+              <h3 className="section-title">Ses Listes</h3>
+              <span className="section-count">{customLists.length}</span>
+            </div>
+            <div
+              style={{ display: "flex", flexDirection: "column", gap: "12px" }}
+            >
+              {customLists.map((list) => (
+                <div
+                  key={list.id}
+                  className="game-card-modern"
+                  style={{ padding: "16px", cursor: "default" }}
+                >
+                  <div
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                      marginBottom: "8px",
+                    }}
+                  >
+                    <h4 className="game-title" style={{ margin: 0 }}>
+                      {list.name}
+                    </h4>
+                    <span
+                      className="section-count"
+                      style={{ fontSize: "0.75rem" }}
+                    >
+                      {(list.games || []).length} jeux
+                    </span>
+                  </div>
+                  {list.description && (
+                    <p
+                      style={{
+                        fontSize: "0.82rem",
+                        color: "#94a3b8",
+                        margin: "0 0 10px",
+                      }}
+                    >
+                      {list.description}
+                    </p>
+                  )}
+                  <div
+                    style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}
+                  >
+                    {(list.games || []).slice(0, 5).map((g) => (
+                      <div
+                        key={g.gameId}
+                        onClick={() => onGameClick && onGameClick(g.gameId)}
+                        style={{
+                          width: "50px",
+                          height: "65px",
+                          borderRadius: "6px",
+                          overflow: "hidden",
+                          cursor: "pointer",
+                          flexShrink: 0,
+                        }}
+                      >
+                        <img
+                          src={getCoverUrl(g.gameCover)}
+                          alt={g.gameName}
+                          style={{
+                            width: "100%",
+                            height: "100%",
+                            objectFit: "cover",
+                          }}
+                        />
+                      </div>
+                    ))}
+                    {(list.games || []).length > 5 && (
+                      <div
+                        style={{
+                          width: "50px",
+                          height: "65px",
+                          borderRadius: "6px",
+                          background: "rgba(147,51,234,0.2)",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          fontSize: "0.75rem",
+                          color: "#c084fc",
+                          fontWeight: "600",
+                        }}
+                      >
+                        +{list.games.length - 5}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
+    </div>
+  );
+};
+
+/* ═══════════════════════════════════════════════════════════
+   CUSTOM LISTS — sous-composant de MyProfile
+═══════════════════════════════════════════════════════════ */
+const CustomLists = ({ onGameClick }) => {
+  const [lists, setLists] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [showForm, setShowForm] = useState(false);
+  const [editingList, setEditingList] = useState(null);
+  const [formData, setFormData] = useState({
+    name: "",
+    description: "",
+    isPrivate: false,
+  });
+  const [saving, setSaving] = useState(false);
+  const [gameSearch, setGameSearch] = useState("");
+  const [gameResults, setGameResults] = useState([]);
+  const [searchingGames, setSearchingGames] = useState(false);
+  const [activeListId, setActiveListId] = useState(null);
+
+  useEffect(() => {
+    fetchLists();
+  }, []);
+
+  useEffect(() => {
+    if (!gameSearch || gameSearch.length < 2) {
+      setGameResults([]);
+      return;
+    }
+    const t = setTimeout(async () => {
+      setSearchingGames(true);
+      try {
+        const api = await authAxios();
+        const res = await api.get(
+          `/games/search?q=${encodeURIComponent(gameSearch)}&limit=6`,
+        );
+        setGameResults(res.data || []);
+      } catch (_) {
+      } finally {
+        setSearchingGames(false);
+      }
+    }, 350);
+    return () => clearTimeout(t);
+  }, [gameSearch]);
+
+  const fetchLists = async () => {
+    setLoading(true);
+    try {
+      const api = await authAxios();
+      const res = await api.get("/custom-lists");
+      setLists(res.data?.lists || []);
+    } catch (err) {
+      console.warn("Erreur fetchLists:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSaveList = async () => {
+    if (!formData.name.trim()) return;
+    setSaving(true);
+    try {
+      const api = await authAxios();
+      if (editingList) {
+        await api.put(`/custom-lists/${editingList.id}`, formData);
+        setLists((prev) =>
+          prev.map((l) =>
+            l.id === editingList.id ? { ...l, ...formData } : l,
+          ),
+        );
+      } else {
+        const res = await api.post("/custom-lists", formData);
+        setLists((prev) => [...prev, res.data.list]);
+      }
+      setShowForm(false);
+      setEditingList(null);
+      setFormData({ name: "", description: "", isPrivate: false });
+    } catch (err) {
+      console.error("Erreur save list:", err);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDeleteList = async (id) => {
+    if (!window.confirm("Supprimer cette liste ?")) return;
+    try {
+      const api = await authAxios();
+      await api.delete(`/custom-lists/${id}`);
+      setLists((prev) => prev.filter((l) => l.id !== id));
+    } catch (err) {
+      console.error("Erreur delete list:", err);
+    }
+  };
+
+  const handleAddGame = async (list, game) => {
+    try {
+      const api = await authAxios();
+      const gameEntry = {
+        gameId: String(game.id),
+        gameName: game.name,
+        gameCover: game.cover?.image_id
+          ? `https://images.igdb.com/igdb/image/upload/t_cover_big/${game.cover.image_id}.jpg`
+          : "",
+      };
+      await api.post(`/custom-lists/${list.id}/games`, gameEntry);
+      setLists((prev) =>
+        prev.map((l) =>
+          l.id === list.id
+            ? { ...l, games: [...(l.games || []), gameEntry] }
+            : l,
+        ),
+      );
+      setGameSearch("");
+      setGameResults([]);
+    } catch (err) {
+      console.error("Erreur addGame:", err);
+    }
+  };
+
+  const handleRemoveGame = async (listId, gameId) => {
+    try {
+      const api = await authAxios();
+      await api.delete(`/custom-lists/${listId}/games/${gameId}`);
+      setLists((prev) =>
+        prev.map((l) =>
+          l.id === listId
+            ? {
+                ...l,
+                games: (l.games || []).filter((g) => g.gameId !== gameId),
+              }
+            : l,
+        ),
+      );
+    } catch (err) {
+      console.error("Erreur removeGame:", err);
+    }
+  };
+
+  const openEdit = (list) => {
+    setEditingList(list);
+    setFormData({
+      name: list.name,
+      description: list.description || "",
+      isPrivate: list.isPrivate || false,
+    });
+    setShowForm(true);
+  };
+
+  const getCoverUrl = (cover) => {
+    if (!cover) return defaultCover;
+    if (typeof cover === "string" && cover.startsWith("http")) return cover;
+    if (cover.image_id)
+      return `https://images.igdb.com/igdb/image/upload/t_cover_big/${cover.image_id}.jpg`;
+    return defaultCover;
+  };
+
+  return (
+    <div>
+      {/* Header */}
+      <div className="section-header" style={{ marginBottom: "20px" }}>
+        <h2 className="section-title">Mes Listes</h2>
+        <button
+          className="category-btn active"
+          onClick={() => {
+            setShowForm(!showForm);
+            setEditingList(null);
+            setFormData({ name: "", description: "", isPrivate: false });
+          }}
+        >
+          {showForm && !editingList ? "Annuler" : "+ Nouvelle liste"}
+        </button>
+      </div>
+
+      {/* Formulaire création/édition */}
+      {showForm && (
+        <div
+          className="game-card-modern"
+          style={{ padding: "20px", marginBottom: "24px", cursor: "default" }}
+        >
+          <h4 className="game-title" style={{ marginBottom: "16px" }}>
+            {editingList ? "Modifier la liste" : "Créer une liste"}
+          </h4>
+          <input
+            className="filter-select"
+            style={{ width: "100%", marginBottom: "10px" }}
+            placeholder="Nom de la liste (ex: Horreur, RPG indés…)"
+            value={formData.name}
+            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+          />
+          <textarea
+            className="filter-select"
+            style={{
+              width: "100%",
+              minHeight: "70px",
+              marginBottom: "10px",
+              paddingTop: "10px",
+            }}
+            placeholder="Description (optionnel)"
+            value={formData.description}
+            onChange={(e) =>
+              setFormData({ ...formData, description: e.target.value })
+            }
+          />
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "10px",
+              marginBottom: "16px",
+            }}
+          >
+            <input
+              type="checkbox"
+              id="isPrivate"
+              checked={formData.isPrivate}
+              onChange={(e) =>
+                setFormData({ ...formData, isPrivate: e.target.checked })
+              }
+              style={{ accentColor: "#9333ea" }}
+            />
+            <label
+              htmlFor="isPrivate"
+              className="game-genre"
+              style={{ cursor: "pointer", margin: 0 }}
+            >
+              🔒 Liste privée (visible uniquement par moi)
+            </label>
+          </div>
+          <button
+            className="nav-user-btn"
+            style={{
+              width: "100%",
+              justifyContent: "center",
+              opacity: saving ? 0.6 : 1,
+            }}
+            onClick={handleSaveList}
+            disabled={saving}
+          >
+            {saving
+              ? "Sauvegarde..."
+              : editingList
+                ? "Mettre à jour"
+                : "Créer la liste"}
+          </button>
+        </div>
+      )}
+
+      {/* Liste vide */}
+      {loading ? (
+        <div className="loading-container">
+          <div className="loading-spinner" />
+        </div>
+      ) : lists.length === 0 ? (
+        <div
+          className="game-card-modern"
+          style={{ padding: "40px", textAlign: "center", cursor: "default" }}
+        >
+          <p style={{ fontSize: "2rem", marginBottom: "12px" }}>📋</p>
+          <p className="hero-subtitle">Aucune liste pour l'instant.</p>
+          <p
+            style={{ fontSize: "0.85rem", color: "#64748b", marginTop: "6px" }}
+          >
+            Crée ta première liste : Horreur, RPG, Coop…
+          </p>
+        </div>
+      ) : (
+        <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+          {lists.map((list) => {
+            const isOpen = activeListId === list.id;
+            return (
+              <div
+                key={list.id}
+                className="game-card-modern"
+                style={{ padding: "0", cursor: "default", overflow: "hidden" }}
+              >
+                {/* Header de la liste */}
+                <div
+                  onClick={() => setActiveListId(isOpen ? null : list.id)}
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    padding: "16px 20px",
+                    cursor: "pointer",
+                  }}
+                >
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "8px",
+                      }}
+                    >
+                      <h4
+                        className="game-title"
+                        style={{ margin: 0, fontSize: "1rem" }}
+                      >
+                        {list.name}
+                      </h4>
+                      {list.isPrivate && (
+                        <span style={{ fontSize: "0.7rem", color: "#94a3b8" }}>
+                          🔒
+                        </span>
+                      )}
+                      <span
+                        className="section-count"
+                        style={{ fontSize: "0.72rem" }}
+                      >
+                        {(list.games || []).length} jeux
+                      </span>
+                    </div>
+                    {list.description && (
+                      <p
+                        style={{
+                          margin: "4px 0 0",
+                          fontSize: "0.8rem",
+                          color: "#64748b",
+                        }}
+                      >
+                        {list.description}
+                      </p>
+                    )}
+                  </div>
+                  <div
+                    style={{
+                      display: "flex",
+                      gap: "6px",
+                      alignItems: "center",
+                      flexShrink: 0,
+                      marginLeft: "12px",
+                    }}
+                  >
+                    <button
+                      className="category-btn"
+                      style={{ padding: "4px 10px", fontSize: "0.75rem" }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        openEdit(list);
+                      }}
+                    >
+                      ✏️
+                    </button>
+                    <button
+                      className="category-btn"
+                      style={{
+                        padding: "4px 10px",
+                        fontSize: "0.75rem",
+                        borderColor: "#ef4444",
+                        color: "#f87171",
+                      }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDeleteList(list.id);
+                      }}
+                    >
+                      🗑️
+                    </button>
+                    <span style={{ color: "#9333ea", fontSize: "1.2rem" }}>
+                      {isOpen ? "▾" : "▸"}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Contenu déroulable */}
+                {isOpen && (
+                  <div
+                    style={{
+                      padding: "0 20px 20px",
+                      borderTop: "1px solid rgba(255,255,255,0.06)",
+                    }}
+                  >
+                    {/* Jeux de la liste */}
+                    {(list.games || []).length === 0 ? (
+                      <p
+                        style={{
+                          fontSize: "0.85rem",
+                          color: "#64748b",
+                          padding: "16px 0 8px",
+                          textAlign: "center",
+                        }}
+                      >
+                        Aucun jeu dans cette liste. Recherche ci-dessous pour en
+                        ajouter.
+                      </p>
+                    ) : (
+                      <div
+                        style={{
+                          display: "flex",
+                          gap: "10px",
+                          flexWrap: "wrap",
+                          padding: "16px 0 12px",
+                        }}
+                      >
+                        {(list.games || []).map((g) => (
+                          <div
+                            key={g.gameId}
+                            style={{ position: "relative", width: "70px" }}
+                          >
+                            <div
+                              onClick={() =>
+                                onGameClick && onGameClick(g.gameId)
+                              }
+                              style={{
+                                width: "70px",
+                                height: "90px",
+                                borderRadius: "8px",
+                                overflow: "hidden",
+                                cursor: "pointer",
+                              }}
+                            >
+                              <img
+                                src={getCoverUrl(g.gameCover)}
+                                alt={g.gameName}
+                                style={{
+                                  width: "100%",
+                                  height: "100%",
+                                  objectFit: "cover",
+                                }}
+                              />
+                            </div>
+                            <button
+                              onClick={() =>
+                                handleRemoveGame(list.id, g.gameId)
+                              }
+                              style={{
+                                position: "absolute",
+                                top: "-6px",
+                                right: "-6px",
+                                background: "#ef4444",
+                                border: "none",
+                                borderRadius: "50%",
+                                width: "18px",
+                                height: "18px",
+                                cursor: "pointer",
+                                color: "#fff",
+                                fontSize: "0.6rem",
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                lineHeight: 1,
+                              }}
+                            >
+                              ✕
+                            </button>
+                            <p
+                              style={{
+                                fontSize: "0.65rem",
+                                color: "#94a3b8",
+                                margin: "4px 0 0",
+                                textAlign: "center",
+                                overflow: "hidden",
+                                textOverflow: "ellipsis",
+                                whiteSpace: "nowrap",
+                              }}
+                            >
+                              {g.gameName}
+                            </p>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Recherche jeu à ajouter */}
+                    <div style={{ position: "relative", marginTop: "8px" }}>
+                      <input
+                        className="filter-select"
+                        style={{ width: "100%" }}
+                        placeholder="🔍 Ajouter un jeu à cette liste…"
+                        value={gameSearch}
+                        onChange={(e) => setGameSearch(e.target.value)}
+                        onBlur={() => setTimeout(() => setGameResults([]), 200)}
+                      />
+                      {searchingGames && (
+                        <span
+                          style={{
+                            position: "absolute",
+                            right: "12px",
+                            top: "50%",
+                            transform: "translateY(-50%)",
+                            color: "#64748b",
+                            fontSize: "0.75rem",
+                          }}
+                        >
+                          …
+                        </span>
+                      )}
+                      {gameResults.length > 0 && (
+                        <div
+                          style={{
+                            position: "absolute",
+                            top: "calc(100% + 6px)",
+                            left: 0,
+                            right: 0,
+                            background: "#1e293b",
+                            border: "1px solid rgba(147,51,234,0.3)",
+                            borderRadius: "10px",
+                            zIndex: 100,
+                            overflow: "hidden",
+                            boxShadow: "0 8px 32px rgba(0,0,0,0.4)",
+                          }}
+                        >
+                          {gameResults.map((g) => (
+                            <div
+                              key={g.id}
+                              onMouseDown={() => handleAddGame(list, g)}
+                              style={{
+                                padding: "10px 14px",
+                                cursor: "pointer",
+                                display: "flex",
+                                alignItems: "center",
+                                gap: "10px",
+                              }}
+                              onMouseEnter={(e) =>
+                                (e.currentTarget.style.background =
+                                  "rgba(147,51,234,0.15)")
+                              }
+                              onMouseLeave={(e) =>
+                                (e.currentTarget.style.background =
+                                  "transparent")
+                              }
+                            >
+                              {g.cover?.image_id && (
+                                <img
+                                  src={`https://images.igdb.com/igdb/image/upload/t_thumb/${g.cover.image_id}.jpg`}
+                                  alt=""
+                                  style={{
+                                    width: "28px",
+                                    height: "36px",
+                                    borderRadius: "4px",
+                                    objectFit: "cover",
+                                  }}
+                                />
+                              )}
+                              <span
+                                style={{ color: "#e2e8f0", fontSize: "0.9rem" }}
+                              >
+                                {g.name}
+                              </span>
+                              {(list.games || []).some(
+                                (lg) => String(lg.gameId) === String(g.id),
+                              ) && (
+                                <span
+                                  style={{
+                                    marginLeft: "auto",
+                                    color: "#4ade80",
+                                    fontSize: "0.75rem",
+                                  }}
+                                >
+                                  ✓ Ajouté
+                                </span>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 };
@@ -538,6 +1189,7 @@ const MyProfile = ({
   onAdminClick,
 }) => {
   const { t, i18n } = useTranslation();
+  const [activeTab, setActiveTab] = useState("collection");
 
   const [profileData, setProfileData] = useState({
     uid: user?.uid || user?.id || "",
@@ -545,6 +1197,12 @@ const MyProfile = ({
     email: user?.email || "",
     bio: user?.bio || "",
     role: user?.role || "",
+    birthDate: user?.birthDate || "",
+    preferences: user?.preferences || {
+      notifications: true,
+      privateProfile: false,
+      theme: "dark",
+    },
     avatar:
       user?.avatar ||
       user?.photoURL ||
@@ -575,9 +1233,10 @@ const MyProfile = ({
           bio: u.bio || profileData.bio,
           avatar: u.avatar || u.photoURL || profileData.avatar,
           role: u.role || "",
+          birthDate: u.birthDate || "",
+          preferences: u.preferences || profileData.preferences,
         };
         setProfileData(fullProfile);
-        // Indispensable pour mettre à jour l'état global du user dans App.jsx
         if (onLoginSuccess) onLoginSuccess(fullProfile);
       }
     } catch (err) {
@@ -628,9 +1287,8 @@ const MyProfile = ({
 
   const getCoverUrl = (cover) => {
     if (!cover) return defaultCover;
-    if (cover.image_id) {
+    if (cover.image_id)
       return `https://images.igdb.com/igdb/image/upload/t_cover_big/${cover.image_id}.jpg`;
-    }
     if (
       typeof cover === "string" &&
       cover.trim() !== "" &&
@@ -650,6 +1308,8 @@ const MyProfile = ({
         username: profileData.pseudo || profileData.username,
         bio: profileData.bio,
         avatar: profileData.avatar,
+        birthDate: profileData.birthDate,
+        preferences: profileData.preferences,
       });
       if (onLoginSuccess) onLoginSuccess(profileData);
       setSaveStatus("saved");
@@ -665,6 +1325,13 @@ const MyProfile = ({
     const { name, value } = e.target;
     if (name === "lang") i18n.changeLanguage(value);
     else setProfileData({ ...profileData, [name]: value });
+  };
+
+  const handlePreferenceChange = (key, value) => {
+    setProfileData((prev) => ({
+      ...prev,
+      preferences: { ...prev.preferences, [key]: value },
+    }));
   };
 
   const handleAvatarChange = (e) => {
@@ -684,10 +1351,17 @@ const MyProfile = ({
     "": t("btnUpdate"),
   }[saveStatus];
 
+  const TABS = [
+    { id: "collection", label: "🎮 Collection" },
+    { id: "lists", label: "📋 Mes Listes" },
+    { id: "settings", label: "⚙️ Paramètres" },
+  ];
+
   return (
     <div className="app-container">
       <div className="hero-gradient"></div>
       <div className="main-content-wrapper profile-layout">
+        {/* ── Sidebar profil ── */}
         <div className="profile-sidebar">
           <div
             className="game-card-modern profile-main-card"
@@ -732,7 +1406,7 @@ const MyProfile = ({
                 className="filter-select"
                 style={{
                   width: "100%",
-                  minHeight: "100px",
+                  minHeight: "80px",
                   padding: "12px",
                   background: "rgba(0,0,0,0.2)",
                 }}
@@ -743,7 +1417,7 @@ const MyProfile = ({
 
               <label
                 className="game-genre"
-                style={{ display: "block", margin: "20px 0 8px 0" }}
+                style={{ display: "block", margin: "16px 0 8px" }}
               >
                 {t("langLabel")}
               </label>
@@ -760,7 +1434,7 @@ const MyProfile = ({
 
               <div
                 style={{
-                  marginTop: "30px",
+                  marginTop: "24px",
                   display: "flex",
                   flexDirection: "column",
                   gap: "10px",
@@ -784,7 +1458,7 @@ const MyProfile = ({
                     style={{
                       width: "100%",
                       justifyContent: "center",
-                      background: "rgba(167, 139, 250, 0.2)",
+                      background: "rgba(167,139,250,0.2)",
                       borderColor: "#a78bfa",
                     }}
                     onClick={onAdminClick}
@@ -809,85 +1483,688 @@ const MyProfile = ({
           </div>
         </div>
 
+        {/* ── Contenu principal avec onglets ── */}
         <div className="profile-content">
-          <div className="section-header" style={{ marginBottom: "20px" }}>
-            <h2 className="section-title">Ma Collection</h2>
-            <span className="section-count">{filteredGames.length}</span>
-          </div>
-
-          <div className="filters-container" style={{ marginBottom: "30px" }}>
-            {["Tous", "A faire", "En cours", "Fini", "Abandonné"].map((s) => (
+          {/* Onglets */}
+          <div className="categories-nav" style={{ marginBottom: "24px" }}>
+            {TABS.map((tab) => (
               <button
-                key={s}
-                className={`category-btn ${filter === s ? "active" : ""}`}
-                onClick={() => setFilter(s)}
+                key={tab.id}
+                className={`category-btn ${activeTab === tab.id ? "active" : ""}`}
+                onClick={() => setActiveTab(tab.id)}
               >
-                {s}
+                {tab.label}
               </button>
             ))}
           </div>
 
-          {filteredGames.length === 0 ? (
-            <div
-              className="game-card-modern"
-              style={{
-                padding: "40px",
-                textAlign: "center",
-                cursor: "default",
-              }}
-            >
-              <p className="hero-subtitle">
-                {favorites.length === 0
-                  ? "La bibliothèque est vide..."
-                  : `Aucun jeu dans la catégorie "${filter}"`}
-              </p>
-            </div>
-          ) : (
-            <div className="game-grid">
-              {filteredGames.map((game) => (
-                <div
-                  key={game.gameId}
-                  className="game-card-modern"
-                  onClick={() => onGameClick && onGameClick(game.gameId)}
-                >
-                  <div className="game-image-container">
-                    <img
-                      src={getCoverUrl(game.gameCover || game.cover)}
-                      alt={game.gameName || game.name}
-                      className="game-image"
-                    />
-                  </div>
-                  <div className="game-content">
-                    <h4 className="game-title">{game.gameName || game.name}</h4>
-                    <select
-                      className={`status-select ${
-                        statusMapping[game.status]
-                          ?.toLowerCase()
-                          .replace(" ", "-") || ""
-                      }`}
-                      value={game.status || "to_play"}
-                      onClick={(e) => e.stopPropagation()}
-                      onChange={(e) =>
-                        handleStatusUpdate(
-                          game.gameId,
-                          e.target.value,
-                          game.gameName || game.name,
-                          game.gameCover || game.cover,
-                        )
-                      }
+          {/* ── Onglet Collection ── */}
+          {activeTab === "collection" && (
+            <>
+              <div className="section-header" style={{ marginBottom: "20px" }}>
+                <h2 className="section-title">Ma Collection</h2>
+                <span className="section-count">{filteredGames.length}</span>
+              </div>
+              <div
+                className="filters-container"
+                style={{ marginBottom: "30px" }}
+              >
+                {["Tous", "A faire", "En cours", "Fini", "Abandonné"].map(
+                  (s) => (
+                    <button
+                      key={s}
+                      className={`category-btn ${filter === s ? "active" : ""}`}
+                      onClick={() => setFilter(s)}
                     >
-                      <option value="to_play">⏳ À faire</option>
-                      <option value="playing">🎮 En cours</option>
-                      <option value="finished">✅ Fini</option>
-                      <option value="dropped">❌ Abandonné</option>
-                    </select>
-                  </div>
+                      {s}
+                    </button>
+                  ),
+                )}
+              </div>
+              {filteredGames.length === 0 ? (
+                <div
+                  className="game-card-modern"
+                  style={{
+                    padding: "40px",
+                    textAlign: "center",
+                    cursor: "default",
+                  }}
+                >
+                  <p className="hero-subtitle">
+                    {favorites.length === 0
+                      ? "La bibliothèque est vide..."
+                      : `Aucun jeu dans la catégorie "${filter}"`}
+                  </p>
                 </div>
-              ))}
+              ) : (
+                <div className="game-grid">
+                  {filteredGames.map((game) => (
+                    <div
+                      key={game.gameId}
+                      className="game-card-modern"
+                      onClick={() => onGameClick && onGameClick(game.gameId)}
+                    >
+                      <div className="game-image-container">
+                        <img
+                          src={getCoverUrl(game.gameCover || game.cover)}
+                          alt={game.gameName || game.name}
+                          className="game-image"
+                        />
+                      </div>
+                      <div className="game-content">
+                        <h4 className="game-title">
+                          {game.gameName || game.name}
+                        </h4>
+                        <select
+                          className={`status-select ${statusMapping[game.status]?.toLowerCase().replace(" ", "-") || ""}`}
+                          value={game.status || "to_play"}
+                          onClick={(e) => e.stopPropagation()}
+                          onChange={(e) =>
+                            handleStatusUpdate(
+                              game.gameId,
+                              e.target.value,
+                              game.gameName || game.name,
+                              game.gameCover || game.cover,
+                            )
+                          }
+                        >
+                          <option value="to_play">⏳ À faire</option>
+                          <option value="playing">🎮 En cours</option>
+                          <option value="finished">✅ Fini</option>
+                          <option value="dropped">❌ Abandonné</option>
+                        </select>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </>
+          )}
+
+          {/* ── Onglet Mes Listes ── */}
+          {activeTab === "lists" && <CustomLists onGameClick={onGameClick} />}
+
+          {/* ── Onglet Paramètres ── */}
+          {activeTab === "settings" && (
+            <div>
+              <div className="section-header" style={{ marginBottom: "24px" }}>
+                <h2 className="section-title">Paramètres du compte</h2>
+              </div>
+
+              <div
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: "16px",
+                }}
+              >
+                {/* Date de naissance */}
+                <div
+                  className="game-card-modern"
+                  style={{ padding: "20px", cursor: "default" }}
+                >
+                  <h4
+                    className="game-title"
+                    style={{ marginBottom: "16px", fontSize: "0.95rem" }}
+                  >
+                    👤 Informations personnelles
+                  </h4>
+                  <label
+                    className="game-genre"
+                    style={{ display: "block", marginBottom: "8px" }}
+                  >
+                    Date de naissance
+                  </label>
+                  <input
+                    type="date"
+                    name="birthDate"
+                    className="filter-select"
+                    style={{ width: "100%" }}
+                    value={profileData.birthDate}
+                    onChange={handleChange}
+                  />
+                  <p
+                    style={{
+                      fontSize: "0.75rem",
+                      color: "#64748b",
+                      marginTop: "6px",
+                    }}
+                  >
+                    Utilisée pour adapter le contenu à ton âge. Non visible
+                    publiquement.
+                  </p>
+                </div>
+
+                {/* Préférences notifications */}
+                <div
+                  className="game-card-modern"
+                  style={{ padding: "20px", cursor: "default" }}
+                >
+                  <h4
+                    className="game-title"
+                    style={{ marginBottom: "16px", fontSize: "0.95rem" }}
+                  >
+                    🔔 Notifications
+                  </h4>
+                  {[
+                    {
+                      key: "notifFollow",
+                      label: "Nouveaux abonnés",
+                      desc: "Quand quelqu'un commence à te suivre",
+                    },
+                    {
+                      key: "notifLike",
+                      label: "Likes sur tes avis",
+                      desc: "Quand un avis reçoit un like",
+                    },
+                    {
+                      key: "notifComment",
+                      label: "Commentaires",
+                      desc: "Quand quelqu'un commente tes avis",
+                    },
+                    {
+                      key: "notifMessage",
+                      label: "Messages privés",
+                      desc: "Quand tu reçois un nouveau message",
+                    },
+                  ].map(({ key, label, desc }) => (
+                    <div
+                      key={key}
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                        padding: "10px 0",
+                        borderBottom: "1px solid rgba(255,255,255,0.05)",
+                      }}
+                    >
+                      <div>
+                        <p
+                          style={{
+                            margin: 0,
+                            fontSize: "0.9rem",
+                            color: "#e2e8f0",
+                          }}
+                        >
+                          {label}
+                        </p>
+                        <p
+                          style={{
+                            margin: 0,
+                            fontSize: "0.75rem",
+                            color: "#64748b",
+                          }}
+                        >
+                          {desc}
+                        </p>
+                      </div>
+                      <div
+                        onClick={() =>
+                          handlePreferenceChange(
+                            key,
+                            !profileData.preferences?.[key],
+                          )
+                        }
+                        style={{
+                          width: "42px",
+                          height: "24px",
+                          borderRadius: "99px",
+                          cursor: "pointer",
+                          flexShrink: 0,
+                          background:
+                            profileData.preferences?.[key] !== false
+                              ? "#9333ea"
+                              : "rgba(255,255,255,0.1)",
+                          position: "relative",
+                          transition: "background 0.2s",
+                        }}
+                      >
+                        <div
+                          style={{
+                            position: "absolute",
+                            top: "3px",
+                            width: "18px",
+                            height: "18px",
+                            borderRadius: "50%",
+                            background: "#fff",
+                            transition: "left 0.2s",
+                            left:
+                              profileData.preferences?.[key] !== false
+                                ? "21px"
+                                : "3px",
+                          }}
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Préférences confidentialité */}
+                <div
+                  className="game-card-modern"
+                  style={{ padding: "20px", cursor: "default" }}
+                >
+                  <h4
+                    className="game-title"
+                    style={{ marginBottom: "16px", fontSize: "0.95rem" }}
+                  >
+                    🔒 Confidentialité
+                  </h4>
+                  {[
+                    {
+                      key: "privateProfile",
+                      label: "Profil privé",
+                      desc: "Seuls tes abonnés mutuels peuvent voir ta collection",
+                    },
+                    {
+                      key: "privateLibrary",
+                      label: "Collection privée",
+                      desc: "Ta collection n'est pas visible publiquement",
+                    },
+                  ].map(({ key, label, desc }) => (
+                    <div
+                      key={key}
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                        padding: "10px 0",
+                        borderBottom: "1px solid rgba(255,255,255,0.05)",
+                      }}
+                    >
+                      <div>
+                        <p
+                          style={{
+                            margin: 0,
+                            fontSize: "0.9rem",
+                            color: "#e2e8f0",
+                          }}
+                        >
+                          {label}
+                        </p>
+                        <p
+                          style={{
+                            margin: 0,
+                            fontSize: "0.75rem",
+                            color: "#64748b",
+                          }}
+                        >
+                          {desc}
+                        </p>
+                      </div>
+                      <div
+                        onClick={() =>
+                          handlePreferenceChange(
+                            key,
+                            !profileData.preferences?.[key],
+                          )
+                        }
+                        style={{
+                          width: "42px",
+                          height: "24px",
+                          borderRadius: "99px",
+                          cursor: "pointer",
+                          flexShrink: 0,
+                          background: profileData.preferences?.[key]
+                            ? "#9333ea"
+                            : "rgba(255,255,255,0.1)",
+                          position: "relative",
+                          transition: "background 0.2s",
+                        }}
+                      >
+                        <div
+                          style={{
+                            position: "absolute",
+                            top: "3px",
+                            width: "18px",
+                            height: "18px",
+                            borderRadius: "50%",
+                            background: "#fff",
+                            transition: "left 0.2s",
+                            left: profileData.preferences?.[key]
+                              ? "21px"
+                              : "3px",
+                          }}
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Bouton sauvegarder */}
+                <button
+                  className="nav-user-btn"
+                  style={{
+                    width: "100%",
+                    justifyContent: "center",
+                    opacity: saveStatus === "saving" ? 0.7 : 1,
+                  }}
+                  onClick={handleUpdate}
+                  disabled={saveStatus === "saving"}
+                >
+                  {saveLabel}
+                </button>
+              </div>
             </div>
           )}
         </div>
       </div>
+    </div>
+  );
+};
+
+/* ═══════════════════════════════════════════════════════════
+   NOTIFICATIONS — composant cloche à intégrer dans la navbar
+═══════════════════════════════════════════════════════════ */
+export const Notificationsbell = ({ user, onUserClick, onGameClick }) => {
+  const [notifs, setNotifs] = useState([]);
+  const [open, setOpen] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const dropRef = React.useRef(null);
+  const unread = notifs.filter((n) => !n.isRead).length;
+
+  const TYPE_CONFIG = {
+    follow: { icon: "👤", label: "vous suit", color: "#a78bfa" },
+    like: { icon: "❤️", label: "a aimé votre avis", color: "#f87171" },
+    comment: { icon: "💬", label: "a commenté", color: "#60a5fa" },
+    review: { icon: "⭐", label: "a noté le jeu", color: "#fbbf24" },
+    message: { icon: "✉️", label: "vous a écrit", color: "#34d399" },
+    thread_reply: { icon: "🗨️", label: "a répondu au fil", color: "#c084fc" },
+  };
+
+  const timeAgo = (ts) => {
+    if (!ts) return "";
+    const d = ts?._seconds ? new Date(ts._seconds * 1000) : new Date(ts);
+    const diff = (Date.now() - d) / 1000;
+    if (diff < 60) return "À l'instant";
+    if (diff < 3600) return `${Math.floor(diff / 60)} min`;
+    if (diff < 86400) return `${Math.floor(diff / 3600)} h`;
+    return `${Math.floor(diff / 86400)} j`;
+  };
+
+  const fetchNotifs = React.useCallback(async () => {
+    if (!auth.currentUser) return;
+    setLoading(true);
+    try {
+      const api = await authAxios();
+      const res = await api.get("/notifications");
+      setNotifs(res.data?.notifications || []);
+    } catch (_) {
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!user) return;
+    fetchNotifs();
+    const interval = setInterval(fetchNotifs, 30000);
+    return () => clearInterval(interval);
+  }, [user?.uid, fetchNotifs]);
+
+  useEffect(() => {
+    const handle = (e) => {
+      if (dropRef.current && !dropRef.current.contains(e.target))
+        setOpen(false);
+    };
+    document.addEventListener("mousedown", handle);
+    return () => document.removeEventListener("mousedown", handle);
+  }, []);
+
+  const markAllRead = async () => {
+    try {
+      const api = await authAxios();
+      await api.patch("/notifications/read-all");
+      setNotifs((prev) => prev.map((n) => ({ ...n, isRead: true })));
+    } catch (_) {}
+  };
+
+  const handleClick = async (notif) => {
+    if (!notif.isRead) {
+      try {
+        const api = await authAxios();
+        await api.patch(`/notifications/${notif.id}/read`);
+      } catch (_) {}
+      setNotifs((prev) =>
+        prev.map((n) => (n.id === notif.id ? { ...n, isRead: true } : n)),
+      );
+    }
+    setOpen(false);
+    if (notif.type === "follow" || notif.type === "message")
+      onUserClick?.(notif.sourceUserId);
+    else if (notif.gameId) onGameClick?.(notif.gameId);
+  };
+
+  if (!user) return null;
+
+  return (
+    <div ref={dropRef} style={{ position: "relative" }}>
+      <button
+        onClick={() => {
+          setOpen((v) => !v);
+          if (!open) fetchNotifs();
+        }}
+        className="nav-icon-btn"
+        title="Notifications"
+        style={{ position: "relative" }}
+      >
+        🔔
+        {unread > 0 && (
+          <span
+            style={{
+              position: "absolute",
+              top: "-4px",
+              right: "-4px",
+              background: "#9333ea",
+              color: "#fff",
+              borderRadius: "99px",
+              fontSize: "0.65rem",
+              fontWeight: "700",
+              padding: "1px 5px",
+              minWidth: "16px",
+              textAlign: "center",
+              boxShadow: "0 0 0 2px #0f0f1a",
+            }}
+          >
+            {unread > 9 ? "9+" : unread}
+          </span>
+        )}
+      </button>
+
+      {open && (
+        <div
+          style={{
+            position: "absolute",
+            top: "calc(100% + 10px)",
+            right: 0,
+            width: "340px",
+            maxHeight: "480px",
+            background: "#1a1a2e",
+            border: "1px solid rgba(147,51,234,0.3)",
+            borderRadius: "16px",
+            boxShadow: "0 20px 60px rgba(0,0,0,0.5)",
+            zIndex: 9999,
+            overflow: "hidden",
+            display: "flex",
+            flexDirection: "column",
+          }}
+        >
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              padding: "14px 16px",
+              borderBottom: "1px solid rgba(255,255,255,0.07)",
+            }}
+          >
+            <span
+              style={{
+                fontWeight: "600",
+                fontSize: "0.95rem",
+                color: "#e2e8f0",
+              }}
+            >
+              Notifications
+              {unread > 0 && (
+                <span
+                  style={{
+                    marginLeft: "8px",
+                    background: "rgba(147,51,234,0.2)",
+                    color: "#c084fc",
+                    borderRadius: "99px",
+                    fontSize: "0.7rem",
+                    padding: "1px 7px",
+                  }}
+                >
+                  {unread} nouvelles
+                </span>
+              )}
+            </span>
+            {unread > 0 && (
+              <button
+                onClick={markAllRead}
+                style={{
+                  background: "none",
+                  border: "none",
+                  cursor: "pointer",
+                  color: "#9333ea",
+                  fontSize: "0.75rem",
+                  fontWeight: "600",
+                }}
+              >
+                Tout marquer lu
+              </button>
+            )}
+          </div>
+          <div style={{ overflowY: "auto", flex: 1 }}>
+            {loading && notifs.length === 0 ? (
+              <div style={{ padding: "30px", textAlign: "center" }}>
+                <div className="loading-spinner" style={{ margin: "0 auto" }} />
+              </div>
+            ) : notifs.length === 0 ? (
+              <div style={{ padding: "40px 20px", textAlign: "center" }}>
+                <div style={{ fontSize: "2rem", marginBottom: "8px" }}>🔕</div>
+                <p
+                  style={{
+                    color: "rgba(255,255,255,0.35)",
+                    fontSize: "0.85rem",
+                  }}
+                >
+                  Aucune notification pour le moment
+                </p>
+              </div>
+            ) : (
+              notifs.map((n) => {
+                const cfg = TYPE_CONFIG[n.type] || {
+                  icon: "📣",
+                  label: n.type,
+                  color: "#888",
+                };
+                return (
+                  <div
+                    key={n.id}
+                    onClick={() => handleClick(n)}
+                    style={{
+                      display: "flex",
+                      alignItems: "flex-start",
+                      gap: "12px",
+                      padding: "12px 16px",
+                      background: n.isRead
+                        ? "transparent"
+                        : "rgba(147,51,234,0.07)",
+                      borderBottom: "1px solid rgba(255,255,255,0.04)",
+                      cursor: "pointer",
+                    }}
+                    onMouseEnter={(e) =>
+                      (e.currentTarget.style.background =
+                        "rgba(255,255,255,0.04)")
+                    }
+                    onMouseLeave={(e) =>
+                      (e.currentTarget.style.background = n.isRead
+                        ? "transparent"
+                        : "rgba(147,51,234,0.07)")
+                    }
+                  >
+                    <div
+                      style={{
+                        width: "36px",
+                        height: "36px",
+                        borderRadius: "50%",
+                        background: `${cfg.color}22`,
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        fontSize: "1rem",
+                        flexShrink: 0,
+                      }}
+                    >
+                      {cfg.icon}
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <p
+                        style={{
+                          margin: 0,
+                          fontSize: "0.82rem",
+                          color: "#cbd5e1",
+                          lineHeight: "1.4",
+                        }}
+                      >
+                        <strong style={{ color: cfg.color }}>
+                          {n.senderPseudo || n.sourceUserId || "Quelqu'un"}
+                        </strong>{" "}
+                        {cfg.label}
+                        {n.gameName && (
+                          <span style={{ color: "#c084fc" }}>
+                            {" "}
+                            · {n.gameName}
+                          </span>
+                        )}
+                      </p>
+                      {n.message && (
+                        <p
+                          style={{
+                            margin: "3px 0 0",
+                            fontSize: "0.75rem",
+                            color: "rgba(255,255,255,0.35)",
+                            overflow: "hidden",
+                            textOverflow: "ellipsis",
+                            whiteSpace: "nowrap",
+                          }}
+                        >
+                          {n.message}
+                        </p>
+                      )}
+                      <span
+                        style={{
+                          fontSize: "0.7rem",
+                          color: "rgba(255,255,255,0.25)",
+                          marginTop: "4px",
+                          display: "block",
+                        }}
+                      >
+                        {timeAgo(n.createdAt)}
+                      </span>
+                    </div>
+                    {!n.isRead && (
+                      <div
+                        style={{
+                          width: "7px",
+                          height: "7px",
+                          borderRadius: "50%",
+                          background: "#9333ea",
+                          flexShrink: 0,
+                          marginTop: "5px",
+                        }}
+                      />
+                    )}
+                  </div>
+                );
+              })
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 };
