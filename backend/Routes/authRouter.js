@@ -9,6 +9,6 @@ const authController = require('../controllers/authController');
 const { registerSchema, loginSchema } = require('../validators/authValidator');
 
 router.post('/register',validateRequest(registerSchema),authController.register);
-router.post('/login',validateRequest(loginSchema),authController.login);
+router.post('/login', validateRequest(loginSchema), authController.login);
 
 module.exports = router;
