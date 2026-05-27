@@ -1,5 +1,10 @@
 import { initializeApp } from "firebase/app";
-import { getAuth, connectAuthEmulator } from "firebase/auth";
+import {
+  getAuth,
+  connectAuthEmulator,
+  browserLocalPersistence,
+  setPersistence,
+} from "firebase/auth";
 
 const firebaseConfig = {
   apiKey: "fake-api-key",
@@ -9,6 +14,11 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
+
+// Persistence explicite en localStorage → survit au refresh
+setPersistence(auth, browserLocalPersistence).catch((err) => {
+  console.error("Erreur setPersistence:", err);
+});
 
 connectAuthEmulator(auth, "http://localhost:9099", { disableWarnings: true });
 

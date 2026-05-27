@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import axios from "axios";
 import { auth } from "./Service/firebase";
+import { onAuthStateChanged } from "firebase/auth";
 import Accueil from "./pages/Accueil";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
@@ -22,7 +23,6 @@ const authAxios = async () => {
 
 const App = () => {
   // ── Navigation stack ──────────────────────────────────────────────────────
-  // Chaque entrée : { page, gameId?, userId?, forumThread? }
   const [navStack, setNavStack] = useState([{ page: "accueil" }]);
   const current = navStack[navStack.length - 1];
   const currentPage = current.page;
@@ -44,8 +44,69 @@ const App = () => {
     setNavStack([{ page: "accueil" }]);
   };
 
-  // ── User ──────────────────────────────────────────────────────────────────
+  // ── Auth persistante ──────────────────────────────────────────────────────
   const [user, setUser] = useState(null);
+  const [authLoading, setAuthLoading] = useState(true); // bloque le rendu tant que Firebase n'a pas répondu
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+      if (firebaseUser) {
+        try {
+          // Récupère le profil complet depuis le backend (role, avatar, bio…)
+          const token = await firebaseUser.getIdToken(true);
+          const res = await axios.get(
+            "http://localhost:3000/api/users/profile",
+            {
+              headers: { Authorization: `Bearer ${token}` },
+            },
+          );
+          if (res.data.success && res.data.user) {
+            const u = res.data.user;
+            setUser({
+              uid: firebaseUser.uid,
+              email: firebaseUser.email,
+              pseudo: u.username || u.pseudo || firebaseUser.displayName,
+              username: u.username || u.pseudo || firebaseUser.displayName,
+              displayName: firebaseUser.displayName,
+              avatar: u.avatar || u.photoURL || firebaseUser.photoURL,
+              bio: u.bio || "",
+              role: u.role || "user",
+              birthDate: u.birthDate || "",
+              preferences: u.preferences || {},
+            });
+          } else {
+            // Fallback si le backend ne répond pas bien
+            setUser({
+              uid: firebaseUser.uid,
+              email: firebaseUser.email,
+              pseudo: firebaseUser.displayName,
+              username: firebaseUser.displayName,
+              displayName: firebaseUser.displayName,
+              avatar: firebaseUser.photoURL || null,
+            });
+          }
+        } catch (err) {
+          console.warn("Erreur récupération profil au démarrage:", err);
+          // On connecte quand même avec les infos Firebase de base
+          setUser({
+            uid: firebaseUser.uid,
+            email: firebaseUser.email,
+            pseudo: firebaseUser.displayName,
+            username: firebaseUser.displayName,
+            displayName: firebaseUser.displayName,
+            avatar: firebaseUser.photoURL || null,
+          });
+        }
+      } else {
+        setUser(null);
+      }
+      setAuthLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  // ── State annexe ──────────────────────────────────────────────────────────
   const [profileRefresh, setProfileRefresh] = useState(0);
   const [preselectedConversation, setPreselectedConversation] = useState(null);
 
@@ -79,7 +140,6 @@ const App = () => {
     }
   }, [user?.uid]);
 
-  // Fermer notifs si clic dehors
   useEffect(() => {
     const handle = (e) => {
       if (notifRef.current && !notifRef.current.contains(e.target))
@@ -89,7 +149,6 @@ const App = () => {
     return () => document.removeEventListener("mousedown", handle);
   }, []);
 
-  // Fermer search quand on change de page
   useEffect(() => {
     setShowSearch(false);
     setSearchTerm("");
@@ -101,28 +160,17 @@ const App = () => {
     goHome();
   };
 
-  const handleShowGame = (id) => {
-    navigate({ page: "jeu", gameId: id });
-  };
-
-  const handleUserClick = (userId) => {
+  const handleShowGame = (id) => navigate({ page: "jeu", gameId: id });
+  const handleUserClick = (userId) =>
     navigate({ page: "utilisateur_public", userId });
-  };
-
   const handleOpenMessaging = (conversation) => {
     setPreselectedConversation(conversation);
     navigate({ page: "messagerie" });
   };
-
   const handleAdminClick = () => navigate({ page: "admin" });
-
-  const handleForumClick = (payload) => {
+  const handleForumClick = (payload) =>
     navigate({ page: "forum", forumThread: payload });
-  };
-
-  const handleOpenForum = () => {
-    navigate({ page: "forum", forumThread: null });
-  };
+  const handleOpenForum = () => navigate({ page: "forum", forumThread: null });
 
   const handleNotificationClick = async (notif) => {
     if (!notif.isRead) {
@@ -141,9 +189,6 @@ const App = () => {
     setShowNotifications(false);
   };
 
-  const unreadCount = notifications.filter((n) => !n.isRead).length;
-
-  // Libellé humain des types de notif
   const notifLabel = (n) => {
     const map = {
       follow: "Un nouvel utilisateur vous suit !",
@@ -158,6 +203,28 @@ const App = () => {
     return map[n.type] || n.message || "Nouvelle notification";
   };
 
+  const unreadCount = notifications.filter((n) => !n.isRead).length;
+
+  // ── Écran de chargement pendant que Firebase vérifie la session ───────────
+  if (authLoading) {
+    return (
+      <div
+        className="app-container"
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          minHeight: "100vh",
+        }}
+      >
+        <div style={{ textAlign: "center" }}>
+          <div className="loading-spinner" style={{ margin: "0 auto 16px" }} />
+          <p style={{ color: "#64748b", fontSize: "0.9rem" }}>Chargement…</p>
+        </div>
+      </div>
+    );
+  }
+
   // ── Render ────────────────────────────────────────────────────────────────
   return (
     <div className="app-container">
@@ -166,7 +233,6 @@ const App = () => {
         <div className="navbar-container">
           {!showSearch ? (
             <>
-              {/* Logo */}
               <div className="navbar-logo-section">
                 <div
                   className="logo-icon"
@@ -184,9 +250,7 @@ const App = () => {
                 </h1>
               </div>
 
-              {/* Actions */}
               <div className="navbar-actions">
-                {/* Bouton retour — visible dès qu'on n'est pas à la racine */}
                 {navStack.length > 1 && (
                   <button
                     className="nav-icon-btn"
@@ -209,7 +273,6 @@ const App = () => {
                   </button>
                 )}
 
-                {/* Recherche */}
                 <button
                   className="nav-icon-btn"
                   onClick={() => {
@@ -231,7 +294,6 @@ const App = () => {
                   </svg>
                 </button>
 
-                {/* Notifications */}
                 {user && (
                   <div ref={notifRef} style={{ position: "relative" }}>
                     <button
@@ -291,7 +353,6 @@ const App = () => {
                           flexDirection: "column",
                         }}
                       >
-                        {/* Header dropdown */}
                         <div
                           style={{
                             display: "flex",
@@ -348,8 +409,6 @@ const App = () => {
                             </button>
                           )}
                         </div>
-
-                        {/* Liste notifs */}
                         <div style={{ overflowY: "auto", flex: 1 }}>
                           {notifications.length === 0 ? (
                             <div
@@ -453,7 +512,6 @@ const App = () => {
                   </div>
                 )}
 
-                {/* Messagerie */}
                 {user && (
                   <button
                     className="nav-icon-btn"
@@ -477,7 +535,6 @@ const App = () => {
                   </button>
                 )}
 
-                {/* Forum */}
                 <button
                   className="nav-icon-btn"
                   onClick={handleOpenForum}
@@ -495,7 +552,6 @@ const App = () => {
                   </svg>
                 </button>
 
-                {/* Profil / Connexion */}
                 <button
                   className="nav-user-btn"
                   onClick={() =>
@@ -561,7 +617,6 @@ const App = () => {
               </div>
             </>
           ) : (
-            /* ── Mode recherche ── */
             <div className="navbar-search-mode">
               <div className="search-bar-wrapper">
                 <input
@@ -621,7 +676,6 @@ const App = () => {
             onAdminClick={handleAdminClick}
           />
         )}
-
         {currentPage === "jeu" && (
           <Jeu
             gameId={current.gameId}
@@ -632,18 +686,15 @@ const App = () => {
             onForumClick={handleForumClick}
           />
         )}
-
         {currentPage === "login" && (
           <Login
             onSwitch={() => navigate({ page: "register" })}
             onLoginSuccess={handleLoginSuccess}
           />
         )}
-
         {currentPage === "register" && (
           <Register onSwitch={() => navigate({ page: "login" })} />
         )}
-
         {currentPage === "utilisateur" && (
           <Utilisateur
             key={profileRefresh}
@@ -653,13 +704,13 @@ const App = () => {
             }
             onLogout={() => {
               setUser(null);
+              auth.signOut();
               goHome();
             }}
             onGameClick={handleShowGame}
             onAdminClick={handleAdminClick}
           />
         )}
-
         {currentPage === "utilisateur_public" && (
           <Utilisateur
             key={current.userId}
@@ -671,7 +722,6 @@ const App = () => {
             onGameClick={handleShowGame}
           />
         )}
-
         {currentPage === "messagerie" && (
           <Messagerie
             user={user}
@@ -679,7 +729,6 @@ const App = () => {
             onConversationOpen={() => setPreselectedConversation(null)}
           />
         )}
-
         {currentPage === "forum" && (
           <Forum
             user={user}
@@ -687,7 +736,6 @@ const App = () => {
             initialThread={current.forumThread}
           />
         )}
-
         {currentPage === "admin" && <AdminDashboard onBack={goBack} />}
       </main>
     </div>

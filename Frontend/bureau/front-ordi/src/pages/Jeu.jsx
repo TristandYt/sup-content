@@ -70,18 +70,20 @@ const Jeu = ({
   const [showCommentBox, setShowCommentBox] = useState(false);
   const [reviewLoading, setReviewLoading] = useState(false);
 
-  // Formulaire
+  // Formulaire review
   const [newComment, setNewComment] = useState("");
   const [rating, setRating] = useState(0);
   const [hoverRating, setHoverRating] = useState(0);
 
+  // Commentaires sur reviews
   const [commentingReviewId, setCommentingReviewId] = useState(null);
   const [reviewCommentText, setReviewCommentText] = useState("");
+  const [commentLoading, setCommentLoading] = useState(false);
 
   // Jeux similaires
   const [similarGames, setSimilarGames] = useState([]);
 
-  // Fil de discussion du jeu sur le forum
+  // Forum
   const [gameThread, setGameThread] = useState(null);
 
   const scrollSimilar = (direction) => {
@@ -102,22 +104,20 @@ const Jeu = ({
   /* ── Chargement initial ── */
   useEffect(() => {
     if (!gameId) return;
-
     setReviews([]);
     setAverageRating(null);
     setGameThread(null);
+    setCommentingReviewId(null);
+    setReviewCommentText("");
     window.scrollTo(0, 0);
 
     const fetchDetails = async () => {
       try {
         setLoading(true);
-
         const res = await axios.get(
           `http://localhost:3000/api/games/details/${gameId}`,
         );
-        if (res.data) {
-          setGame(res.data);
-        }
+        if (res.data) setGame(res.data);
 
         // Jeux similaires
         try {
@@ -126,9 +126,7 @@ const Jeu = ({
             : axios.create({ baseURL: "http://localhost:3000/api" });
           const resSimilar = await api.get(`/games/${gameId}/similar`);
           setSimilarGames(resSimilar.data || []);
-        } catch (errSimilar) {
-          console.warn("Impossible de charger les jeux similaires", errSimilar);
-        }
+        } catch (_) {}
 
         // Statut collection
         if (auth.currentUser) {
@@ -139,14 +137,14 @@ const Jeu = ({
           } catch (_) {}
         }
 
-        // Fil de discussion lié au jeu
+        // Fil de discussion
         try {
           const api = auth.currentUser
             ? await authAxios()
             : axios.create({ baseURL: "http://localhost:3000/api" });
           const resThreads = await api.get(`/forum/threads?gameId=${gameId}`);
           if (resThreads.data?.success && resThreads.data.threads.length > 0) {
-            setGameThread(resThreads.data.threads[0]); // Premier fil lié au jeu
+            setGameThread(resThreads.data.threads[0]);
           } else {
             setGameThread(false);
           }
@@ -185,7 +183,6 @@ const Jeu = ({
           const myId = `${auth.currentUser.uid}_${gameId}`;
           const mine = allReviews.find((r) => r.id === myId);
           setMyReview(mine || null);
-
           if (isInitial && mine) {
             setRating(mine.rating);
             setNewComment(mine.text || "");
@@ -195,13 +192,9 @@ const Jeu = ({
     } catch (_) {}
   };
 
-  /* ── Ouvrir le forum (fil existant ou liste filtrée sur le jeu) ── */
   const handleForumButtonClick = () => {
-    if (gameThread) {
-      onForumClick?.({ thread: gameThread });
-    } else {
-      onForumClick?.({ gameId: String(gameId), gameName: game.name });
-    }
+    if (gameThread) onForumClick?.({ thread: gameThread });
+    else onForumClick?.({ gameId: String(gameId), gameName: game.name });
   };
 
   const toggleFavorite = async () => {
@@ -249,26 +242,23 @@ const Jeu = ({
     setReviewLoading(true);
     try {
       const api = await authAxios();
+      const pseudo =
+        user?.pseudo ||
+        user?.displayName ||
+        auth.currentUser?.displayName ||
+        "Anonyme";
       if (myReview) {
         await api.put(`/reviews/${gameId}`, {
           rating,
           text: newComment,
-          pseudo:
-            user?.pseudo ||
-            user?.displayName ||
-            auth.currentUser?.displayName ||
-            "Anonyme",
+          pseudo,
         });
       } else {
         await api.post(`/reviews`, {
           gameId: String(gameId),
           rating,
           text: newComment,
-          pseudo:
-            user?.pseudo ||
-            user?.displayName ||
-            auth.currentUser?.displayName ||
-            "Anonyme",
+          pseudo,
         });
       }
       await refreshReviews();
@@ -330,6 +320,7 @@ const Jeu = ({
     }
   };
 
+  // FIX : envoie le pseudo + mise à jour immédiate locale
   const handleSendComment = async (reviewId) => {
     if (!auth.currentUser) {
       alert("Connectez-vous pour commenter.");
@@ -337,19 +328,41 @@ const Jeu = ({
     }
     if (!reviewCommentText.trim()) return;
 
+    setCommentLoading(true);
     try {
       const api = await authAxios();
+      const pseudo =
+        user?.pseudo ||
+        user?.displayName ||
+        auth.currentUser?.displayName ||
+        "Anonyme";
       const res = await api.post(`/interactions/reviews/${reviewId}/comments`, {
         text: reviewCommentText,
+        pseudo,
       });
+
       if (res.data.success) {
         setReviewCommentText("");
         setCommentingReviewId(null);
-        alert("Commentaire envoyé !");
-        refreshReviews();
+
+        // Mise à jour immédiate sans recharger toute la page
+        if (res.data.comment) {
+          setReviews((prev) =>
+            prev.map((r) =>
+              r.id === reviewId
+                ? { ...r, comments: [...(r.comments || []), res.data.comment] }
+                : r,
+            ),
+          );
+        } else {
+          await refreshReviews(false);
+        }
       }
     } catch (err) {
       console.error("Erreur comment review:", err);
+      alert("Erreur lors de l'envoi du commentaire.");
+    } finally {
+      setCommentLoading(false);
     }
   };
 
@@ -363,9 +376,8 @@ const Jeu = ({
     );
 
   const getCoverUrl = (coverObj) => {
-    if (coverObj && coverObj.image_id) {
+    if (coverObj && coverObj.image_id)
       return `https://images.igdb.com/igdb/image/upload/t_cover_big/${coverObj.image_id}.jpg`;
-    }
     return defaultCover;
   };
 
@@ -431,7 +443,6 @@ const Jeu = ({
                       : "🤍 Ajouter aux favoris"}
                 </button>
 
-                {/* ── BOUTON FIL DE DISCUSSION ── toujours visible */}
                 <button
                   onClick={handleForumButtonClick}
                   className="category-btn"
@@ -517,7 +528,6 @@ const Jeu = ({
             <div className="comments-section-modern">
               <div className="section-header">
                 <h3 className="section-title">Avis des joueurs</h3>
-
                 {averageRating && (
                   <span
                     className="section-count"
@@ -533,7 +543,6 @@ const Jeu = ({
                     </span>
                   </span>
                 )}
-
                 {auth.currentUser && (
                   <button
                     className="category-btn active sort-btn"
@@ -554,6 +563,7 @@ const Jeu = ({
                 )}
               </div>
 
+              {/* Formulaire de review */}
               {showCommentBox && (
                 <div
                   className="game-card-modern"
@@ -633,6 +643,7 @@ const Jeu = ({
                 </div>
               )}
 
+              {/* Liste des avis */}
               <div className="comments-list-modern">
                 {reviews.length === 0 && (
                   <p
@@ -649,6 +660,7 @@ const Jeu = ({
                   const isMe =
                     auth.currentUser &&
                     r.id === `${auth.currentUser.uid}_${gameId}`;
+                  const isCommenting = commentingReviewId === r.id;
                   return (
                     <div
                       key={r.id}
@@ -665,6 +677,7 @@ const Jeu = ({
                         cursor: "default",
                       }}
                     >
+                      {/* Header review */}
                       <div
                         style={{
                           display: "flex",
@@ -677,11 +690,14 @@ const Jeu = ({
                           {formatDate(r.updatedAt)}
                         </span>
                       </div>
+
                       {r.text && (
                         <p style={{ margin: "0.5rem 0", color: "#cbd5e1" }}>
                           {r.text}
                         </p>
                       )}
+
+                      {/* Auteur */}
                       <div
                         className="game-title"
                         style={{ fontSize: "0.85rem", color: "#9333ea" }}
@@ -700,6 +716,7 @@ const Jeu = ({
                         )}
                       </div>
 
+                      {/* Actions like + répondre */}
                       <div
                         style={{
                           marginTop: "12px",
@@ -738,41 +755,43 @@ const Jeu = ({
                           <span>{r.likedBy?.length || 0}</span>
                         </button>
 
-                        <button
-                          onClick={() =>
-                            setCommentingReviewId(
-                              commentingReviewId === r.id ? null : r.id,
-                            )
-                          }
-                          className="nav-icon-btn"
-                          style={{
-                            padding: "4px 10px",
-                            display: "flex",
-                            alignItems: "center",
-                            gap: "6px",
-                            color: "#94a3b8",
-                            fontSize: "0.85rem",
-                            fontWeight: "600",
-                          }}
-                        >
-                          ✍️ Répondre
-                        </button>
+                        {auth.currentUser && (
+                          <button
+                            onClick={() => {
+                              setCommentingReviewId(isCommenting ? null : r.id);
+                              setReviewCommentText("");
+                            }}
+                            className="nav-icon-btn"
+                            style={{
+                              padding: "4px 10px",
+                              display: "flex",
+                              alignItems: "center",
+                              gap: "6px",
+                              color: isCommenting ? "#c084fc" : "#94a3b8",
+                              fontSize: "0.85rem",
+                              fontWeight: "600",
+                            }}
+                          >
+                            ✍️ {isCommenting ? "Annuler" : "Répondre"}
+                          </button>
+                        )}
                       </div>
 
+                      {/* Commentaires existants */}
                       {r.comments && r.comments.length > 0 && (
                         <div
                           style={{
                             marginTop: "12px",
                             marginLeft: "10px",
                             paddingLeft: "12px",
-                            borderLeft: "2px solid rgba(147, 51, 234, 0.3)",
+                            borderLeft: "2px solid rgba(147,51,234,0.3)",
                           }}
                         >
                           {r.comments.map((c, idx) => (
                             <div
-                              key={idx}
+                              key={c.id || idx}
                               style={{
-                                background: "rgba(255, 255, 255, 0.03)",
+                                background: "rgba(255,255,255,0.03)",
                                 padding: "8px 12px",
                                 borderRadius: "8px",
                                 marginBottom: "6px",
@@ -795,41 +814,75 @@ const Jeu = ({
                                   fontWeight: "600",
                                 }}
                               >
-                                {c.pseudo || "Anonyme"}
+                                {c.pseudo || c.userId || "Anonyme"}
                               </span>
                             </div>
                           ))}
                         </div>
                       )}
 
-                      {commentingReviewId === r.id && (
-                        <div style={{ marginTop: "12px" }}>
+                      {/* FIX : zone de texte pour répondre — visible et fonctionnelle */}
+                      {isCommenting && (
+                        <div
+                          style={{
+                            marginTop: "12px",
+                            borderTop: "1px solid rgba(255,255,255,0.05)",
+                            paddingTop: "12px",
+                          }}
+                        >
                           <textarea
                             className="filter-select"
                             style={{
                               width: "100%",
-                              minHeight: "60px",
+                              minHeight: "70px",
                               fontSize: "0.85rem",
-                              padding: "8px",
+                              padding: "10px",
                               resize: "vertical",
+                              marginBottom: "8px",
                             }}
                             value={reviewCommentText}
                             onChange={(e) =>
                               setReviewCommentText(e.target.value)
                             }
                             placeholder="Écrire une réponse..."
+                            autoFocus
                           />
-                          <button
-                            className="nav-user-btn"
-                            style={{
-                              marginTop: "8px",
-                              padding: "5px 15px",
-                              fontSize: "0.8rem",
-                            }}
-                            onClick={() => handleSendComment(r.id)}
-                          >
-                            Envoyer
-                          </button>
+                          <div style={{ display: "flex", gap: "8px" }}>
+                            <button
+                              className="nav-user-btn"
+                              style={{
+                                padding: "6px 18px",
+                                fontSize: "0.85rem",
+                                opacity:
+                                  commentLoading || !reviewCommentText.trim()
+                                    ? 0.5
+                                    : 1,
+                                cursor:
+                                  commentLoading || !reviewCommentText.trim()
+                                    ? "not-allowed"
+                                    : "pointer",
+                              }}
+                              onClick={() => handleSendComment(r.id)}
+                              disabled={
+                                commentLoading || !reviewCommentText.trim()
+                              }
+                            >
+                              {commentLoading ? "Envoi..." : "Envoyer"}
+                            </button>
+                            <button
+                              className="category-btn"
+                              style={{
+                                padding: "6px 14px",
+                                fontSize: "0.85rem",
+                              }}
+                              onClick={() => {
+                                setCommentingReviewId(null);
+                                setReviewCommentText("");
+                              }}
+                            >
+                              Annuler
+                            </button>
+                          </div>
                         </div>
                       )}
                     </div>
