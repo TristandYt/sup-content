@@ -13,7 +13,8 @@ router.put('/profile', userController.updateProfile);
 router.put('/password', userController.updatePassword);
 router.put('/email', userController.updateEmail);
 router.delete('/account', userController.deleteAccount);
-
+router.get('/preferences', userController.getPreferences);
+router.put('/preferences', userController.updatePreferences);
 router.get('/favorites', userController.getFavorites);
 router.post('/favorites', userController.addFavorite);
 router.delete('/favorites/:gameId', userController.removeFavorite);

@@ -28,84 +28,37 @@ exports.getProfile = async (req, res, next) => {
 
 /*
  * PUT /api/users/profile
- * Body : { username?, bio? }
+ * Body : { username?, bio?, avatar?, preferences?, website? }
  */
 exports.updateProfile = async (req, res, next) => {
     try {
         const userId = req.user.id;
-        const { username, bio, preferences, avatarUrl, website } = req.body;
+        
+        // On liste tous les champs que l'utilisateur a le droit de modifier
+        const allowedFields = ['username', 'bio', 'preferences', 'avatar', 'website'];
 
         const updates = { updatedAt: admin.firestore.FieldValue.serverTimestamp() };
-        if (username !== undefined) updates.username = username;
-        if (bio !== undefined) updates.bio = bio;
-        if (preferences !== undefined) updates.preferences = preferences;
-        if (avatarUrl !== undefined) updates['profileData.avatarUrl'] = avatarUrl;
-        if (website !== undefined) updates['profileData.website'] = website;
-
-        await db.collection('users').doc(userId).update(updates);
-
-        // Logger la mise à jour du profil
         const logUpdates = {};
-        if (username !== undefined) logUpdates.username = username;
-        if (bio !== undefined) logUpdates.bio = bio;
-        if (avatarUrl !== undefined) logUpdates.avatarUrl = avatarUrl;
-        if (website !== undefined) logUpdates.website = website;
 
-        await Logger.log('profile_updated', userId, { updates: logUpdates });
-
-        res.json({ success: true, msg: 'Profil mis à jour' });
-    } catch (error) {
-        next(error);
-    }
-};
-
-/*
- * PUT /api/users/password
- * Body : { newPassword }
- */
-exports.updatePassword = async (req, res, next) => {
-    try {
-        const userId = req.user.id;
-        const { newPassword } = req.body;
-
-        if (!newPassword) {
-            return res.status(400).json({ success: false, msg: 'Nouveau mot de passe requis' });
-        }
-
-        await auth.updateUser(userId, { password: newPassword });
-
-        // Logger la mise à jour du mot de passe
-        await Logger.log('password_updated', userId, {});
-
-        res.json({ success: true, msg: 'Mot de passe mis à jour' });
-    } catch (error) {
-        next(error);
-    }
-};
-
-/*
- * PUT /api/users/email
- * Body : { newEmail }
- */
-exports.updateEmail = async (req, res, next) => {
-    try {
-        const userId = req.user.id;
-        const { newEmail } = req.body;
-
-        if (!newEmail) {
-            return res.status(400).json({ success: false, msg: 'Nouvel email requis' });
-        }
-
-        await auth.updateUser(userId, { email: newEmail });
-        await db.collection('users').doc(userId).update({
-            email: newEmail,
-            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        allowedFields.forEach(field => {
+            if (req.body[field] !== undefined) {
+                updates[field] = req.body[field];
+                
+                if (field !== 'preferences') {
+                    logUpdates[field] = req.body[field];
+                }
+            }
         });
 
-        // Logger la mise à jour de l'email
-        await Logger.log('email_updated', userId, { newEmail });
+        // Mise à jour dans Firestore
+        await db.collection('users').doc(userId).update(updates);
 
-        res.json({ success: true, msg: 'Email mis à jour' });
+        // Log de l'action si au moins un champ a été modifié
+        if (Object.keys(logUpdates).length > 0) {
+            await Logger.log('profile_updated', userId, { updates: logUpdates });
+        }
+
+        res.json({ success: true, msg: 'Profil mis à jour' });
     } catch (error) {
         next(error);
     }
@@ -254,6 +207,63 @@ exports.promoteUser = async (req, res, next) => {
     } catch (error) {
         next(error);
     }
+};
+
+exports.getPreferences = async (req, res, next) => {
+  try {
+    const userId = req.user.id;
+    const userDoc = await db.collection('users').doc(userId).get();
+
+    if (!userDoc.exists) {
+      return res.status(404).json({ success: false, msg: 'Utilisateur introuvable' });
+    }
+
+    const preferences = userDoc.data().preferences || { 
+      theme: 'dark', 
+      language: 'fr', 
+      emailNotifications: true, 
+      pushNotifications: true 
+    };
+
+    res.json({ success: true, preferences });
+  } catch (error) {
+    next(error);
+  }
+};
+
+exports.updatePreferences = async (req, res, next) => {
+  try {
+    const userId = req.user.id;
+    const { theme, language, emailNotifications, pushNotifications } = req.body;
+
+    // Validation
+    const validThemes = ['light', 'dark'];
+    const validLanguages = ['en', 'fr'];
+
+    if (theme && !validThemes.includes(theme)) {
+      return res.status(400).json({ success: false, msg: 'Thème invalide' });
+    }
+    if (language && !validLanguages.includes(language)) {
+      return res.status(400).json({ success: false, msg: 'Langue invalide' });
+    }
+
+    const updates = { updatedAt: admin.firestore.FieldValue.serverTimestamp() };
+    const preferences = {};
+
+    if (theme !== undefined) preferences.theme = theme;
+    if (language !== undefined) preferences.language = language;
+    if (emailNotifications !== undefined) preferences.emailNotifications = emailNotifications;
+    if (pushNotifications !== undefined) preferences.pushNotifications = pushNotifications;
+
+    updates.preferences = preferences;
+
+    await db.collection('users').doc(userId).update(updates);
+    await Logger.log('preferences_updated', userId, { preferences });
+
+    res.json({ success: true, msg: 'Préférences mises à jour', preferences });
+  } catch (error) {
+    next(error);
+  }
 };
 
 /*

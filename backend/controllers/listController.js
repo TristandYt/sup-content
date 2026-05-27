@@ -198,3 +198,91 @@ exports.addGameToList = async (req, res, next) => {
         next(error);
     }
 };
+
+// Mettre à jour les infos d'une liste
+exports.updateList = async (req, res, next) => {
+  try {
+    const userId = req.user.id;
+    const { listId } = req.params;
+    const { name, description, isPrivate } = req.body;
+
+    const listRef = db.collection('custom_lists').doc(listId);
+    const doc = await listRef.get();
+
+    if (!doc.exists) {
+      return res.status(404).json({ success: false, msg: 'Liste introuvable' });
+    }
+    if (doc.data().userId !== userId) {
+      return res.status(403).json({ success: false, msg: 'Accès refusé' });
+    }
+
+    const updates = { updatedAt: admin.firestore.FieldValue.serverTimestamp() };
+    if (name !== undefined) updates.name = name;
+    if (description !== undefined) updates.description = description;
+    if (isPrivate !== undefined) updates.isPrivate = isPrivate;
+
+    await listRef.update(updates);
+    await Logger.log('custom_list_updated', userId, { listId });
+
+    res.json({ success: true, msg: 'Liste mise à jour' });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Supprimer une liste entière
+exports.deleteList = async (req, res, next) => {
+  try {
+    const userId = req.user.id;
+    const { listId } = req.params;
+
+    const listRef = db.collection('custom_lists').doc(listId);
+    const doc = await listRef.get();
+
+    if (!doc.exists) {
+      return res.status(404).json({ success: false, msg: 'Liste introuvable' });
+    }
+    if (doc.data().userId !== userId) {
+      return res.status(403).json({ success: false, msg: 'Accès refusé' });
+    }
+
+    await listRef.delete();
+    await Logger.log('custom_list_deleted', userId, { listId });
+
+    res.json({ success: true, msg: 'Liste supprimée' });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Retirer un jeu d'une liste
+exports.removeGameFromList = async (req, res, next) => {
+  try {
+    const userId = req.user.id;
+    const { listId, gameId } = req.params;
+
+    const listRef = db.collection('custom_lists').doc(listId);
+    const doc = await listRef.get();
+
+    if (!doc.exists) {
+      return res.status(404).json({ success: false, msg: 'Liste introuvable' });
+    }
+    if (doc.data().userId !== userId) {
+      return res.status(403).json({ success: false, msg: 'Accès refusé' });
+    }
+
+    const games = doc.data().games || [];
+    const updatedGames = games.filter(g => g.gameId !== gameId.toString());
+
+    await listRef.update({ 
+      games: updatedGames,
+      updatedAt: admin.firestore.FieldValue.serverTimestamp()
+    });
+
+    await Logger.log('game_removed_from_list', userId, { listId, gameId });
+
+    res.json({ success: true, msg: 'Jeu retiré de la liste' });
+  } catch (error) {
+    next(error);
+  }
+};
