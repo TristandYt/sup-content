@@ -8,7 +8,6 @@ class IGDBService {
     this.baseUrl = "https://api.igdb.com/v4";
   }
 
-  // Requête générique POST
   async request(endpoint, query, isRetry = false) {
     try {
       const token = await getIgdbToken();
@@ -25,9 +24,7 @@ class IGDBService {
       return response.data;
     } catch (error) {
       if (error.response && error.response.status === 401 && !isRetry) {
-        console.warn(
-          `Token IGDB expiré ou révoqué. Nouvelle tentative en cours...`,
-        );
+        console.warn("Token IGDB expiré ou révoqué. Nouvelle tentative...");
         return this.request(endpoint, query, true);
       }
       console.error(`Erreur IGDB (${endpoint}):`, error.message);
@@ -35,18 +32,16 @@ class IGDBService {
     }
   }
 
-  // Recherche par titre
   async searchGames(title, limit = 12, offset = 0) {
     const query = `
-            fields name, cover.image_id, total_rating, summary, first_release_date, genres.name, age_ratings.category, age_ratings.rating;
-            search "${title}";
-            limit ${limit};
-            offset ${offset};
-        `;
+      fields name, cover.image_id, total_rating, summary, first_release_date, genres.name, age_ratings.category, age_ratings.rating;
+      search "${title}";
+      limit ${limit};
+      offset ${offset};
+    `;
     return this.request("games", query);
   }
 
-  // Jeux populaires
   async getPopularGames(
     sortBy = "total_rating",
     order = "desc",
@@ -59,18 +54,16 @@ class IGDBService {
       ? sortBy
       : "total_rating";
     const direction = order === "asc" ? "asc" : "desc";
-
     const query = `
-            fields name, cover.image_id, total_rating, first_release_date, genres.name, age_ratings.category, age_ratings.rating;
-            sort ${field} ${direction};
-            where total_rating != null & cover != null;
-            limit ${limit};
-            offset ${offset};
-        `;
+      fields name, cover.image_id, total_rating, first_release_date, genres.name, age_ratings.category, age_ratings.rating;
+      sort ${field} ${direction};
+      where total_rating != null & cover != null;
+      limit ${limit};
+      offset ${offset};
+    `;
     return this.request("games", query);
   }
 
-  // Recherche avancée (filtres)
   async advancedSearch(q, genre, year) {
     let query = `fields name, cover.image_id, first_release_date, total_rating, genres.name, age_ratings.category, age_ratings.rating; limit 20;`;
     let whereClauses = [];
@@ -88,59 +81,65 @@ class IGDBService {
         `first_release_date >= ${startOfYear} & first_release_date <= ${endOfYear}`,
       );
     }
-    if (!q && whereClauses.length === 0) {
+    if (!q && whereClauses.length === 0)
       whereClauses.push("total_rating_count > 10");
-    }
+    if (whereClauses.length > 0) query += ` where ${whereClauses.join(" & ")};`;
 
-    if (whereClauses.length > 0) {
-      query += ` where ${whereClauses.join(" & ")};`;
-    }
     return this.request("games", query);
   }
 
-  // Jeux qui vont sortir — supporte la pagination pour le carrousel "charger plus"
   async getUpcomingGames(limit = 20, offset = 0) {
     const now = Math.floor(Date.now() / 1000);
     const query = `
-            fields name, cover.image_id, first_release_date, total_rating, age_ratings.category, age_ratings.rating;
-            where first_release_date > ${now} & cover != null;
-            sort first_release_date asc;
-            limit ${limit};
-            offset ${offset};
-        `;
+      fields name, cover.image_id, first_release_date, total_rating, age_ratings.category, age_ratings.rating;
+      where first_release_date > ${now} & cover != null;
+      sort first_release_date asc;
+      limit ${limit};
+      offset ${offset};
+    `;
     return this.request("games", query);
   }
 
-  // Filtrer par genre, plateforme, et style(theme)
   async getGamesFiltered({ style, genre, platform, limit = 12, offset = 0 }) {
     let query = `fields name, cover.image_id, first_release_date, total_rating, genres.name, age_ratings.category, age_ratings.rating; limit ${limit}; offset ${offset};`;
     let whereClauses = [];
-
     if (genre) whereClauses.push(`genres = (${genre})`);
     if (platform) whereClauses.push(`platforms = (${platform})`);
     if (style) whereClauses.push(`themes = (${style})`);
-
-    if (whereClauses.length > 0) {
-      query += ` where ${whereClauses.join(" & ")};`;
-    }
+    if (whereClauses.length > 0) query += ` where ${whereClauses.join(" & ")};`;
     return this.request("games", query);
   }
 
-  // Détails d'un jeu
+  // ── Détails d'un jeu — avec DLC et expansions ────────────────────────────
   async getGameDetails(gameId) {
     const query = `
-            fields name, cover.image_id, summary, genres.name, platforms.name, screenshots.image_id, first_release_date, age_ratings.category, age_ratings.rating;
-            where id = ${gameId};
-        `;
+      fields name, cover.image_id, summary, genres.name, platforms.name,
+             screenshots.image_id, first_release_date,
+             age_ratings.category, age_ratings.rating,
+             dlcs.name, dlcs.cover.image_id, dlcs.first_release_date,
+             expansions.name, expansions.cover.image_id, expansions.first_release_date;
+      where id = ${gameId};
+    `;
     return this.request("games", query);
   }
 
-  // Jeux similaires
+  // ── DLC et expansions d'un jeu (endpoint dédié) ──────────────────────────
+  async getGameDlcsAndExpansions(gameId) {
+    // Récupère les DLC (category=1) et expansions (category=2) liés au jeu parent
+    const query = `
+      fields name, cover.image_id, first_release_date, category, summary;
+      where parent_game = ${gameId} & category = (1,2);
+      sort first_release_date asc;
+      limit 20;
+    `;
+    return this.request("games", query);
+  }
+
   async getSimilarGames(gameId) {
     const query = `
-            fields similar_games.name, similar_games.cover.image_id, similar_games.total_rating, similar_games.first_release_date, similar_games.age_ratings.category, similar_games.age_ratings.rating;
-            where id = ${gameId};
-        `;
+      fields similar_games.name, similar_games.cover.image_id, similar_games.total_rating, similar_games.first_release_date, similar_games.age_ratings.category, similar_games.age_ratings.rating;
+      where id = ${gameId};
+    `;
     return this.request("games", query);
   }
 }

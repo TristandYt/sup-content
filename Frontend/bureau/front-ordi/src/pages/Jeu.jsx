@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { auth } from "../Service/firebase";
 import "../../Style/Styles.css";
@@ -12,7 +12,6 @@ const authAxios = async () => {
   });
 };
 
-/* ── Composant étoiles réutilisable ── */
 const StarRating = ({
   value,
   hoverValue,
@@ -49,6 +48,15 @@ const formatDate = (updatedAt) => {
   return ts.toLocaleDateString("fr-FR");
 };
 
+const formatReleaseDate = (timestamp) => {
+  if (!timestamp) return "Date inconnue";
+  return new Date(timestamp * 1000).toLocaleDateString("fr-FR", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+};
+
 /* ════════════════════════════════════════════════ */
 const Jeu = ({
   gameId,
@@ -69,13 +77,11 @@ const Jeu = ({
   const [myReview, setMyReview] = useState(null);
   const [showCommentBox, setShowCommentBox] = useState(false);
   const [reviewLoading, setReviewLoading] = useState(false);
-
-  // Formulaire review
   const [newComment, setNewComment] = useState("");
   const [rating, setRating] = useState(0);
   const [hoverRating, setHoverRating] = useState(0);
 
-  // Commentaires sur reviews
+  // Comments
   const [commentingReviewId, setCommentingReviewId] = useState(null);
   const [reviewCommentText, setReviewCommentText] = useState("");
   const [commentLoading, setCommentLoading] = useState(false);
@@ -83,21 +89,27 @@ const Jeu = ({
   // Jeux similaires
   const [similarGames, setSimilarGames] = useState([]);
 
+  // DLC / Expansions
+  const [dlcs, setDlcs] = useState([]);
+  const [expansions, setExpansions] = useState([]);
+  const [dlcLoading, setDlcLoading] = useState(false);
+  const [dlcTab, setDlcTab] = useState("dlc"); // "dlc" | "expansion"
+
   // Forum
   const [gameThread, setGameThread] = useState(null);
 
   const scrollSimilar = (direction) => {
     setSimilarGames((prev) => {
       if (prev.length <= 5) return prev;
-      const newArr = [...prev];
+      const arr = [...prev];
       if (direction === "right") {
-        const first = newArr.shift();
-        newArr.push(first);
+        const f = arr.shift();
+        arr.push(f);
       } else {
-        const last = newArr.pop();
-        newArr.unshift(last);
+        const l = arr.pop();
+        arr.unshift(l);
       }
-      return newArr;
+      return arr;
     });
   };
 
@@ -109,6 +121,8 @@ const Jeu = ({
     setGameThread(null);
     setCommentingReviewId(null);
     setReviewCommentText("");
+    setDlcs([]);
+    setExpansions([]);
     window.scrollTo(0, 0);
 
     const fetchDetails = async () => {
@@ -117,7 +131,13 @@ const Jeu = ({
         const res = await axios.get(
           `http://localhost:3000/api/games/details/${gameId}`,
         );
-        if (res.data) setGame(res.data);
+        if (res.data) {
+          const g = res.data;
+          setGame(g);
+          // DLC/expansions déjà dans la réponse details
+          if (g.dlcs?.length) setDlcs(g.dlcs);
+          if (g.expansions?.length) setExpansions(g.expansions);
+        }
 
         // Jeux similaires
         try {
@@ -128,6 +148,23 @@ const Jeu = ({
           setSimilarGames(resSimilar.data || []);
         } catch (_) {}
 
+        // DLC/expansions via endpoint dédié (plus complet)
+        try {
+          setDlcLoading(true);
+          const api = auth.currentUser
+            ? await authAxios()
+            : axios.create({ baseURL: "http://localhost:3000/api" });
+          const resDlc = await api.get(`/games/${gameId}/dlcs`);
+          if (resDlc.data?.success) {
+            if (resDlc.data.dlcs?.length) setDlcs(resDlc.data.dlcs);
+            if (resDlc.data.expansions?.length)
+              setExpansions(resDlc.data.expansions);
+          }
+        } catch (_) {
+        } finally {
+          setDlcLoading(false);
+        }
+
         // Statut collection
         if (auth.currentUser) {
           try {
@@ -137,17 +174,17 @@ const Jeu = ({
           } catch (_) {}
         }
 
-        // Fil de discussion
+        // Forum
         try {
           const api = auth.currentUser
             ? await authAxios()
             : axios.create({ baseURL: "http://localhost:3000/api" });
           const resThreads = await api.get(`/forum/threads?gameId=${gameId}`);
-          if (resThreads.data?.success && resThreads.data.threads.length > 0) {
-            setGameThread(resThreads.data.threads[0]);
-          } else {
-            setGameThread(false);
-          }
+          setGameThread(
+            resThreads.data?.success && resThreads.data.threads.length > 0
+              ? resThreads.data.threads[0]
+              : false,
+          );
         } catch (_) {
           setGameThread(false);
         }
@@ -157,11 +194,9 @@ const Jeu = ({
         setLoading(false);
       }
     };
-
     fetchDetails();
   }, [gameId]);
 
-  // Rafraîchissement des avis
   useEffect(() => {
     if (!gameId) return;
     refreshReviews(true);
@@ -171,14 +206,13 @@ const Jeu = ({
 
   const refreshReviews = async (isInitial = false) => {
     try {
-      const resReviews = await axios.get(
+      const res = await axios.get(
         `http://localhost:3000/api/reviews/game/${gameId}`,
       );
-      if (resReviews.data?.success) {
-        const allReviews = resReviews.data.reviews || [];
+      if (res.data?.success) {
+        const allReviews = res.data.reviews || [];
         setReviews(allReviews);
-        setAverageRating(resReviews.data.averageRating);
-
+        setAverageRating(res.data.averageRating);
         if (auth.currentUser) {
           const myId = `${auth.currentUser.uid}_${gameId}`;
           const mine = allReviews.find((r) => r.id === myId);
@@ -223,7 +257,6 @@ const Jeu = ({
         onFavoriteChange?.();
       }
     } catch (err) {
-      console.error("Erreur favoris:", err.response?.data);
       alert("Erreur lors de la mise à jour des favoris.");
     } finally {
       setFavLoading(false);
@@ -247,24 +280,22 @@ const Jeu = ({
         user?.displayName ||
         auth.currentUser?.displayName ||
         "Anonyme";
-      if (myReview) {
+      if (myReview)
         await api.put(`/reviews/${gameId}`, {
           rating,
           text: newComment,
           pseudo,
         });
-      } else {
+      else
         await api.post(`/reviews`, {
           gameId: String(gameId),
           rating,
           text: newComment,
           pseudo,
         });
-      }
       await refreshReviews();
       setShowCommentBox(false);
     } catch (err) {
-      console.error("Erreur review:", err.response?.data);
       alert("Erreur lors de l'envoi de votre avis.");
     } finally {
       setReviewLoading(false);
@@ -282,7 +313,6 @@ const Jeu = ({
       setNewComment("");
       setShowCommentBox(false);
     } catch (err) {
-      console.error("Erreur suppression:", err.response?.data);
       alert("Erreur lors de la suppression.");
     } finally {
       setReviewLoading(false);
@@ -300,34 +330,28 @@ const Jeu = ({
       if (res.data.success) {
         setReviews((prev) =>
           prev.map((r) => {
-            if (r.id === reviewId) {
-              const myUid = auth.currentUser.uid;
-              const likedBy = r.likedBy || [];
-              const isNowLiked = !likedBy.includes(myUid);
-              return {
-                ...r,
-                likedBy: isNowLiked
-                  ? [...likedBy, myUid]
-                  : likedBy.filter((id) => id !== myUid),
-              };
-            }
-            return r;
+            if (r.id !== reviewId) return r;
+            const myUid = auth.currentUser.uid;
+            const likedBy = r.likedBy || [];
+            const liked = !likedBy.includes(myUid);
+            return {
+              ...r,
+              likedBy: liked
+                ? [...likedBy, myUid]
+                : likedBy.filter((id) => id !== myUid),
+            };
           }),
         );
       }
-    } catch (err) {
-      console.error("Erreur like review:", err);
-    }
+    } catch (_) {}
   };
 
-  // FIX : envoie le pseudo + mise à jour immédiate locale
   const handleSendComment = async (reviewId) => {
     if (!auth.currentUser) {
       alert("Connectez-vous pour commenter.");
       return;
     }
     if (!reviewCommentText.trim()) return;
-
     setCommentLoading(true);
     try {
       const api = await authAxios();
@@ -340,12 +364,9 @@ const Jeu = ({
         text: reviewCommentText,
         pseudo,
       });
-
       if (res.data.success) {
         setReviewCommentText("");
         setCommentingReviewId(null);
-
-        // Mise à jour immédiate sans recharger toute la page
         if (res.data.comment) {
           setReviews((prev) =>
             prev.map((r) =>
@@ -358,12 +379,27 @@ const Jeu = ({
           await refreshReviews(false);
         }
       }
-    } catch (err) {
-      console.error("Erreur comment review:", err);
+    } catch (_) {
       alert("Erreur lors de l'envoi du commentaire.");
     } finally {
       setCommentLoading(false);
     }
+  };
+
+  const getCoverUrl = (coverObj) => {
+    if (!coverObj) return defaultCover;
+    if (coverObj.image_id)
+      return `https://images.igdb.com/igdb/image/upload/t_cover_big/${coverObj.image_id}.jpg`;
+    if (typeof coverObj === "string" && coverObj.startsWith("http"))
+      return coverObj;
+    return defaultCover;
+  };
+
+  const getThumbUrl = (coverObj) => {
+    if (!coverObj) return defaultCover;
+    if (coverObj.image_id)
+      return `https://images.igdb.com/igdb/image/upload/t_cover_small/${coverObj.image_id}.jpg`;
+    return defaultCover;
   };
 
   if (loading)
@@ -375,16 +411,11 @@ const Jeu = ({
       </div>
     );
 
-  const getCoverUrl = (coverObj) => {
-    if (coverObj && coverObj.image_id)
-      return `https://images.igdb.com/igdb/image/upload/t_cover_big/${coverObj.image_id}.jpg`;
-    return defaultCover;
-  };
+  const hasDlcContent = dlcs.length > 0 || expansions.length > 0;
 
   return (
     <div className="app-container">
       <div className="hero-gradient"></div>
-
       <div className="main-content-wrapper">
         <button
           onClick={onBack}
@@ -433,7 +464,6 @@ const Jeu = ({
                     justifyContent: "center",
                     background: isFavorite ? "#ef4444" : "",
                     opacity: favLoading ? 0.7 : 1,
-                    cursor: favLoading ? "not-allowed" : "pointer",
                   }}
                 >
                   {favLoading
@@ -442,7 +472,6 @@ const Jeu = ({
                       ? "❤️ Dans la collection"
                       : "🤍 Ajouter aux favoris"}
                 </button>
-
                 <button
                   onClick={handleForumButtonClick}
                   className="category-btn"
@@ -500,12 +529,18 @@ const Jeu = ({
               >
                 <p>
                   <strong>Genres :</strong>{" "}
-                  {game.genres?.map((g) => g.name).join(", ")}
+                  {game.genres?.map((g) => g.name).join(", ") || "—"}
                 </p>
                 <p>
                   <strong>Plateformes :</strong>{" "}
-                  {game.platforms?.map((p) => p.name).join(", ")}
+                  {game.platforms?.map((p) => p.name).join(", ") || "—"}
                 </p>
+                {game.first_release_date && (
+                  <p>
+                    <strong>Sortie :</strong>{" "}
+                    {formatReleaseDate(game.first_release_date)}
+                  </p>
+                )}
               </div>
             </div>
           </div>
@@ -524,7 +559,136 @@ const Jeu = ({
               {game.summary || "Aucun résumé disponible."}
             </p>
 
-            {/* ══ SECTION AVIS ══ */}
+            {/* ══ DLC & EXPANSIONS ══════════════════════════════════════════ */}
+            {(hasDlcContent || dlcLoading) && (
+              <div style={{ marginBottom: "3rem" }}>
+                <div
+                  className="section-header"
+                  style={{ marginBottom: "16px" }}
+                >
+                  <h3 className="section-title">DLC & Extensions</h3>
+                  {hasDlcContent && (
+                    <span className="section-count">
+                      {dlcs.length + expansions.length} contenu
+                      {dlcs.length + expansions.length > 1 ? "s" : ""}
+                    </span>
+                  )}
+                </div>
+
+                {dlcLoading ? (
+                  <div
+                    style={{
+                      display: "flex",
+                      gap: "10px",
+                      alignItems: "center",
+                      padding: "12px 0",
+                      color: "#64748b",
+                      fontSize: "0.85rem",
+                    }}
+                  >
+                    <div
+                      className="loading-spinner"
+                      style={{ width: "18px", height: "18px" }}
+                    />
+                    Chargement des DLC…
+                  </div>
+                ) : (
+                  <>
+                    {/* Onglets DLC / Expansions */}
+                    {dlcs.length > 0 && expansions.length > 0 && (
+                      <div
+                        className="categories-nav"
+                        style={{ marginBottom: "16px" }}
+                      >
+                        <button
+                          className={`category-btn ${dlcTab === "dlc" ? "active" : ""}`}
+                          onClick={() => setDlcTab("dlc")}
+                        >
+                          🎮 DLC ({dlcs.length})
+                        </button>
+                        <button
+                          className={`category-btn ${dlcTab === "expansion" ? "active" : ""}`}
+                          onClick={() => setDlcTab("expansion")}
+                        >
+                          📦 Expansions ({expansions.length})
+                        </button>
+                      </div>
+                    )}
+
+                    {/* Liste DLC */}
+                    {(dlcTab === "dlc" || expansions.length === 0) &&
+                      dlcs.length > 0 && (
+                        <div
+                          style={{
+                            display: "flex",
+                            flexDirection: "column",
+                            gap: "10px",
+                          }}
+                        >
+                          {dlcs.length > 0 && expansions.length === 0 && (
+                            <p
+                              style={{
+                                fontSize: "0.78rem",
+                                color: "#64748b",
+                                marginBottom: "4px",
+                                textTransform: "uppercase",
+                                letterSpacing: "0.05em",
+                              }}
+                            >
+                              DLC
+                            </p>
+                          )}
+                          {dlcs.map((dlc) => (
+                            <DlcCard
+                              key={dlc.id}
+                              item={dlc}
+                              getThumbUrl={getThumbUrl}
+                              onGameClick={onGameClick}
+                            />
+                          ))}
+                        </div>
+                      )}
+
+                    {/* Liste Expansions */}
+                    {(dlcTab === "expansion" || dlcs.length === 0) &&
+                      expansions.length > 0 && (
+                        <div
+                          style={{
+                            display: "flex",
+                            flexDirection: "column",
+                            gap: "10px",
+                          }}
+                        >
+                          {dlcs.length === 0 && expansions.length > 0 && (
+                            <p
+                              style={{
+                                fontSize: "0.78rem",
+                                color: "#64748b",
+                                marginBottom: "4px",
+                                textTransform: "uppercase",
+                                letterSpacing: "0.05em",
+                              }}
+                            >
+                              Expansions
+                            </p>
+                          )}
+                          {expansions.map((exp) => (
+                            <DlcCard
+                              key={exp.id}
+                              item={exp}
+                              getThumbUrl={getThumbUrl}
+                              onGameClick={onGameClick}
+                              isExpansion
+                            />
+                          ))}
+                        </div>
+                      )}
+                  </>
+                )}
+              </div>
+            )}
+
+            {/* ══ AVIS ══════════════════════════════════════════════════════ */}
             <div className="comments-section-modern">
               <div className="section-header">
                 <h3 className="section-title">Avis des joueurs</h3>
@@ -537,7 +701,7 @@ const Jeu = ({
                       gap: "6px",
                     }}
                   >
-                    ⭐ {averageRating} / 5
+                    ⭐ {averageRating} / 5{" "}
                     <span style={{ color: "#6b7280", fontSize: "0.8rem" }}>
                       ({reviews.length})
                     </span>
@@ -563,7 +727,6 @@ const Jeu = ({
                 )}
               </div>
 
-              {/* Formulaire de review */}
               {showCommentBox && (
                 <div
                   className="game-card-modern"
@@ -602,7 +765,7 @@ const Jeu = ({
                     }}
                     value={newComment}
                     onChange={(e) => setNewComment(e.target.value)}
-                    placeholder="Partagez votre expérience sur ce titre... (optionnel)"
+                    placeholder="Partagez votre expérience... (optionnel)"
                   />
                   <div style={{ display: "flex", gap: "1rem" }}>
                     <button
@@ -613,10 +776,6 @@ const Jeu = ({
                         flex: 1,
                         justifyContent: "center",
                         opacity: reviewLoading || rating === 0 ? 0.5 : 1,
-                        cursor:
-                          reviewLoading || rating === 0
-                            ? "not-allowed"
-                            : "pointer",
                       }}
                     >
                       {reviewLoading
@@ -643,7 +802,6 @@ const Jeu = ({
                 </div>
               )}
 
-              {/* Liste des avis */}
               <div className="comments-list-modern">
                 {reviews.length === 0 && (
                   <p
@@ -677,7 +835,6 @@ const Jeu = ({
                         cursor: "default",
                       }}
                     >
-                      {/* Header review */}
                       <div
                         style={{
                           display: "flex",
@@ -690,14 +847,11 @@ const Jeu = ({
                           {formatDate(r.updatedAt)}
                         </span>
                       </div>
-
                       {r.text && (
                         <p style={{ margin: "0.5rem 0", color: "#cbd5e1" }}>
                           {r.text}
                         </p>
                       )}
-
-                      {/* Auteur */}
                       <div
                         className="game-title"
                         style={{ fontSize: "0.85rem", color: "#9333ea" }}
@@ -716,7 +870,6 @@ const Jeu = ({
                         )}
                       </div>
 
-                      {/* Actions like + répondre */}
                       <div
                         style={{
                           marginTop: "12px",
@@ -754,7 +907,6 @@ const Jeu = ({
                             : "🤍"}
                           <span>{r.likedBy?.length || 0}</span>
                         </button>
-
                         {auth.currentUser && (
                           <button
                             onClick={() => {
@@ -777,7 +929,6 @@ const Jeu = ({
                         )}
                       </div>
 
-                      {/* Commentaires existants */}
                       {r.comments && r.comments.length > 0 && (
                         <div
                           style={{
@@ -821,7 +972,6 @@ const Jeu = ({
                         </div>
                       )}
 
-                      {/* FIX : zone de texte pour répondre — visible et fonctionnelle */}
                       {isCommenting && (
                         <div
                           style={{
@@ -857,10 +1007,6 @@ const Jeu = ({
                                   commentLoading || !reviewCommentText.trim()
                                     ? 0.5
                                     : 1,
-                                cursor:
-                                  commentLoading || !reviewCommentText.trim()
-                                    ? "not-allowed"
-                                    : "pointer",
                               }}
                               onClick={() => handleSendComment(r.id)}
                               disabled={
@@ -891,7 +1037,7 @@ const Jeu = ({
               </div>
             </div>
 
-            {/* ══ JEUX SIMILAIRES ══ */}
+            {/* ══ JEUX SIMILAIRES ══════════════════════════════════════════ */}
             {similarGames.length > 0 && (
               <div style={{ marginTop: "3rem" }}>
                 <h3
@@ -925,7 +1071,6 @@ const Jeu = ({
                       <polyline points="15 18 9 12 15 6"></polyline>
                     </svg>
                   </button>
-
                   <div
                     style={{
                       display: "flex",
@@ -980,7 +1125,6 @@ const Jeu = ({
                       </div>
                     ))}
                   </div>
-
                   <button
                     onClick={() => scrollSimilar("right")}
                     className="slider-nav-btn right"
@@ -1005,6 +1149,139 @@ const Jeu = ({
           </div>
         </div>
       </div>
+    </div>
+  );
+};
+
+/* ── Carte DLC / Expansion ───────────────────────────────────────────────── */
+const DlcCard = ({ item, getThumbUrl, onGameClick, isExpansion = false }) => {
+  const releaseDate = item.first_release_date
+    ? new Date(item.first_release_date * 1000).toLocaleDateString("fr-FR", {
+        day: "numeric",
+        month: "short",
+        year: "numeric",
+      })
+    : null;
+
+  return (
+    <div
+      onClick={() => onGameClick?.(item.id)}
+      style={{
+        display: "flex",
+        alignItems: "center",
+        gap: "14px",
+        padding: "12px 16px",
+        borderRadius: "12px",
+        cursor: "pointer",
+        background: "rgba(255,255,255,0.02)",
+        border: `1px solid ${isExpansion ? "rgba(96,165,250,0.2)" : "rgba(147,51,234,0.2)"}`,
+        transition: "all 0.15s",
+      }}
+      onMouseEnter={(e) => {
+        e.currentTarget.style.background = isExpansion
+          ? "rgba(96,165,250,0.06)"
+          : "rgba(147,51,234,0.06)";
+        e.currentTarget.style.borderColor = isExpansion
+          ? "rgba(96,165,250,0.4)"
+          : "rgba(147,51,234,0.4)";
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.background = "rgba(255,255,255,0.02)";
+        e.currentTarget.style.borderColor = isExpansion
+          ? "rgba(96,165,250,0.2)"
+          : "rgba(147,51,234,0.2)";
+      }}
+    >
+      {/* Miniature */}
+      <div
+        style={{
+          width: "48px",
+          height: "62px",
+          borderRadius: "6px",
+          overflow: "hidden",
+          flexShrink: 0,
+          background: "#1e293b",
+        }}
+      >
+        <img
+          src={getThumbUrl(item.cover)}
+          alt={item.name}
+          style={{ width: "100%", height: "100%", objectFit: "cover" }}
+        />
+      </div>
+
+      {/* Infos */}
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "8px",
+            marginBottom: "4px",
+          }}
+        >
+          <span
+            style={{
+              fontSize: "0.65rem",
+              fontWeight: "600",
+              padding: "1px 7px",
+              borderRadius: "99px",
+              background: isExpansion
+                ? "rgba(96,165,250,0.15)"
+                : "rgba(147,51,234,0.15)",
+              color: isExpansion ? "#60a5fa" : "#c084fc",
+              textTransform: "uppercase",
+              letterSpacing: "0.05em",
+            }}
+          >
+            {isExpansion ? "Expansion" : "DLC"}
+          </span>
+          {releaseDate && (
+            <span style={{ fontSize: "0.72rem", color: "#64748b" }}>
+              {releaseDate}
+            </span>
+          )}
+        </div>
+        <p
+          style={{
+            margin: 0,
+            fontSize: "0.9rem",
+            color: "#e2e8f0",
+            fontWeight: "500",
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            whiteSpace: "nowrap",
+          }}
+        >
+          {item.name}
+        </p>
+        {item.summary && (
+          <p
+            style={{
+              margin: "3px 0 0",
+              fontSize: "0.75rem",
+              color: "#64748b",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              whiteSpace: "nowrap",
+            }}
+          >
+            {item.summary}
+          </p>
+        )}
+      </div>
+
+      <svg
+        width="16"
+        height="16"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="#475569"
+        strokeWidth="2"
+        style={{ flexShrink: 0 }}
+      >
+        <polyline points="9 18 15 12 9 6"></polyline>
+      </svg>
     </div>
   );
 };
