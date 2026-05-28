@@ -279,6 +279,48 @@ exports.removeFavorite = async (req, res, next) => {
 };
 
 /*
+ * GET /api/users/preferences
+ */
+exports.getPreferences = async (req, res, next) => {
+  try {
+    const userId = req.user.id;
+    const userDoc = await db.collection("users").doc(userId).get();
+
+    if (!userDoc.exists) {
+      return res
+        .status(404)
+        .json({ success: false, msg: "Profil introuvable" });
+    }
+
+    res.json({ success: true, preferences: userDoc.data().preferences || {} });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/*
+ * PUT /api/users/preferences
+ */
+exports.updatePreferences = async (req, res, next) => {
+  try {
+    const userId = req.user.id;
+    const { preferences } = req.body;
+
+    await db.collection("users").doc(userId).update({
+      preferences,
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
+
+    // Logger la mise à jour des préférences
+    await Logger.log("preferences_updated", userId, { preferences });
+
+    res.json({ success: true, msg: "Préférences mises à jour" });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/*
  * GET /api/users/favorites
  */
 exports.getFavorites = async (req, res, next) => {

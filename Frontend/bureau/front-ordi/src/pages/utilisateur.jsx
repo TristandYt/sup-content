@@ -53,7 +53,7 @@ const PublicProfile = ({
         .get(`/lists/library?userId=${targetUserId}`)
         .catch(() => ({ data: { library: [] } }));
       const customListsReq = authApi
-        .get(`/custom-lists?userId=${targetUserId}`)
+        .get(`/lists/custom?userId=${targetUserId}`)
         .catch(() => ({ data: { lists: [] } }));
       const followingReq = currentUser
         ? authApi
@@ -658,7 +658,7 @@ const CustomLists = ({ onGameClick }) => {
     setLoading(true);
     try {
       const api = await authAxios();
-      const res = await api.get("/custom-lists");
+      const res = await api.get("/lists/custom/me");
       setLists(res.data?.lists || []);
     } catch (err) {
       console.warn("Erreur fetchLists:", err);
@@ -673,15 +673,20 @@ const CustomLists = ({ onGameClick }) => {
     try {
       const api = await authAxios();
       if (editingList) {
-        await api.put(`/custom-lists/${editingList.id}`, formData);
+        await api.put(`/lists/custom/${editingList.id}`, formData);
         setLists((prev) =>
           prev.map((l) =>
             l.id === editingList.id ? { ...l, ...formData } : l,
           ),
         );
       } else {
-        const res = await api.post("/custom-lists", formData);
-        setLists((prev) => [...prev, res.data.list]);
+        const res = await api.post("/lists/custom", formData);
+        const newList = {
+          id: res.data.listId,
+          ...formData,
+          games: [],
+        };
+        setLists((prev) => [...prev, newList]);
       }
       setShowForm(false);
       setEditingList(null);
@@ -697,7 +702,7 @@ const CustomLists = ({ onGameClick }) => {
     if (!window.confirm("Supprimer cette liste ?")) return;
     try {
       const api = await authAxios();
-      await api.delete(`/custom-lists/${id}`);
+      await api.delete(`/lists/custom/${id}`);
       setLists((prev) => prev.filter((l) => l.id !== id));
     } catch (err) {
       console.error("Erreur delete list:", err);
@@ -714,7 +719,7 @@ const CustomLists = ({ onGameClick }) => {
           ? `https://images.igdb.com/igdb/image/upload/t_cover_big/${game.cover.image_id}.jpg`
           : "",
       };
-      await api.post(`/custom-lists/${list.id}/games`, gameEntry);
+      await api.post(`/lists/custom/${list.id}/games`, gameEntry);
       setLists((prev) =>
         prev.map((l) =>
           l.id === list.id
@@ -732,7 +737,7 @@ const CustomLists = ({ onGameClick }) => {
   const handleRemoveGame = async (listId, gameId) => {
     try {
       const api = await authAxios();
-      await api.delete(`/custom-lists/${listId}/games/${gameId}`);
+      await api.delete(`/lists/custom/${listId}/games/${gameId}`);
       setLists((prev) =>
         prev.map((l) =>
           l.id === listId
@@ -883,7 +888,7 @@ const CustomLists = ({ onGameClick }) => {
               <div
                 key={list.id}
                 className="game-card-modern"
-                style={{ padding: "0", cursor: "default", overflow: "hidden" }}
+                style={{ padding: "0", cursor: "default", overflow: "visible" }}
               >
                 {/* Header de la liste */}
                 <div

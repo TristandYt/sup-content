@@ -368,6 +368,7 @@ const Forum = ({ user, onGameClick, initialThread = null }) => {
                   padding: "20px",
                   marginBottom: "20px",
                   cursor: "default",
+                  overflow: "visible", // Permet aux suggestions de déborder de la carte
                 }}
                 onSubmit={handleCreateThread}
               >
