@@ -46,13 +46,12 @@ const App = () => {
 
   // ── Auth persistante ──────────────────────────────────────────────────────
   const [user, setUser] = useState(null);
-  const [authLoading, setAuthLoading] = useState(true); // bloque le rendu tant que Firebase n'a pas répondu
+  const [authLoading, setAuthLoading] = useState(true);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
         try {
-          // Récupère le profil complet depuis le backend (role, avatar, bio…)
           const token = await firebaseUser.getIdToken(true);
           const res = await axios.get(
             "http://localhost:3000/api/users/profile",
@@ -75,7 +74,6 @@ const App = () => {
               preferences: u.preferences || {},
             });
           } else {
-            // Fallback si le backend ne répond pas bien
             setUser({
               uid: firebaseUser.uid,
               email: firebaseUser.email,
@@ -87,7 +85,6 @@ const App = () => {
           }
         } catch (err) {
           console.warn("Erreur récupération profil au démarrage:", err);
-          // On connecte quand même avec les infos Firebase de base
           setUser({
             uid: firebaseUser.uid,
             email: firebaseUser.email,
@@ -139,6 +136,57 @@ const App = () => {
       setNotifications([]);
     }
   }, [user?.uid]);
+
+  // ── Unread messages count ─────────────────────────────────────────────────
+  const [unreadMessageCount, setUnreadMessageCount] = useState(0);
+  const myId = user?.uid || user?.id || "";
+
+  const fetchUnreadMessageCount = async () => {
+    if (!auth.currentUser) return;
+    try {
+      const api = await authAxios();
+      const res = await api.get("/conversations");
+      if (res.data.success) {
+        const convs = res.data.conversations || [];
+        // On compte les conversations dont le dernier message n'est pas de moi
+        // et dont unreadCount > 0 (si le backend le fournit), sinon on vérifie
+        // lastMessageSender
+        const unread = convs.filter((c) => {
+          if (c.unreadCount && c.unreadCount > 0) return true;
+          // Fallback : dernier message envoyé par quelqu'un d'autre
+          if (
+            c.lastMessage &&
+            c.lastMessageSender &&
+            String(c.lastMessageSender) !== String(myId)
+          ) {
+            return true;
+          }
+          return false;
+        });
+        setUnreadMessageCount(unread.length);
+      }
+    } catch (err) {
+      console.error("Erreur unread messages:", err);
+    }
+  };
+
+  useEffect(() => {
+    if (user) {
+      fetchUnreadMessageCount();
+      const interval = setInterval(fetchUnreadMessageCount, 5000);
+      return () => clearInterval(interval);
+    } else {
+      setUnreadMessageCount(0);
+    }
+  }, [user?.uid, myId]);
+
+  // Quand on ouvre la messagerie, on remet le compteur à 0 visuellement
+  // (il sera recalculé au prochain poll)
+  useEffect(() => {
+    if (currentPage === "messagerie") {
+      setUnreadMessageCount(0);
+    }
+  }, [currentPage]);
 
   useEffect(() => {
     const handle = (e) => {
@@ -205,7 +253,7 @@ const App = () => {
 
   const unreadCount = notifications.filter((n) => !n.isRead).length;
 
-  // ── Écran de chargement pendant que Firebase vérifie la session ───────────
+  // ── Écran de chargement ───────────────────────────────────────────────────
   if (authLoading) {
     return (
       <div
@@ -520,6 +568,7 @@ const App = () => {
                       navigate({ page: "messagerie" });
                     }}
                     title="Messagerie"
+                    style={{ position: "relative" }}
                   >
                     <svg
                       width="20"
@@ -532,6 +581,26 @@ const App = () => {
                       <line x1="22" y1="2" x2="11" y2="13"></line>
                       <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
                     </svg>
+                    {unreadMessageCount > 0 && (
+                      <span
+                        style={{
+                          position: "absolute",
+                          top: "-4px",
+                          right: "-4px",
+                          background: "#9333ea",
+                          color: "#fff",
+                          borderRadius: "99px",
+                          fontSize: "0.62rem",
+                          fontWeight: "700",
+                          padding: "1px 5px",
+                          minWidth: "16px",
+                          textAlign: "center",
+                          boxShadow: "0 0 0 2px #0f0f1a",
+                        }}
+                      >
+                        {unreadMessageCount > 9 ? "9+" : unreadMessageCount}
+                      </span>
+                    )}
                   </button>
                 )}
 
@@ -727,6 +796,7 @@ const App = () => {
             user={user}
             preselectedConversation={preselectedConversation}
             onConversationOpen={() => setPreselectedConversation(null)}
+            onMessagesRead={fetchUnreadMessageCount}
           />
         )}
         {currentPage === "forum" && (

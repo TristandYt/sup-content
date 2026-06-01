@@ -41,7 +41,6 @@ const UserSearchModal = ({ onClose, onSelectConversation }) => {
       const following = ingRes.data?.following || [];
       const followers = ersRes.data?.followers || [];
 
-      // Intersection pour trouver les amis mutuels (Mutual Follows)
       const mutuals = following
         .filter((f) =>
           followers.some(
@@ -263,7 +262,12 @@ const UserSearchModal = ({ onClose, onSelectConversation }) => {
 /* ═══════════════════════════════════════════════════════════
    MESSAGERIE PRINCIPALE
 ═══════════════════════════════════════════════════════════ */
-const Messagerie = ({ user, preselectedConversation, onConversationOpen }) => {
+const Messagerie = ({
+  user,
+  preselectedConversation,
+  onConversationOpen,
+  onMessagesRead,
+}) => {
   const { t } = useTranslation();
   const [conversations, setConversations] = useState([]);
   const [selectedConv, setSelectedConv] = useState(null);
@@ -276,13 +280,11 @@ const Messagerie = ({ user, preselectedConversation, onConversationOpen }) => {
   const [activeMenu, setActiveMenu] = useState(null);
   const messagesEndRef = useRef(null);
 
-  // ✅ BUG 3 CORRIGÉ — récupère l'uid Firebase en priorité, sinon id custom
   const myId = String(user?.uid || user?.id || "");
 
   useEffect(() => {
     fetchConversations();
 
-    // Rafraîchissement silencieux de la liste des conversations (toutes les 5s)
     const interval = setInterval(() => {
       fetchConversations(null, true);
     }, 5000);
@@ -308,7 +310,6 @@ const Messagerie = ({ user, preselectedConversation, onConversationOpen }) => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages.length, selectedConv?.id]);
 
-  // Rafraîchissement "semi-réel" des messages (toutes les 1 seconde)
   useEffect(() => {
     if (!selectedConv) return;
 
@@ -318,20 +319,18 @@ const Messagerie = ({ user, preselectedConversation, onConversationOpen }) => {
         const res = await api.get(`/conversations/${selectedConv.id}/messages`);
         const newMsgs = res.data.messages || [];
 
-        // On ne met à jour que si aucun message n'est en cours d'envoi et qu'aucun menu n'est ouvert
         setMessages((prev) => {
           if (prev.some((m) => m._pending) || activeMenu !== null) return prev;
           return newMsgs;
         });
       } catch (err) {
-        // Échec silencieux pour le rafraîchissement auto
+        // Échec silencieux
       }
-    }, 4000); // 4 secondes au lieu d'une
+    }, 4000);
 
     return () => clearInterval(interval);
   }, [selectedConv, activeMenu]);
 
-  // Marquer les messages comme lus
   const markMessagesAsRead = async (convId, msgs) => {
     const unread = msgs.filter(
       (m) => String(m.senderId) !== myId && !m.readBy?.includes(myId),
@@ -345,6 +344,8 @@ const Messagerie = ({ user, preselectedConversation, onConversationOpen }) => {
           api.patch(`/conversations/${convId}/messages/${m.id}/read`),
         ),
       );
+      // Notifier App.js pour rafraîchir le compteur de messages non lus
+      if (onMessagesRead) onMessagesRead();
     } catch (err) {
       console.error("Erreur lecture:", err);
     }
@@ -357,7 +358,7 @@ const Messagerie = ({ user, preselectedConversation, onConversationOpen }) => {
       const res = await api.get("/conversations");
       const convs = res.data.conversations || [];
       setConversations(convs);
-      if (silent) return; // On ne gère pas l'auto-sélection en arrière-plan
+      if (silent) return;
 
       const targetId = autoSelectId || preselectedConversation?.id;
       if (targetId) {
@@ -400,7 +401,6 @@ const Messagerie = ({ user, preselectedConversation, onConversationOpen }) => {
     const text = newMessage.trim();
     setNewMessage("");
 
-    // ✅ BUG 3 CORRIGÉ — senderId = myId pour que le côté sent/received soit correct
     const tempMsg = {
       id: `temp_${Date.now()}`,
       senderId: myId,
@@ -446,7 +446,6 @@ const Messagerie = ({ user, preselectedConversation, onConversationOpen }) => {
 
       setMessages((prev) => {
         const updated = prev.filter((m) => m.id !== messageId);
-        // Mise à jour instantanée de la sidebar
         setConversations((convs) =>
           convs.map((c) => {
             if (
@@ -496,7 +495,6 @@ const Messagerie = ({ user, preselectedConversation, onConversationOpen }) => {
           m.id === messageId ? { ...m, text: newText.trim() } : m,
         );
 
-        // Mise à jour de la sidebar si c'est le dernier message
         const isLast =
           prev.length > 0 && prev[prev.length - 1].id === messageId;
         if (isLast) {
@@ -521,7 +519,6 @@ const Messagerie = ({ user, preselectedConversation, onConversationOpen }) => {
   const getOtherUser = (conv) => {
     if (!conv) return { pseudo: "Inconnu", avatar: null };
 
-    // Récupération flexible du nom (supporte les préfixes 'otherUser' ou les champs directs)
     const name =
       conv.otherUserPseudo ||
       conv.otherUserUsername ||
@@ -541,15 +538,12 @@ const Messagerie = ({ user, preselectedConversation, onConversationOpen }) => {
     };
   };
 
-  // ✅ BUG 3 CORRIGÉ — gère tous les formats de date Firestore possibles
   const formatTime = (createdAt) => {
     if (!createdAt) return "";
     let date;
     if (createdAt?.seconds) {
-      // Firestore Timestamp natif
       date = new Date(createdAt.seconds * 1000);
     } else if (createdAt?._seconds) {
-      // Firestore Timestamp sérialisé en JSON par le backend
       date = new Date(createdAt._seconds * 1000);
     } else if (typeof createdAt === "number" || typeof createdAt === "string") {
       date = new Date(createdAt);
@@ -573,7 +567,6 @@ const Messagerie = ({ user, preselectedConversation, onConversationOpen }) => {
               <div className="messaging-icon">💬</div>
               <h3 className="messaging-title">Messages</h3>
             </div>
-            {/* ✅ ELEMENT 1 : BOUTON NOUVELLE CONVERSATION AVEC + */}
             <button
               className="messaging-new-btn"
               title="Nouvelle conversation"
@@ -582,7 +575,7 @@ const Messagerie = ({ user, preselectedConversation, onConversationOpen }) => {
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
-                background: "#8b5cf6", // Fond violet pour le rendre visible
+                background: "#8b5cf6",
                 width: "56px",
                 height: "36px",
                 borderRadius: "8px",
@@ -640,7 +633,6 @@ const Messagerie = ({ user, preselectedConversation, onConversationOpen }) => {
                         alt={other.pseudo}
                         className="messaging-contact-avatar"
                       />
-                      {/* Pastille violette si conversation non lue */}
                       {conv.unreadCount > 0 && (
                         <span
                           className="messaging-status-dot online"
@@ -717,7 +709,6 @@ const Messagerie = ({ user, preselectedConversation, onConversationOpen }) => {
                 ) : (
                   <>
                     {messages.map((m, index) => {
-                      // ✅ BUG 3 CORRIGÉ — comparaison String pour sent/received
                       const isMine = String(m.senderId) === myId;
                       const isLastMessage = index === messages.length - 1;
 
@@ -739,7 +730,6 @@ const Messagerie = ({ user, preselectedConversation, onConversationOpen }) => {
                               <p className="messaging-message-text">{m.text}</p>
                             </div>
                             <div className="messaging-message-footer">
-                              {/* ✅ BUG 3 CORRIGÉ — formatTime gère tous les formats Firestore */}
                               <span className="messaging-message-time">
                                 {formatTime(m.createdAt)}
                               </span>
@@ -809,7 +799,6 @@ const Messagerie = ({ user, preselectedConversation, onConversationOpen }) => {
                                 </div>
                               )}
                             </div>
-                            {/* ✅ AJOUT : Indicateur "Vu" placé explicitement EN DESSOUS du dernier message envoyé */}
                             {isMine &&
                               isLastMessage &&
                               !m._pending &&
@@ -822,7 +811,7 @@ const Messagerie = ({ user, preselectedConversation, onConversationOpen }) => {
                                     marginTop: "4px",
                                     fontWeight: "700",
                                     paddingRight: "4px",
-                                    textShadow: "0 1px 2px rgba(0,0,0,0.5)", // Ombre pour la lisibilité
+                                    textShadow: "0 1px 2px rgba(0,0,0,0.5)",
                                   }}
                                 >
                                   Vu
@@ -854,7 +843,6 @@ const Messagerie = ({ user, preselectedConversation, onConversationOpen }) => {
                   }}
                   placeholder="Écrivez votre message…"
                 />
-                {/* ✅ ELEMENT 2 : BOUTON D'ENVOI AVEC AVION */}
                 <button
                   type="submit"
                   className="messaging-send-btn"
@@ -863,7 +851,7 @@ const Messagerie = ({ user, preselectedConversation, onConversationOpen }) => {
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
-                    background: "#8b5cf6", // Fond violet pour le rendre visible
+                    background: "#8b5cf6",
                     width: "52px",
                     height: "42px",
                     borderRadius: "50%",
@@ -917,7 +905,6 @@ const Messagerie = ({ user, preselectedConversation, onConversationOpen }) => {
           onSelectConversation={(conv, userInfo) => {
             setShowSearchModal(false);
 
-            // On injecte les infos de l'utilisateur dans la conversation pour un affichage immédiat
             const enrichedConv = {
               ...conv,
               otherUserPseudo: userInfo?.username || userInfo?.pseudo,
