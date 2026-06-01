@@ -1,9 +1,9 @@
-// src/pages/Login.jsx
 import React, { useState } from "react";
 import { useTranslation } from "react-i18next";
 import axios from "axios";
 import { signInWithEmailAndPassword } from "firebase/auth";
 import { auth } from "../Service/firebase";
+import { useOAuth } from "../hooks/useOAuth";
 import "../../Style/Styles.css";
 
 const Login = ({ onSwitch, onLoginSuccess }) => {
@@ -15,6 +15,9 @@ const Login = ({ onSwitch, onLoginSuccess }) => {
   const [message, setMessage] = useState("");
   const [isResetMode, setIsResetMode] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [oauthLoading, setOAuthLoading] = useState(null); // "google" | "github" | null
+
+  const { loginWithGoogle, loginWithGithub } = useOAuth();
 
   const FIREBASE_ERRORS = {
     "auth/user-not-found": "Aucun compte trouvé pour cet email.",
@@ -29,10 +32,8 @@ const Login = ({ onSwitch, onLoginSuccess }) => {
       setError(t("error_missing_info"));
       return;
     }
-
     setError("");
     setLoading(true);
-
     try {
       const userCredential = await signInWithEmailAndPassword(
         auth,
@@ -41,7 +42,6 @@ const Login = ({ onSwitch, onLoginSuccess }) => {
       );
       const idToken = await userCredential.user.getIdToken();
       localStorage.setItem("authToken", idToken);
-
       if (typeof onLoginSuccess === "function") {
         onLoginSuccess({
           pseudo: userCredential.user.displayName || email.split("@")[0],
@@ -61,7 +61,6 @@ const Login = ({ onSwitch, onLoginSuccess }) => {
       setError("Veuillez remplir l'email et le nouveau mot de passe.");
       return;
     }
-
     setError("");
     setMessage("");
     setLoading(true);
@@ -81,6 +80,52 @@ const Login = ({ onSwitch, onLoginSuccess }) => {
       );
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleOAuthGoogle = async () => {
+    setError("");
+    setOAuthLoading("google");
+    try {
+      const response = await loginWithGoogle();
+      if (response.success) {
+        if (typeof onLoginSuccess === "function") {
+          onLoginSuccess({
+            pseudo: response.profile.username,
+            email: response.profile.email,
+            uid: response.uid,
+            avatarUrl: response.profile.avatarUrl,
+            age: response.profile.age,
+          });
+        }
+      }
+    } catch (err) {
+      setError(err.message || "Erreur connexion Google");
+    } finally {
+      setOAuthLoading(null);
+    }
+  };
+
+  const handleOAuthGithub = async () => {
+    setError("");
+    setOAuthLoading("github");
+    try {
+      const response = await loginWithGithub();
+      if (response.success) {
+        if (typeof onLoginSuccess === "function") {
+          onLoginSuccess({
+            pseudo: response.profile.username,
+            email: response.profile.email,
+            uid: response.uid,
+            avatarUrl: response.profile.avatarUrl,
+            age: response.profile.age,
+          });
+        }
+      }
+    } catch (err) {
+      setError(err.message || "Erreur connexion GitHub");
+    } finally {
+      setOAuthLoading(null);
     }
   };
 
@@ -136,7 +181,7 @@ const Login = ({ onSwitch, onLoginSuccess }) => {
           </p>
         </div>
 
-        {/* Message d'erreur */}
+        {/* Messages */}
         {error && (
           <div
             className="section-count"
@@ -151,8 +196,6 @@ const Login = ({ onSwitch, onLoginSuccess }) => {
             {error}
           </div>
         )}
-
-        {/* Message de succès */}
         {message && (
           <div
             className="section-count"
@@ -168,7 +211,7 @@ const Login = ({ onSwitch, onLoginSuccess }) => {
           </div>
         )}
 
-        {/* Champs du formulaire */}
+        {/* Champs */}
         <div className="filters-section">
           <div style={{ marginBottom: "1.5rem" }}>
             <label
@@ -251,7 +294,7 @@ const Login = ({ onSwitch, onLoginSuccess }) => {
           </div>
         </div>
 
-        {/* Boutons d'action */}
+        {/* Boutons principaux */}
         {isResetMode ? (
           <div style={{ display: "flex", gap: "10px" }}>
             <button
@@ -276,7 +319,7 @@ const Login = ({ onSwitch, onLoginSuccess }) => {
         ) : (
           <button
             onClick={handleLogin}
-            disabled={loading}
+            disabled={loading || oauthLoading !== null}
             className="category-btn active"
             style={{ width: "100%", padding: "1rem" }}
           >
@@ -309,42 +352,58 @@ const Login = ({ onSwitch, onLoginSuccess }) => {
           ></div>
         </div>
 
-        {/* Connexion sociale */}
+        {/* Boutons OAuth */}
         <div style={{ display: "flex", gap: "1rem", justifyContent: "center" }}>
           <button
+            onClick={handleOAuthGoogle}
+            disabled={oauthLoading !== null || loading}
             className="game-card-modern"
             style={{
               padding: "0.75rem",
               display: "flex",
               alignItems: "center",
               background: "rgba(255,255,255,0.05)",
+              opacity: oauthLoading ? 0.6 : 1,
+              cursor: oauthLoading ? "not-allowed" : "pointer",
             }}
           >
-            <img
-              src="https://www.svgrepo.com/show/475656/google-color.svg"
-              width="20"
-              alt="Google"
-            />
+            {oauthLoading === "google" ? (
+              <span style={{ fontSize: "12px", color: "#9ca3af" }}>...</span>
+            ) : (
+              <img
+                src="https://www.svgrepo.com/show/475656/google-color.svg"
+                width="20"
+                alt="Google"
+              />
+            )}
           </button>
           <button
+            onClick={handleOAuthGithub}
+            disabled={oauthLoading !== null || loading}
             className="game-card-modern"
             style={{
               padding: "0.75rem",
               display: "flex",
               alignItems: "center",
               background: "rgba(255,255,255,0.05)",
+              opacity: oauthLoading ? 0.6 : 1,
+              cursor: oauthLoading ? "not-allowed" : "pointer",
             }}
           >
-            <img
-              src="https://www.svgrepo.com/show/512317/github-142.svg"
-              width="20"
-              alt="GitHub"
-              style={{ filter: "invert(1)" }}
-            />
+            {oauthLoading === "github" ? (
+              <span style={{ fontSize: "12px", color: "#9ca3af" }}>...</span>
+            ) : (
+              <img
+                src="https://www.svgrepo.com/show/512317/github-142.svg"
+                width="20"
+                alt="GitHub"
+                style={{ filter: "invert(1)" }}
+              />
+            )}
           </button>
         </div>
 
-        {/* Lien vers Register */}
+        {/* Lien Register */}
         <p
           className="hero-subtitle"
           style={{ textAlign: "center", marginTop: "2rem", fontSize: "0.9rem" }}

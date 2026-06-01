@@ -3,6 +3,7 @@ import React, { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { createUserWithEmailAndPassword, updateProfile } from "firebase/auth";
 import { auth } from "../Service/firebase";
+import { useOAuth } from "../hooks/useOAuth";
 import "../../Style/Styles.css";
 
 const Register = ({ onSwitch }) => {
@@ -17,6 +18,9 @@ const Register = ({ onSwitch }) => {
   const [showConfirm, setShowConfirm] = useState(false);
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [oauthLoading, setOAuthLoading] = useState(null);
+
+  const { loginWithGoogle, loginWithGithub } = useOAuth();
 
   const handleChange = (e) =>
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -31,7 +35,6 @@ const Register = ({ onSwitch }) => {
   const validateForm = () => {
     const { pseudo, email, pass, confirm } = formData;
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
     if (!pseudo || !email || !pass || !confirm) return t("error_fields_empty");
     if (!emailRegex.test(email)) return t("placeholder_email");
     if (pass.length < 8) return "8 caractères minimum.";
@@ -45,28 +48,19 @@ const Register = ({ onSwitch }) => {
       setError(validationError);
       return;
     }
-
     setError("");
     setIsLoading(true);
-
     try {
-      // 1. Créer le compte Firebase
       const userCredential = await createUserWithEmailAndPassword(
         auth,
         formData.email,
         formData.pass,
       );
-
-      // 2. Mettre à jour le pseudo dans le profil Firebase
       await updateProfile(userCredential.user, {
         displayName: formData.pseudo,
       });
-
-      // 3. Stocker le token
       const idToken = await userCredential.user.getIdToken();
       localStorage.setItem("authToken", idToken);
-
-      // 4. Rediriger vers le login
       onSwitch();
     } catch (err) {
       setError(
@@ -74,6 +68,32 @@ const Register = ({ onSwitch }) => {
       );
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleOAuthGoogle = async () => {
+    setError("");
+    setOAuthLoading("google");
+    try {
+      const response = await loginWithGoogle();
+      if (response.success) onSwitch();
+    } catch (err) {
+      setError(err.message || "Erreur connexion Google");
+    } finally {
+      setOAuthLoading(null);
+    }
+  };
+
+  const handleOAuthGithub = async () => {
+    setError("");
+    setOAuthLoading("github");
+    try {
+      const response = await loginWithGithub();
+      if (response.success) onSwitch();
+    } catch (err) {
+      setError(err.message || "Erreur connexion GitHub");
+    } finally {
+      setOAuthLoading(null);
     }
   };
 
@@ -269,11 +289,12 @@ const Register = ({ onSwitch }) => {
             fontSize: "1rem",
             marginBottom: "1.5rem",
           }}
-          disabled={isLoading}
+          disabled={isLoading || oauthLoading !== null}
         >
           {isLoading ? t("loading") : t("button_signup")}
         </button>
 
+        {/* Séparateur */}
         <div
           style={{ display: "flex", alignItems: "center", margin: "1.5rem 0" }}
         >
@@ -298,35 +319,52 @@ const Register = ({ onSwitch }) => {
           ></div>
         </div>
 
+        {/* Boutons OAuth */}
         <div style={{ display: "flex", gap: "1rem", justifyContent: "center" }}>
           <button
+            onClick={handleOAuthGoogle}
+            disabled={oauthLoading !== null || isLoading}
             className="nav-icon-btn"
             style={{
               border: "1px solid rgba(255,255,255,0.1)",
               width: "50px",
               height: "50px",
+              opacity: oauthLoading ? 0.6 : 1,
+              cursor: oauthLoading ? "not-allowed" : "pointer",
             }}
           >
-            <img
-              src="https://www.svgrepo.com/show/475656/google-color.svg"
-              width="24"
-              alt="Google"
-            />
+            {oauthLoading === "google" ? (
+              <span style={{ fontSize: "11px", color: "#9ca3af" }}>...</span>
+            ) : (
+              <img
+                src="https://www.svgrepo.com/show/475656/google-color.svg"
+                width="24"
+                alt="Google"
+              />
+            )}
           </button>
           <button
+            onClick={handleOAuthGithub}
+            disabled={oauthLoading !== null || isLoading}
             className="nav-icon-btn"
             style={{
               border: "1px solid rgba(255,255,255,0.1)",
               width: "50px",
               height: "50px",
+              opacity: oauthLoading ? 0.6 : 1,
+              cursor: oauthLoading ? "not-allowed" : "pointer",
             }}
           >
-            <img
-              src="https://www.svgrepo.com/show/512317/github-142.svg"
-              width="24"
-              alt="GitHub"
-              style={{ filter: "invert(1)" }}
-            />
+            {oauthLoading === "github" ? (
+              <span style={{ fontSize: "11px", color: "#9ca3af" }}>...</span>
+            ) : (
+              <img
+                src="https://www.svgrepo.com/show/512317/github-142.svg"
+                width="24"
+                alt="GitHub"
+                style={{ filter: "invert(1)" }}
+              />
+            )}
           </button>
         </div>
 

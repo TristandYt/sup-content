@@ -4,6 +4,8 @@ import {
   connectAuthEmulator,
   browserLocalPersistence,
   setPersistence,
+  GoogleAuthProvider,
+  GithubAuthProvider,
 } from "firebase/auth";
 
 const firebaseConfig = {
@@ -21,5 +23,9 @@ setPersistence(auth, browserLocalPersistence).catch((err) => {
 });
 
 connectAuthEmulator(auth, "http://localhost:9099", { disableWarnings: true });
+
+// Providers OAuth
+export const googleProvider = new GoogleAuthProvider();
+export const githubProvider = new GithubAuthProvider();
 
 export { auth };
