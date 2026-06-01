@@ -6,7 +6,9 @@ import "../../Style/Styles.css";
 import defaultCover from "../assets/fr-default-large_default.jpg";
 
 const authAxios = async () => {
-  const token = await auth.currentUser?.getIdToken(true);
+  const firebaseUser = auth.currentUser;
+  if (!firebaseUser) return null;
+  const token = await firebaseUser.getIdToken();
   return axios.create({
     baseURL: "http://localhost:3000/api",
     headers: { Authorization: `Bearer ${token}` },
@@ -45,26 +47,29 @@ const PublicProfile = ({
     setLoading(true);
     setError("");
     try {
-      const baseApi = axios.create({ baseURL: "http://localhost:3000/api" });
-      const authApi = currentUser ? await authAxios() : baseApi;
+      const api = await authAxios();
 
-      const profileReq = authApi.get(`/users/${targetUserId}/profile`);
-      const libraryReq = authApi
+      // Since the backend protects all /api/users routes, we cannot fetch profile
+      // data without being logged in. This prevents 401 errors for guests.
+      if (!api) {
+        setError("Veuillez vous connecter pour voir ce profil.");
+        setLoading(false);
+        return;
+      }
+
+      const profileReq = api.get(`/users/${targetUserId}/profile`);
+      const libraryReq = api
         .get(`/lists/library?userId=${targetUserId}`)
         .catch(() => ({ data: { library: [] } }));
-      const customListsReq = authApi
+      const customListsReq = api
         .get(`/lists/custom?userId=${targetUserId}`)
         .catch(() => ({ data: { lists: [] } }));
-      const followingReq = currentUser
-        ? authApi
-            .get("/follows/me/following")
-            .catch(() => ({ data: { following: [] } }))
-        : Promise.resolve({ data: { following: [] } });
-      const followersReq = currentUser
-        ? authApi
-            .get("/follows/me/followers")
-            .catch(() => ({ data: { followers: [] } }))
-        : Promise.resolve({ data: { followers: [] } });
+      const followingReq = api
+        .get("/follows/me/following")
+        .catch(() => ({ data: { following: [] } }));
+      const followersReq = api
+        .get("/follows/me/followers")
+        .catch(() => ({ data: { followers: [] } }));
 
       const [
         profileRes,
@@ -91,6 +96,7 @@ const PublicProfile = ({
         followersCount: userData.followersCount || 0,
         followingCount: userData.followingCount || 0,
         gamesCount: lib.length,
+        isCertified: userData.isCertified || false, // New: Fetch isCertified status
       });
 
       setLibrary(lib);
@@ -284,6 +290,20 @@ const PublicProfile = ({
               style={{ fontSize: "1.8rem", margin: "10px 0 8px" }}
             >
               {profile.username}
+              {profile.isCertified && ( // New: Display certification badge
+                <span
+                  title="Profil certifié"
+                  style={{
+                    marginLeft: "10px",
+                    fontSize: "1.2rem",
+                    color: "#60a5fa",
+                    verticalAlign: "middle",
+                    textShadow: "0 0 8px rgba(96,165,250,0.5)",
+                  }}
+                >
+                  ⭐
+                </span>
+              )}
             </h2>
 
             <div
@@ -1239,6 +1259,7 @@ const MyProfile = ({
           avatar: u.avatar || u.photoURL || profileData.avatar,
           role: u.role || "",
           birthDate: u.birthDate || "",
+          isCertified: u.isCertified || false, // New: Fetch isCertified status
           preferences: u.preferences || profileData.preferences,
         };
         setProfileData(fullProfile);
@@ -1395,6 +1416,20 @@ const MyProfile = ({
                 style={{ fontSize: "1.8rem", marginTop: "15px" }}
               >
                 {profileData.pseudo}
+                {profileData.isCertified && ( // New: Display certification badge
+                  <span
+                    title="Profil certifié"
+                    style={{
+                      marginLeft: "10px",
+                      fontSize: "1.2rem",
+                      color: "#60a5fa",
+                      verticalAlign: "middle",
+                      textShadow: "0 0 8px rgba(96,165,250,0.5)",
+                    }}
+                  >
+                    ⭐
+                  </span>
+                )}
               </h3>
               <p className="game-year">{t("identifiedAs")}</p>
             </div>
@@ -2174,40 +2209,11 @@ export const Notificationsbell = ({ user, onUserClick, onGameClick }) => {
   );
 };
 
-/* ═══════════════════════════════════════════════════════════
-   EXPORT
-═══════════════════════════════════════════════════════════ */
-const Utilisateur = ({
-  user,
-  onLoginSuccess,
-  onLogout,
-  isPublic,
-  targetUserId,
-  onBack,
-  onOpenMessaging,
-  onGameClick,
-  onAdminClick,
-}) => {
-  if (isPublic) {
-    return (
-      <PublicProfile
-        targetUserId={targetUserId}
-        currentUser={user}
-        onBack={onBack}
-        onOpenMessaging={onOpenMessaging}
-        onGameClick={onGameClick}
-      />
-    );
+const Utilisateur = (props) => {
+  if (props.isPublic) {
+    return <PublicProfile {...props} currentUser={props.user} />;
   }
-  return (
-    <MyProfile
-      user={user}
-      onLoginSuccess={onLoginSuccess}
-      onLogout={onLogout}
-      onGameClick={onGameClick}
-      onAdminClick={onAdminClick}
-    />
-  );
+  return <MyProfile {...props} />;
 };
 
 export default Utilisateur;

@@ -188,11 +188,21 @@ exports.createList = async (req, res, next) => {
 
 exports.getMyLists = async (req, res, next) => {
   try {
-    const userId = req.user.id;
-    const snap = await db
+    // Si un userId est fourni dans la query (profil public), on l'utilise.
+    // Sinon, on prend l'utilisateur connecté (mon profil).
+    const targetUserId = req.query.userId || req.user.id;
+    const isOwner = String(targetUserId) === String(req.user.id);
+
+    let query = db
       .collection("custom_lists")
-      .where("userId", "==", userId)
-      .get();
+      .where("userId", "==", targetUserId);
+
+    // Si on regarde les listes de quelqu'un d'autre, on ne récupère que les listes publiques
+    if (!isOwner) {
+      query = query.where("isPrivate", "==", false);
+    }
+
+    const snap = await query.get();
     res.json({
       success: true,
       lists: snap.docs.map((doc) => ({ id: doc.id, ...doc.data() })),
@@ -258,14 +268,14 @@ exports.updateList = async (req, res, next) => {
     const { listId } = req.params;
     const { name, description, isPrivate } = req.body;
 
-    const listRef = db.collection('custom_lists').doc(listId);
+    const listRef = db.collection("custom_lists").doc(listId);
     const doc = await listRef.get();
 
     if (!doc.exists) {
-      return res.status(404).json({ success: false, msg: 'Liste introuvable' });
+      return res.status(404).json({ success: false, msg: "Liste introuvable" });
     }
     if (doc.data().userId !== userId) {
-      return res.status(403).json({ success: false, msg: 'Accès refusé' });
+      return res.status(403).json({ success: false, msg: "Accès refusé" });
     }
 
     const updates = { updatedAt: admin.firestore.FieldValue.serverTimestamp() };
@@ -274,9 +284,9 @@ exports.updateList = async (req, res, next) => {
     if (isPrivate !== undefined) updates.isPrivate = isPrivate;
 
     await listRef.update(updates);
-    await Logger.log('custom_list_updated', userId, { listId });
+    await Logger.log("custom_list_updated", userId, { listId });
 
-    res.json({ success: true, msg: 'Liste mise à jour' });
+    res.json({ success: true, msg: "Liste mise à jour" });
   } catch (error) {
     next(error);
   }
@@ -288,20 +298,20 @@ exports.deleteList = async (req, res, next) => {
     const userId = req.user.id;
     const { listId } = req.params;
 
-    const listRef = db.collection('custom_lists').doc(listId);
+    const listRef = db.collection("custom_lists").doc(listId);
     const doc = await listRef.get();
 
     if (!doc.exists) {
-      return res.status(404).json({ success: false, msg: 'Liste introuvable' });
+      return res.status(404).json({ success: false, msg: "Liste introuvable" });
     }
     if (doc.data().userId !== userId) {
-      return res.status(403).json({ success: false, msg: 'Accès refusé' });
+      return res.status(403).json({ success: false, msg: "Accès refusé" });
     }
 
     await listRef.delete();
-    await Logger.log('custom_list_deleted', userId, { listId });
+    await Logger.log("custom_list_deleted", userId, { listId });
 
-    res.json({ success: true, msg: 'Liste supprimée' });
+    res.json({ success: true, msg: "Liste supprimée" });
   } catch (error) {
     next(error);
   }
@@ -313,27 +323,27 @@ exports.removeGameFromList = async (req, res, next) => {
     const userId = req.user.id;
     const { listId, gameId } = req.params;
 
-    const listRef = db.collection('custom_lists').doc(listId);
+    const listRef = db.collection("custom_lists").doc(listId);
     const doc = await listRef.get();
 
     if (!doc.exists) {
-      return res.status(404).json({ success: false, msg: 'Liste introuvable' });
+      return res.status(404).json({ success: false, msg: "Liste introuvable" });
     }
     if (doc.data().userId !== userId) {
-      return res.status(403).json({ success: false, msg: 'Accès refusé' });
+      return res.status(403).json({ success: false, msg: "Accès refusé" });
     }
 
     const games = doc.data().games || [];
-    const updatedGames = games.filter(g => g.gameId !== gameId.toString());
+    const updatedGames = games.filter((g) => g.gameId !== gameId.toString());
 
-    await listRef.update({ 
+    await listRef.update({
       games: updatedGames,
-      updatedAt: admin.firestore.FieldValue.serverTimestamp()
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
     });
 
-    await Logger.log('game_removed_from_list', userId, { listId, gameId });
+    await Logger.log("game_removed_from_list", userId, { listId, gameId });
 
-    res.json({ success: true, msg: 'Jeu retiré de la liste' });
+    res.json({ success: true, msg: "Jeu retiré de la liste" });
   } catch (error) {
     next(error);
   }

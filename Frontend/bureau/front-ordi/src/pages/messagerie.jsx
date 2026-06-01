@@ -5,7 +5,9 @@ import { auth } from "../Service/firebase";
 import "../../Style/Styles.css";
 
 const authAxios = async () => {
-  const token = await auth.currentUser?.getIdToken(true);
+  const firebaseUser = auth.currentUser;
+  if (!firebaseUser) return null;
+  const token = await firebaseUser.getIdToken();
   return axios.create({
     baseURL: "http://localhost:3000/api",
     headers: { Authorization: `Bearer ${token}` },
@@ -355,6 +357,7 @@ const Messagerie = ({
     if (!silent) setLoadingConvs(true);
     try {
       const api = await authAxios();
+      if (!api) return;
       const res = await api.get("/conversations");
       const convs = res.data.conversations || [];
       setConversations(convs);

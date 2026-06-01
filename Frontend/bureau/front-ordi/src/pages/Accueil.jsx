@@ -27,7 +27,6 @@ const Accueil = ({
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // Upcoming carousel state
   const [upcomingGames, setUpcomingGames] = useState([]);
   const [upcomingLoading, setUpcomingLoading] = useState(true);
   const [upcomingPage, setUpcomingPage] = useState(1);
@@ -73,7 +72,6 @@ const Accueil = ({
     }
   };
 
-  // ─── Fetch grille principale ─────────────────────────────────────────────────
   const fetchResults = useCallback(
     async (targetPage = 1, append = false) => {
       if (!append) {
@@ -85,41 +83,46 @@ const Accueil = ({
 
       try {
         const hasSearchTerm = searchTerm && searchTerm.trim() !== "";
+        const api = auth.currentUser
+          ? await authAxios()
+          : axios.create({ baseURL: "http://localhost:3000/api" });
 
         if (searchType === "users") {
-          if (!hasSearchTerm) {
-            setUsers([]);
-            setGames([]);
-            setLoading(false);
-            setPage(1);
-            return;
+          if (hasSearchTerm) {
+            const res = await api.get(`/search`, {
+              params: {
+                q: searchTerm.trim(),
+                type: "users",
+                page: targetPage,
+                limit: PAGE_SIZE,
+              },
+            });
+            const newUsers = res.data.results?.users || [];
+            setUsers(append ? (prev) => [...prev, ...newUsers] : newUsers);
+            setHasMore(newUsers.length === PAGE_SIZE);
+          } else {
+            // Membres par défaut : appel search avec terme vide
+            const res = await api
+              .get(`/search`, {
+                params: {
+                  q: "",
+                  type: "users",
+                  page: targetPage,
+                  limit: PAGE_SIZE,
+                },
+              })
+              .catch(() => ({ data: { results: { users: [] } } }));
+            const newUsers = res.data.results?.users || [];
+            setUsers(newUsers);
+            setHasMore(false);
           }
-          const api = auth.currentUser
-            ? await authAxios()
-            : axios.create({ baseURL: "http://localhost:3000/api" });
-
-          const res = await api.get(`/search`, {
-            params: {
-              q: searchTerm.trim(),
-              type: "users",
-              page: targetPage,
-              limit: PAGE_SIZE,
-            },
-          });
-          const newUsers = res.data.results?.users || [];
-          setUsers(append ? (prev) => [...prev, ...newUsers] : newUsers);
           setGames([]);
-          setHasMore(newUsers.length === PAGE_SIZE);
         } else {
           setUsers([]);
           let endpoint = "popular";
           if (hasSearchTerm) endpoint = "search";
           else if (params.genre || params.platform || params.style)
             endpoint = "filtered";
-
-          const api = auth.currentUser
-            ? await authAxios()
-            : axios.create({ baseURL: "http://localhost:3000/api" });
 
           const res = await api.get(`/games/${endpoint}`, {
             params: {
@@ -168,7 +171,6 @@ const Accueil = ({
     return () => clearTimeout(delay);
   }, [searchTerm, params, searchType]);
 
-  // ─── Fetch jeux à venir (page initiale) ─────────────────────────────────────
   const fetchUpcoming = useCallback(async (targetPage = 1, append = false) => {
     if (append) setUpcomingLoadingMore(true);
     else setUpcomingLoading(true);
@@ -187,7 +189,6 @@ const Accueil = ({
       setUpcomingHasMore(newGames.length === UPCOMING_PAGE_SIZE);
       setUpcomingPage(targetPage);
 
-      // Scroll vers les nouvelles cartes après chargement
       if (append) {
         setTimeout(() => {
           if (upcomingRef.current) {
@@ -216,7 +217,6 @@ const Accueil = ({
 
   return (
     <div className="accueil-container">
-      {/* Hero Section */}
       <div className="hero-section">
         <div className="hero-gradient"></div>
         <div className="hero-content">
@@ -228,7 +228,6 @@ const Accueil = ({
         </div>
       </div>
 
-      {/* Type de recherche */}
       <div className="categories-nav" style={{ marginBottom: "1rem" }}>
         <button
           className={`category-btn ${searchType === "games" ? "active" : ""}`}
@@ -253,7 +252,6 @@ const Accueil = ({
         )}
       </div>
 
-      {/* Categories Navigation */}
       {searchType === "games" && (
         <div className="categories-nav">
           {CATEGORIES.map((category) => (
@@ -270,7 +268,6 @@ const Accueil = ({
         </div>
       )}
 
-      {/* Filters Section */}
       {searchType === "games" && (
         <div className="filters-section">
           <div className="filters-container">
@@ -332,7 +329,6 @@ const Accueil = ({
         </div>
       )}
 
-      {/* Section Title */}
       <div className="section-header">
         <div className="section-icon">
           {searchType === "games" ? "🔥" : "✨"}
@@ -342,7 +338,7 @@ const Accueil = ({
             ? `Résultats pour "${searchTerm}"`
             : searchType === "games"
               ? "Tendances mondiales"
-              : "Rechercher un membre"}
+              : "Membres de la communauté"}
         </h3>
         <div className="section-count">
           {searchType === "games"
@@ -351,11 +347,10 @@ const Accueil = ({
         </div>
       </div>
 
-      {/* Résultats */}
-      {loading && games.length === 0 ? (
+      {loading && games.length === 0 && users.length === 0 ? (
         <div className="loading-container">
           <div className="loading-spinner"></div>
-          <p className="loading-text">Recherche en cours...</p>
+          <p className="loading-text">Chargement en cours...</p>
         </div>
       ) : error ? (
         <div className="empty-state">
@@ -458,7 +453,6 @@ const Accueil = ({
         </div>
       )}
 
-      {/* ── Afficher plus + Pagination ─────────────────────────────────────── */}
       {(games.length > 0 || users.length > 0) && (
         <div
           style={{
@@ -471,7 +465,6 @@ const Accueil = ({
             borderTop: "1px solid rgba(255,255,255,0.05)",
           }}
         >
-          {/* Afficher plus : append sans remonter */}
           {hasMore && searchType === "games" && (
             <button
               className="category-btn active"
@@ -483,7 +476,6 @@ const Accueil = ({
             </button>
           )}
 
-          {/* Précédent / Page X / Suivant : recharge et remonte */}
           <div style={{ display: "flex", gap: "12px", alignItems: "center" }}>
             <button
               className="category-btn"
@@ -521,7 +513,6 @@ const Accueil = ({
         </div>
       )}
 
-      {/* ── Jeux à venir : carrousel horizontal avec chargement infini ────── */}
       {searchType === "games" && !searchTerm && (
         <div style={{ marginTop: "3rem" }}>
           <div className="section-header">
@@ -545,7 +536,6 @@ const Accueil = ({
             </div>
           ) : (
             <div style={{ position: "relative", padding: "0 28px" }}>
-              {/* Flèche gauche */}
               <button
                 onClick={() => scrollCarousel("left")}
                 style={{
@@ -571,7 +561,6 @@ const Accueil = ({
                 ‹
               </button>
 
-              {/* Track scrollable */}
               <div
                 ref={upcomingRef}
                 style={{
@@ -627,7 +616,6 @@ const Accueil = ({
                   </div>
                 ))}
 
-                {/* Carte "Charger plus" en fin de carrousel */}
                 {upcomingHasMore && (
                   <div
                     style={{
@@ -679,7 +667,6 @@ const Accueil = ({
                 )}
               </div>
 
-              {/* Flèche droite */}
               <button
                 onClick={() => scrollCarousel("right")}
                 style={{

@@ -14,7 +14,9 @@ import "../Style/Styles.css";
 import "./Langue/i18n";
 
 const authAxios = async () => {
-  const token = await auth.currentUser?.getIdToken(true);
+  const firebaseUser = auth.currentUser;
+  if (!firebaseUser) return null;
+  const token = await firebaseUser.getIdToken(); // Removed 'true' to use cached token
   return axios.create({
     baseURL: "http://localhost:3000/api",
     headers: { Authorization: `Bearer ${token}` },
@@ -52,7 +54,7 @@ const App = () => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
         try {
-          const token = await firebaseUser.getIdToken(true);
+          const token = await firebaseUser.getIdToken();
           const res = await axios.get(
             "http://localhost:3000/api/users/profile",
             {
@@ -120,6 +122,7 @@ const App = () => {
     if (!auth.currentUser) return;
     try {
       const api = await authAxios();
+      if (!api) return;
       const res = await api.get("/notifications");
       if (res.data.success) setNotifications(res.data.notifications);
     } catch (err) {
@@ -145,6 +148,7 @@ const App = () => {
     if (!auth.currentUser) return;
     try {
       const api = await authAxios();
+      if (!api) return;
       const res = await api.get("/conversations");
       if (res.data.success) {
         const convs = res.data.conversations || [];
