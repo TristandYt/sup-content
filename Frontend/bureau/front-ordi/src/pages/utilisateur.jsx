@@ -92,6 +92,7 @@ const PublicProfile = ({
       setProfile({
         username: userData.username || userData.pseudo || "Utilisateur",
         bio: userData.bio || "",
+        website: userData.website || "",
         avatar: userData.avatar || userData.photoURL || null,
         followersCount: userData.followersCount || 0,
         followingCount: userData.followingCount || 0,
@@ -371,6 +372,29 @@ const PublicProfile = ({
               >
                 "{profile.bio}"
               </p>
+            )}
+
+            {profile.website && (
+              <a
+                href={
+                  profile.website.startsWith("http")
+                    ? profile.website
+                    : `https://${profile.website}`
+                }
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: "6px",
+                  marginTop: "8px",
+                  fontSize: "0.85rem",
+                  color: "#60a5fa",
+                  textDecoration: "none",
+                }}
+              >
+                🔗 {profile.website.replace(/^https?:\/\//, "")}
+              </a>
             )}
 
             <div
@@ -1221,6 +1245,7 @@ const MyProfile = ({
     pseudo: user?.username || user?.pseudo || user?.displayName || "Joueur",
     email: user?.email || "",
     bio: user?.bio || "",
+    website: user?.profileData?.website || "",
     role: user?.role || "",
     birthDate: user?.birthDate || "",
     preferences: user?.preferences || {
@@ -1256,6 +1281,7 @@ const MyProfile = ({
           ...profileData,
           pseudo: u.username || u.pseudo || profileData.pseudo,
           bio: u.bio || profileData.bio,
+          website: u.profileData?.website || "",
           avatar: u.avatar || u.photoURL || profileData.avatar,
           role: u.role || "",
           birthDate: u.birthDate || "",
@@ -1333,6 +1359,7 @@ const MyProfile = ({
       await api.put("/users/profile", {
         username: profileData.pseudo || profileData.username,
         bio: profileData.bio,
+        website: profileData.website,
         avatar: profileData.avatar,
         birthDate: profileData.birthDate,
         preferences: profileData.preferences,
@@ -1453,6 +1480,26 @@ const MyProfile = ({
                 value={profileData.bio}
                 onChange={handleChange}
                 placeholder={t("placeholderBio")}
+              />
+
+              <label
+                className="game-genre"
+                style={{ display: "block", margin: "16px 0 8px" }}
+              >
+                {t("websiteLabel")}
+              </label>
+              <textarea
+                name="website"
+                className="filter-select"
+                style={{
+                  width: "100%",
+                  minHeight: "80px",
+                  padding: "12px",
+                  background: "rgba(0,0,0,0.2)",
+                }}
+                value={profileData.website}
+                onChange={handleChange}
+                placeholder={t("placeholderWebsite")}
               />
 
               <label

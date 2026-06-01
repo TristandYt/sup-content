@@ -3,6 +3,7 @@ export const resources = {
     translation: {
       profileTitle: "Mon Profil",
       bioLabel: "Ma Biographie",
+      websiteLabel: "Site Web",
       langLabel: "Langue de l'interface",
       emailLabel: "Email de contact",
       btnUpdate: "METTRE À JOUR LE PROFIL",
@@ -13,6 +14,7 @@ export const resources = {
       alertSuccess: "Profil mis à jour !",
       identifiedAs: "Identifié en tant que",
       placeholderBio: "Écrivez quelques mots sur vous...",
+      placeholderWebsite: "https://votre-site.com",
       signup_title: "Inscription",
       label_pseudo: "Pseudo",
       placeholder_pseudo: "Votre nom de joueur",
@@ -32,6 +34,7 @@ export const resources = {
     translation: {
       profileTitle: "My Profile",
       bioLabel: "My Biography",
+      websiteLabel: "Website",
       langLabel: "Interface Language",
       emailLabel: "Contact Email",
       btnUpdate: "UPDATE PROFILE",
@@ -42,6 +45,7 @@ export const resources = {
       alertSuccess: "Profile updated!",
       identifiedAs: "Logged in as",
       placeholderBio: "Write a few words about yourself...",
+      placeholderWebsite: "https://your-website.com",
       signup_title: "Sign Up",
       label_pseudo: "Username",
       placeholder_pseudo: "Your gamer name",

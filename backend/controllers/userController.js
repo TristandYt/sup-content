@@ -43,14 +43,22 @@ exports.getPublicProfile = async (req, res, next) => {
         .json({ success: false, msg: "Utilisateur introuvable" });
     }
 
-    const { username, bio, createdAt, avatar, followersCount, followingCount } =
-      userDoc.data();
+    const {
+      username,
+      bio,
+      createdAt,
+      avatar,
+      followersCount,
+      followingCount,
+      profileData,
+    } = userDoc.data();
     res.json({
       success: true,
       user: {
         userId,
         username,
         bio,
+        website: profileData?.website || "",
         createdAt,
         avatar,
         followersCount,
@@ -64,23 +72,32 @@ exports.getPublicProfile = async (req, res, next) => {
 
 /*
  * PUT /api/users/profile
- * Body : { username?, bio? }
+ * Body : { username?, bio?, avatarUrl?, preferences?, website? }
  */
 exports.updateProfile = async (req, res, next) => {
   try {
     const userId = req.user.id;
-    const { username, bio, avatar, preferences } = req.body;
+    const { username, bio, avatarUrl, preferences, website } = req.body;
 
     const updates = { updatedAt: admin.firestore.FieldValue.serverTimestamp() };
     if (username !== undefined) updates.username = username;
     if (bio !== undefined) updates.bio = bio;
-    if (avatar !== undefined) updates.avatar = avatar;
     if (preferences !== undefined) updates.preferences = preferences;
+    if (avatarUrl !== undefined) updates["profileData.avatarUrl"] = avatarUrl;
+    if (website !== undefined) updates["profileData.website"] = website;
 
     await db.collection("users").doc(userId).update(updates);
 
     // Logger la mise à jour du profil
-    await Logger.log("profile_updated", userId, { updates: { username, bio } });
+    const logUpdates = {};
+    if (username !== undefined) logUpdates.username = username;
+    if (bio !== undefined) logUpdates.bio = bio;
+    if (avatarUrl !== undefined) logUpdates.avatarUrl = avatarUrl;
+    if (website !== undefined) logUpdates.website = website;
+
+    if (Object.keys(logUpdates).length > 0) {
+      await Logger.log("profile_updated", userId, { updates: logUpdates });
+    }
 
     res.json({ success: true, msg: "Profil mis à jour" });
   } catch (error) {
@@ -292,7 +309,14 @@ exports.getPreferences = async (req, res, next) => {
         .json({ success: false, msg: "Profil introuvable" });
     }
 
-    res.json({ success: true, preferences: userDoc.data().preferences || {} });
+    const preferences = userDoc.data().preferences || {
+      theme: "dark",
+      language: "fr",
+      emailNotifications: true,
+      pushNotifications: true,
+    };
+
+    res.json({ success: true, preferences });
   } catch (error) {
     next(error);
   }
@@ -304,17 +328,37 @@ exports.getPreferences = async (req, res, next) => {
 exports.updatePreferences = async (req, res, next) => {
   try {
     const userId = req.user.id;
-    const { preferences } = req.body;
+    const { theme, language, emailNotifications, pushNotifications } = req.body;
 
-    await db.collection("users").doc(userId).update({
-      preferences,
-      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-    });
+    // Validation
+    const validThemes = ["light", "dark"];
+    const validLanguages = ["en", "fr"];
+
+    if (theme && !validThemes.includes(theme)) {
+      return res.status(400).json({ success: false, msg: "Thème invalide" });
+    }
+    if (language && !validLanguages.includes(language)) {
+      return res.status(400).json({ success: false, msg: "Langue invalide" });
+    }
+
+    const updates = { updatedAt: admin.firestore.FieldValue.serverTimestamp() };
+    const preferences = {};
+
+    if (theme !== undefined) preferences.theme = theme;
+    if (language !== undefined) preferences.language = language;
+    if (emailNotifications !== undefined)
+      preferences.emailNotifications = emailNotifications;
+    if (pushNotifications !== undefined)
+      preferences.pushNotifications = pushNotifications;
+
+    updates.preferences = preferences;
+
+    await db.collection("users").doc(userId).update(updates);
 
     // Logger la mise à jour des préférences
     await Logger.log("preferences_updated", userId, { preferences });
 
-    res.json({ success: true, msg: "Préférences mises à jour" });
+    res.json({ success: true, msg: "Préférences mises à jour", preferences });
   } catch (error) {
     next(error);
   }
