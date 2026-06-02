@@ -74,11 +74,7 @@ const Accueil = ({
 
   const fetchResults = useCallback(
     async (targetPage = 1, append = false) => {
-      if (!append) {
-        setGames([]);
-        setUsers([]);
-        setError(null);
-      }
+      setError(null);
       setLoading(true);
 
       try {
@@ -88,69 +84,55 @@ const Accueil = ({
           : axios.create({ baseURL: "http://localhost:3000/api" });
 
         if (searchType === "users") {
-          if (hasSearchTerm) {
-            const res = await api.get(`/search`, {
+          const res = await api
+            .get(`/search`, {
               params: {
-                q: searchTerm.trim(),
+                q: hasSearchTerm ? searchTerm.trim() : "",
                 type: "users",
                 page: targetPage,
                 limit: PAGE_SIZE,
               },
-            });
-            const newUsers = res.data.results?.users || [];
-            setUsers(append ? (prev) => [...prev, ...newUsers] : newUsers);
-            setHasMore(newUsers.length === PAGE_SIZE);
-          } else {
-            // Membres par défaut : appel search avec terme vide
-            const res = await api
-              .get(`/search`, {
-                params: {
-                  q: "",
-                  type: "users",
-                  page: targetPage,
-                  limit: PAGE_SIZE,
-                },
-              })
-              .catch(() => ({ data: { results: { users: [] } } }));
-            const newUsers = res.data.results?.users || [];
-            setUsers(newUsers);
-            setHasMore(false);
-          }
-          setGames([]);
+            })
+            .catch(() => ({ data: { results: { users: [] } } }));
+
+          const newUsers = res.data.results?.users || [];
+          setUsers((prev) => (append ? [...prev, ...newUsers] : newUsers));
+          setHasMore(newUsers.length === PAGE_SIZE);
         } else {
-          setUsers([]);
-          let endpoint = "popular";
-          if (hasSearchTerm) endpoint = "search";
-          else if (params.genre || params.platform || params.style)
-            endpoint = "filtered";
+          // Détermination dynamique de l'endpoint
+          const endpoint = hasSearchTerm
+            ? "search"
+            : params.genre || params.platform || params.style
+              ? "filtered"
+              : "popular";
 
           const res = await api.get(`/games/${endpoint}`, {
             params: {
               page: targetPage,
               limit: PAGE_SIZE,
-              ...(hasSearchTerm && { q: searchTerm.trim() }),
-              ...(!hasSearchTerm && {
-                genre: params.genre,
-                platform: params.platform,
-                style: params.style,
-                sortBy: params.sortBy,
-                order: params.sortOrder,
-              }),
+              sortBy: params.sortBy || "total_rating",
+              order: params.sortOrder || "desc",
+              q: hasSearchTerm ? searchTerm.trim() : undefined,
+              genre: params.genre || undefined,
+              platform: params.platform || undefined,
+              style: params.style || undefined,
             },
           });
 
-          const newGames = Array.isArray(res.data)
-            ? res.data
-            : res.data.games || res.data.results || [];
+          // Extraction des données : gère les formats [Array], {games: []}, et {results: {games: []}}
+          const rawData = res.data;
+          let newGames = [];
+          if (Array.isArray(rawData)) newGames = rawData;
+          else if (rawData.games) newGames = rawData.games;
+          else if (rawData.results?.games) newGames = rawData.results.games;
+          else if (rawData.results && Array.isArray(rawData.results))
+            newGames = rawData.results;
 
-          setGames(append ? (prev) => [...prev, ...newGames] : newGames);
+          setGames((prev) => (append ? [...prev, ...newGames] : newGames));
           setHasMore(newGames.length === PAGE_SIZE);
         }
 
         setPage(targetPage);
-        if (!append) {
-          window.scrollTo({ top: 0, behavior: "smooth" });
-        }
       } catch (err) {
         console.error("Erreur API:", err);
         setError(
@@ -160,13 +142,21 @@ const Accueil = ({
         setLoading(false);
       }
     },
-    [searchTerm, params, searchType],
+    [searchTerm, params, searchType, PAGE_SIZE],
   );
+
+  // Réinitialise les listes uniquement lors du changement de catégorie principale
+  useEffect(() => {
+    setGames([]);
+    setUsers([]);
+    setPage(1);
+    setHasMore(true);
+  }, [searchType]);
 
   useEffect(() => {
     const delay = setTimeout(() => {
-      setPage(1);
-      fetchResults(1, false);
+      // On s'assure de repartir de la page 1 quand on change un filtre ou un tri
+      fetchResults(1, false).then(() => setPage(1));
     }, 500);
     return () => clearTimeout(delay);
   }, [searchTerm, params, searchType]);
