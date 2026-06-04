@@ -49,8 +49,6 @@ const PublicProfile = ({
     try {
       const api = await authAxios();
 
-      // Since the backend protects all /api/users routes, we cannot fetch profile
-      // data without being logged in. This prevents 401 errors for guests.
       if (!api) {
         setError("Veuillez vous connecter pour voir ce profil.");
         setLoading(false);
@@ -97,7 +95,7 @@ const PublicProfile = ({
         followersCount: userData.followersCount || 0,
         followingCount: userData.followingCount || 0,
         gamesCount: lib.length,
-        isCertified: userData.isCertified || false, // New: Fetch isCertified status
+        isCertified: userData.isCertified || false,
       });
 
       setLibrary(lib);
@@ -291,7 +289,7 @@ const PublicProfile = ({
               style={{ fontSize: "1.8rem", margin: "10px 0 8px" }}
             >
               {profile.username}
-              {profile.isCertified && ( // New: Display certification badge
+              {profile.isCertified && (
                 <span
                   title="Profil certifié"
                   style={{
@@ -407,7 +405,6 @@ const PublicProfile = ({
               }}
             >
               {[
-                { label: "Jeux", value: profile.gamesCount },
                 { label: "Abonnés", value: profile.followersCount },
                 { label: "Abonnements", value: profile.followingCount },
               ].map((stat, i) => (
@@ -417,7 +414,7 @@ const PublicProfile = ({
                     flex: 1,
                     padding: "18px 8px",
                     borderRight:
-                      i < 2 ? "1px solid rgba(255,255,255,0.07)" : "none",
+                      i < 1 ? "1px solid rgba(255,255,255,0.07)" : "none",
                   }}
                 >
                   <p
@@ -513,7 +510,6 @@ const PublicProfile = ({
         <div style={{ marginTop: "40px" }}>
           <div className="section-header" style={{ marginBottom: "20px" }}>
             <h3 className="section-title">Sa Collection</h3>
-            <span className="section-count">{library.length}</span>
           </div>
           {library.length === 0 ? (
             <p
@@ -1285,7 +1281,7 @@ const MyProfile = ({
           avatar: u.avatar || u.photoURL || profileData.avatar,
           role: u.role || "",
           birthDate: u.birthDate || "",
-          isCertified: u.isCertified || false, // New: Fetch isCertified status
+          isCertified: u.isCertified || false,
           preferences: u.preferences || profileData.preferences,
         };
         setProfileData(fullProfile);
@@ -1443,7 +1439,7 @@ const MyProfile = ({
                 style={{ fontSize: "1.8rem", marginTop: "15px" }}
               >
                 {profileData.pseudo}
-                {profileData.isCertified && ( // New: Display certification badge
+                {profileData.isCertified && (
                   <span
                     title="Profil certifié"
                     style={{

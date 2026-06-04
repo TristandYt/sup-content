@@ -99,24 +99,34 @@ const Accueil = ({
           setUsers((prev) => (append ? [...prev, ...newUsers] : newUsers));
           setHasMore(newUsers.length === PAGE_SIZE);
         } else {
-          // Détermination dynamique de l'endpoint
-          const endpoint = hasSearchTerm
-            ? "search"
-            : params.genre || params.platform || params.style
-              ? "filtered"
-              : "popular";
+          // Sélection de l'endpoint
+          let endpoint;
+          if (hasSearchTerm) {
+            endpoint = "search";
+          } else if (params.genre || params.platform || params.style) {
+            endpoint = "filtered";
+          } else {
+            endpoint = "popular";
+          }
+
+          // Paramètres unifiés — sortBy et order envoyés dans TOUS les cas
+          const queryParams = {
+            page: targetPage,
+            limit: PAGE_SIZE,
+            sortBy: params.sortBy || "total_rating",
+            order: params.sortOrder || "desc",
+            // Alias pour les backends qui attendent "sort" ou "sortOrder"
+            sort: params.sortBy || "total_rating",
+            sortOrder: params.sortOrder || "desc",
+          };
+
+          if (hasSearchTerm) queryParams.q = searchTerm.trim();
+          if (params.genre) queryParams.genre = params.genre;
+          if (params.platform) queryParams.platform = params.platform;
+          if (params.style) queryParams.style = params.style;
 
           const res = await api.get(`/games/${endpoint}`, {
-            params: {
-              page: targetPage,
-              limit: PAGE_SIZE,
-              sortBy: params.sortBy || "total_rating",
-              order: params.sortOrder || "desc",
-              q: hasSearchTerm ? searchTerm.trim() : undefined,
-              genre: params.genre || undefined,
-              platform: params.platform || undefined,
-              style: params.style || undefined,
-            },
+            params: queryParams,
           });
 
           // Extraction des données : gère les formats [Array], {games: []}, et {results: {games: []}}
@@ -127,6 +137,13 @@ const Accueil = ({
           else if (rawData.results?.games) newGames = rawData.results.games;
           else if (rawData.results && Array.isArray(rawData.results))
             newGames = rawData.results;
+
+          // Tri côté client en fallback si le backend ne trie pas correctement
+          newGames = sortGamesLocally(
+            newGames,
+            params.sortBy,
+            params.sortOrder,
+          );
 
           setGames((prev) => (append ? [...prev, ...newGames] : newGames));
           setHasMore(newGames.length === PAGE_SIZE);
@@ -145,6 +162,39 @@ const Accueil = ({
     [searchTerm, params, searchType, PAGE_SIZE],
   );
 
+  // Tri local en fallback (si l'endpoint filtered/popular ignore sortBy/order)
+  const sortGamesLocally = (gamesList, sortBy, sortOrder) => {
+    if (!gamesList || gamesList.length === 0) return gamesList;
+
+    const sorted = [...gamesList].sort((a, b) => {
+      let valA, valB;
+
+      switch (sortBy) {
+        case "name":
+          valA = (a.name || "").toLowerCase();
+          valB = (b.name || "").toLowerCase();
+          return sortOrder === "asc"
+            ? valA.localeCompare(valB)
+            : valB.localeCompare(valA);
+
+        case "first_release_date":
+          valA = a.first_release_date || 0;
+          valB = b.first_release_date || 0;
+          break;
+
+        case "total_rating":
+        default:
+          valA = a.total_rating || 0;
+          valB = b.total_rating || 0;
+          break;
+      }
+
+      return sortOrder === "asc" ? valA - valB : valB - valA;
+    });
+
+    return sorted;
+  };
+
   // Réinitialise les listes uniquement lors du changement de catégorie principale
   useEffect(() => {
     setGames([]);
@@ -155,7 +205,6 @@ const Accueil = ({
 
   useEffect(() => {
     const delay = setTimeout(() => {
-      // On s'assure de repartir de la page 1 quand on change un filtre ou un tri
       fetchResults(1, false).then(() => setPage(1));
     }, 500);
     return () => clearTimeout(delay);
@@ -330,11 +379,6 @@ const Accueil = ({
               ? "Tendances mondiales"
               : "Membres de la communauté"}
         </h3>
-        <div className="section-count">
-          {searchType === "games"
-            ? `${games.length} jeux`
-            : `${users.length} membres`}
-        </div>
       </div>
 
       {loading && games.length === 0 && users.length === 0 ? (
@@ -508,7 +552,6 @@ const Accueil = ({
           <div className="section-header">
             <div className="section-icon">🚀</div>
             <h3 className="section-title">Jeux à venir</h3>
-            <div className="section-count">{upcomingGames.length} jeux</div>
           </div>
 
           {upcomingLoading ? (
