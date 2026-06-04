@@ -77,7 +77,7 @@ exports.getPublicProfile = async (req, res, next) => {
 exports.updateProfile = async (req, res, next) => {
   try {
     const userId = req.user.id;
-    const { username, bio, avatarUrl, preferences, website } = req.body;
+    const { username, bio, avatarUrl, preferences, website, birthDate } = req.body;
 
     const updates = { updatedAt: admin.firestore.FieldValue.serverTimestamp() };
     if (username !== undefined) updates.username = username;
@@ -85,6 +85,7 @@ exports.updateProfile = async (req, res, next) => {
     if (preferences !== undefined) updates.preferences = preferences;
     if (avatarUrl !== undefined) updates["profileData.avatarUrl"] = avatarUrl;
     if (website !== undefined) updates["profileData.website"] = website;
+    if (birthDate !== undefined) updates.birthDate = birthDate;
 
     await db.collection("users").doc(userId).update(updates);
 
@@ -94,6 +95,7 @@ exports.updateProfile = async (req, res, next) => {
     if (bio !== undefined) logUpdates.bio = bio;
     if (avatarUrl !== undefined) logUpdates.avatarUrl = avatarUrl;
     if (website !== undefined) logUpdates.website = website;
+    if (birthDate !== undefined) logUpdates.birthDate = birthDate;
 
     if (Object.keys(logUpdates).length > 0) {
       await Logger.log("profile_updated", userId, { updates: logUpdates });
@@ -199,6 +201,38 @@ exports.updateEmail = async (req, res, next) => {
 exports.deleteAccount = async (req, res, next) => {
   try {
     const userId = req.user.id;
+
+    // Nettoyage
+    const deletePromises = [];
+
+    const librarySnap = await db.collection("users").doc(userId).collection("library").get();
+    librarySnap.forEach(doc => deletePromises.push(doc.ref.delete()));
+
+    const reviewsSnap = await db.collection("reviews").where("userId", "==", userId).get();
+    reviewsSnap.forEach(doc => deletePromises.push(doc.ref.delete()));
+
+    const customListsSnap = await db.collection("custom_lists").where("userId", "==", userId).get();
+    customListsSnap.forEach(doc => deletePromises.push(doc.ref.delete()));
+
+    const followerSnap = await db.collection("follows").where("followerId", "==", userId).get();
+    followerSnap.forEach(doc => deletePromises.push(doc.ref.delete()));
+
+    const followingSnap = await db.collection("follows").where("followingId", "==", userId).get();
+    followingSnap.forEach(doc => deletePromises.push(doc.ref.delete()));
+
+    const notifSnap = await db.collection("notifications").where("userId", "==", userId).get();
+    notifSnap.forEach(doc => deletePromises.push(doc.ref.delete()));
+
+    const convSnap = await db.collection("conversations").where("participants", "array-contains", userId).get();
+    for (const convDoc of convSnap.docs) {
+      const msgsSnap = await convDoc.ref.collection("messages").get();
+      msgsSnap.forEach(msg => deletePromises.push(msg.ref.delete()));
+      deletePromises.push(convDoc.ref.delete());
+    }
+
+    await Promise.all(deletePromises);
+
+    // Suppression du compte Auth et du profil racine
     await auth.deleteUser(userId);
     await db.collection("users").doc(userId).delete();
 
@@ -238,7 +272,7 @@ exports.addFavorite = async (req, res, next) => {
     // Logger l'ajout aux favoris
     await Logger.log("favorite_added", userId, { gameId, gameName });
 
-    // Recommandation automatique basée sur le goût (Cahier des charges 2.2.6)
+    // Recommandation automatique basée sur le goût
     try {
       const similarGames = await IGDBService.getSimilarGames(gameId);
       if (

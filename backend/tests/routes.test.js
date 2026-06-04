@@ -1115,6 +1115,25 @@ describe('Listes personnalisées (2.2.2)', () => {
         const res = await request(app).get(`/api/lists/custom/${docRef.id}`).set(AUTH_HEADER);
         expect(res.status).toBe(403);
     });
+
+    it('200 — retire un jeu d\'une liste personnalisée', async () => {
+        // 1. Création de la liste
+        const createRes = await request(app).post('/api/lists/custom').set(AUTH_HEADER).send({ name: 'Liste de test suppression' });
+        const listId = createRes.body.listId;
+        
+        // 2. Ajout du jeu
+        await request(app).post(`/api/lists/custom/${listId}/games`).set(AUTH_HEADER).send({ gameId: '1020' });
+        
+        // 3. Suppression du jeu
+        const res = await request(app).delete(`/api/lists/custom/${listId}/games/1020`).set(AUTH_HEADER);
+        expect(res.status).toBe(200);
+        expect(res.body.success).toBe(true);
+        
+        // 4. Vérification que le jeu a bien disparu
+        const detailsRes = await request(app).get(`/api/lists/custom/${listId}`).set(AUTH_HEADER);
+        const gameExists = detailsRes.body.list.games.some(g => g.gameId === '1020');
+        expect(gameExists).toBe(false);
+    });
 });
 
 // Tests du système de recommandations intelligent

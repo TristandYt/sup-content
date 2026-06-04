@@ -19,3 +19,4 @@ backend/.env
 /coverage
 *.export_metadata
 /firebase-export-*
+/backend/tests/coverage

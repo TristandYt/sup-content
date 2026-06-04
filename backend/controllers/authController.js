@@ -57,3 +57,22 @@ exports.login = async (req, res, next) => {
         msg: 'Veuillez utiliser le SDK Firebase côté client pour vous connecter et obtenir votre JWT.'
     });
 };
+
+/*
+ * POST /api/auth/oauth/callback
+ * Appelé par le frontend après une connexion OAuth réussie avec Firebase.
+ */
+exports.oauthCallback = async (req, res, next) => {
+    try {
+        const userId = req.user.uid || req.user.id;
+        const userDoc = await db.collection('users').doc(userId).get();
+        
+        res.status(200).json({
+            success: true,
+            uid: userId,
+            profile: userDoc.data()
+        });
+    } catch (error) {
+        next(error);
+    }
+};

@@ -25,6 +25,7 @@
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
     "firebase-admin": "^13.9.0",
+    "swagger-ui-express": "^5.0.1",
     "zod": "^4.4.3"
   }
 }

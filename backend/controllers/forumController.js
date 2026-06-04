@@ -140,3 +140,44 @@ exports.getPostsByThread = async (req, res, next) => {
     next(error);
   }
 };
+
+// Supprimer un sujet
+exports.deleteThread = async (req, res, next) => {
+  try {
+    const { threadId } = req.params;
+    const threadRef = db.collection("threads").doc(threadId);
+    const threadDoc = await threadRef.get();
+
+    if (!threadDoc.exists) return res.status(404).json({ success: false, msg: "Sujet introuvable" });
+    
+    // Vérification des droits
+    if (threadDoc.data().authorId !== req.user.id && req.user.role !== "admin") {
+      return res.status(403).json({ success: false, msg: "Action non autorisée" });
+    }
+
+    await threadRef.delete();
+    res.json({ success: true, msg: "Sujet supprimé" });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Supprimer une réponse
+exports.deletePost = async (req, res, next) => {
+  try {
+    const { postId } = req.params;
+    const postRef = db.collection("posts").doc(postId);
+    const postDoc = await postRef.get();
+
+    if (!postDoc.exists) return res.status(404).json({ success: false, msg: "Message introuvable" });
+
+    if (postDoc.data().authorId !== req.user.id && req.user.role !== "admin") {
+      return res.status(403).json({ success: false, msg: "Action non autorisée" });
+    }
+
+    await postRef.delete();
+    res.json({ success: true, msg: "Message supprimé" });
+  } catch (error) {
+    next(error);
+  }
+};
