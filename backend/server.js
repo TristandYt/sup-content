@@ -86,7 +86,7 @@ app.use("/api/search", searchRoutes);
 app.use("/api/reviews", reviewRoutes);
 
 // Routes avec auth
-app.use("/api/users", authMiddleware, ensureFirestoreProfile, userRoutes);
+app.use("/api/users", userRoutes);
 app.use("/api/lists", authMiddleware, ensureFirestoreProfile, listRoutes);
 app.use("/api/follows", authMiddleware, ensureFirestoreProfile, followRoutes);
 app.use("/api/feeds", authMiddleware, ensureFirestoreProfile, feedRoutes);

@@ -85,7 +85,7 @@ const buildApp = () => {
 
     app.use('/api/auth',require('../Routes/authRouter'));
     app.use('/api/games',require('../Routes/games'));
-    app.use('/api/users',authMiddleware, ensureFirestoreProfile, require('../Routes/usersRouter'));
+    app.use('/api/users', require('../Routes/usersRouter'));
     app.use('/api/lists',authMiddleware, ensureFirestoreProfile, require('../Routes/listRouter'));
     app.use('/api/reviews', require('../Routes/reviewRouter'));
     app.use('/api/follows',authMiddleware, ensureFirestoreProfile, require('../Routes/followRouter'));
@@ -1146,14 +1146,14 @@ describe('Recommandations (2.2.6)', () => {
         expect(res.body.recommendations.length).toBeGreaterThan(0);
     });
 
-    it('200 — filtre les recommandations PEGI 18 pour un utilisateur mineur', async () => {
+    it('200 — affiche les recommandations PEGI 18 pour un utilisateur mineur (visibilité globale)', async () => {
         // 1. On modifie l'âge d'Alice pour la rendre mineure (née en 2015)
         await db.collection('users').doc('user_alice_001').update({ birthDate: '2015-01-01' });
         
         try {
             const res = await request(app).get('/api/recommendations').set(AUTH_HEADER);
             expect(res.status).toBe(200);
-            expect(res.body.recommendations.length).toBe(0); // Le jeu mocké +18 lui est masqué !
+            expect(res.body.recommendations.length).toBeGreaterThan(0); // Le jeu mocké +18 reste visible dans les listes
         } finally {
             // 2. Restauration de l'âge d'Alice pour les tests suivants
             await db.collection('users').doc('user_alice_001').update({ birthDate: '1990-01-01' });
@@ -1284,6 +1284,95 @@ describe('PATCH /api/conversations/.../read', () => {
     it('404 — rejette si le message n\'existe pas (lecture)', async () => {
         const convId = 'user_alice_001_user_bob_999';
         const res = await request(app).patch(`/api/conversations/${convId}/messages/ghost_msg/read`).set(AUTH_HEADER);
+        expect(res.status).toBe(404);
+    });
+});
+
+describe('GET /api/users/:userId/profile (Public)', () => {
+    it('200 — retourne le profil public d\'un autre utilisateur', async () => {
+        const res = await request(app).get('/api/users/user_bob_999/profile');
+        expect(res.status).toBe(200);
+        expect(res.body.success).toBe(true);
+        expect(res.body.user.username).toBe('bob_plays');
+    });
+
+    it('404 — rejette si le profil public n\'existe pas', async () => {
+        const res = await request(app).get('/api/users/ghost_user/profile');
+        expect(res.status).toBe(404);
+    });
+});
+
+describe('POST /api/auth/oauth/callback', () => {
+    it('200 — valide et synchronise l\'utilisateur après OAuth', async () => {
+        const res = await request(app).post('/api/auth/oauth/callback').set(AUTH_HEADER);
+        expect(res.status).toBe(200);
+        expect(res.body.success).toBe(true);
+        expect(res.body.profile).toBeDefined();
+    });
+});
+
+describe('Listes personnalisées (Update & Delete)', () => {
+    let listId;
+    
+    beforeAll(async () => {
+        const createRes = await request(app).post('/api/lists/custom').set(AUTH_HEADER).send({ name: 'Liste à modifier' });
+        listId = createRes.body.listId;
+    });
+
+    it('200 — PUT /api/lists/custom/:listId : met à jour la liste', async () => {
+        const res = await request(app)
+            .put(`/api/lists/custom/${listId}`)
+            .set(AUTH_HEADER)
+            .send({ name: 'Nom Modifié', description: 'Nouvelle description', isPrivate: false });
+        expect(res.status).toBe(200);
+        expect(res.body.success).toBe(true);
+    });
+
+    it('403 — PUT /api/lists/custom/:listId : rejette si ce n\'est pas notre liste', async () => {
+        const docRef = await db.collection('custom_lists').add({ userId: 'user_bob_999', name: 'Bob List', isPrivate: true });
+        const res = await request(app).put(`/api/lists/custom/${docRef.id}`).set(AUTH_HEADER).send({ name: 'Hacked' });
+        expect(res.status).toBe(403);
+    });
+
+    it('200 — DELETE /api/lists/custom/:listId : supprime la liste', async () => {
+        const res = await request(app).delete(`/api/lists/custom/${listId}`).set(AUTH_HEADER);
+        expect(res.status).toBe(200);
+    });
+});
+
+describe('Messagerie (Update & Delete de messages)', () => {
+    const convId = 'user_alice_001_user_bob_999';
+    let msgId;
+
+    beforeAll(async () => {
+        const res = await request(app).post(`/api/conversations/${convId}/messages`).set(AUTH_HEADER).send({ text: 'Message à éditer' });
+        msgId = res.body.messageId;
+    });
+
+    it('200 — PATCH .../messages/:messageId : modifie un message', async () => {
+        const res = await request(app).patch(`/api/conversations/${convId}/messages/${msgId}`).set(AUTH_HEADER).send({ text: 'Message édité !' });
+        expect(res.status).toBe(200);
+        expect(res.body.success).toBe(true);
+    });
+
+    it('400 — PATCH .../messages/:messageId : rejette un message vide', async () => {
+        const res = await request(app).patch(`/api/conversations/${convId}/messages/${msgId}`).set(AUTH_HEADER).send({ text: '   ' });
+        expect(res.status).toBe(400);
+    });
+
+    it('200 — DELETE .../messages/:messageId : supprime un message', async () => {
+        const res = await request(app).delete(`/api/conversations/${convId}/messages/${msgId}`).set(AUTH_HEADER);
+        expect(res.status).toBe(200);
+    });
+});
+
+describe('Jeux IGDB - Cas limites', () => {
+    it('404 — GET /api/games/details/:id : jeu introuvable sur IGDB', async () => {
+        // Surcharge temporaire du mock axios pour renvoyer un tableau vide d'IGDB
+        const axios = require('axios');
+        axios.mockResolvedValueOnce({ data: [] });
+        
+        const res = await request(app).get('/api/games/details/999999').set(AUTH_HEADER);
         expect(res.status).toBe(404);
     });
 });

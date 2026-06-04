@@ -203,34 +203,35 @@ exports.deleteAccount = async (req, res, next) => {
     const userId = req.user.id;
 
     // Nettoyage
-    const deletePromises = [];
+    const bulkWriter = db.bulkWriter();
 
     const librarySnap = await db.collection("users").doc(userId).collection("library").get();
-    librarySnap.forEach(doc => deletePromises.push(doc.ref.delete()));
+    librarySnap.forEach(doc => bulkWriter.delete(doc.ref));
 
     const reviewsSnap = await db.collection("reviews").where("userId", "==", userId).get();
-    reviewsSnap.forEach(doc => deletePromises.push(doc.ref.delete()));
+    reviewsSnap.forEach(doc => bulkWriter.delete(doc.ref));
 
     const customListsSnap = await db.collection("custom_lists").where("userId", "==", userId).get();
-    customListsSnap.forEach(doc => deletePromises.push(doc.ref.delete()));
+    customListsSnap.forEach(doc => bulkWriter.delete(doc.ref));
 
     const followerSnap = await db.collection("follows").where("followerId", "==", userId).get();
-    followerSnap.forEach(doc => deletePromises.push(doc.ref.delete()));
+    followerSnap.forEach(doc => bulkWriter.delete(doc.ref));
 
     const followingSnap = await db.collection("follows").where("followingId", "==", userId).get();
-    followingSnap.forEach(doc => deletePromises.push(doc.ref.delete()));
+    followingSnap.forEach(doc => bulkWriter.delete(doc.ref));
 
     const notifSnap = await db.collection("notifications").where("userId", "==", userId).get();
-    notifSnap.forEach(doc => deletePromises.push(doc.ref.delete()));
+    notifSnap.forEach(doc => bulkWriter.delete(doc.ref));
 
     const convSnap = await db.collection("conversations").where("participants", "array-contains", userId).get();
     for (const convDoc of convSnap.docs) {
       const msgsSnap = await convDoc.ref.collection("messages").get();
-      msgsSnap.forEach(msg => deletePromises.push(msg.ref.delete()));
-      deletePromises.push(convDoc.ref.delete());
+      msgsSnap.forEach(msg => bulkWriter.delete(msg.ref));
+      bulkWriter.delete(convDoc.ref);
     }
 
-    await Promise.all(deletePromises);
+    // Ferme le bulkWriter et attend que toutes les suppressions optimisées soient effectuées
+    await bulkWriter.close();
 
     // Suppression du compte Auth et du profil racine
     await auth.deleteUser(userId);

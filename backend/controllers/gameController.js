@@ -184,7 +184,8 @@ exports.getSimilarGames = async (req, res, next) => {
       igdbResponse.length > 0 &&
       igdbResponse[0].similar_games
     ) {
-      similarGames = igdbResponse[0].similar_games;
+      // On limite à 10 jeux similaires maximum
+      similarGames = igdbResponse[0].similar_games.slice(0, 10);
     } else {
       const gameDoc = await db.collection("games").doc(id.toString()).get();
       if (gameDoc.exists && gameDoc.data().genres?.length > 0) {
