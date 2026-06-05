@@ -700,22 +700,22 @@ const App = () => {
                                   className="dropdown-item"
                                   onClick={() => { setDropdownOpened(false); navigate({ page: "utilisateur" }); }}
                               >
-                                👤 Profil
+                                Profil
                               </button>
                               <button
                                   className="dropdown-item"
                                   onClick={() => { setDropdownOpened(false); navigate({ page: "parametres" }); }}
                               >
-                                ⚙️ Paramètres
+                                Paramètres
                               </button>
                               <button className="dropdown-item" onClick={() => { /* Logique Thème */ }}>
-                                🎨 Thèmes
+                                Thèmes
                               </button>
 
                               <div className="dropdown-divider"></div>
 
                               <button className="dropdown-item logout-btn" onClick={handleLogout}>
-                                🚪 Se déconnecter
+                                Se déconnecter
                               </button>
                             </div>
                         )}
