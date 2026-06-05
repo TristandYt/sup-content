@@ -5,7 +5,6 @@ import { auth } from "../Service/firebase";
 import "../../Style/Styles.css";
 import defaultCover from "../assets/fr-default-large_default.jpg";
 
-
 const authAxios = async () => {
   const token = await auth.currentUser?.getIdToken(true);
   return axios.create({
@@ -14,6 +13,153 @@ const authAxios = async () => {
   });
 };
 
+// ─────────────────────────────────────────────
+// Composant PaginationBar
+// ─────────────────────────────────────────────
+const PaginationBar = ({
+  page,
+  estimatedTotal,
+  hasMore,
+  loading,
+  onPageChange,
+}) => {
+  const btnBase = {
+    padding: "8px 14px",
+    minWidth: "40px",
+    border: "1px solid rgba(255,255,255,0.12)",
+    borderRadius: "8px",
+    background: "transparent",
+    color: "#c4b5fd",
+    cursor: "pointer",
+    fontSize: "0.9rem",
+    transition: "all 0.15s",
+  };
+  const btnActive = {
+    ...btnBase,
+    background: "rgba(167,139,250,0.25)",
+    border: "1px solid #a78bfa",
+    color: "#fff",
+    fontWeight: "600",
+  };
+  const btnDisabled = {
+    ...btnBase,
+    opacity: 0.35,
+    cursor: "default",
+  };
+
+  // Génère les numéros à afficher :
+  // Toujours page 1, fenêtre ±1 autour de la page courante, … si saut, dernière page estimée
+  const getPageNumbers = () => {
+    const last = estimatedTotal;
+    const pages = new Set();
+
+    pages.add(1);
+
+    // fenêtre autour de la page courante
+    for (
+      let i = Math.max(2, page - 1);
+      i <= Math.min(last - 1, page + 1);
+      i++
+    ) {
+      pages.add(i);
+    }
+
+    if (last > 1) pages.add(last);
+
+    const sorted = [...pages].sort((a, b) => a - b);
+
+    // Insère les ellipsis là où il y a des sauts > 1
+    const result = [];
+    for (let i = 0; i < sorted.length; i++) {
+      if (i > 0 && sorted[i] - sorted[i - 1] > 1) {
+        result.push("...");
+      }
+      result.push(sorted[i]);
+    }
+    return result;
+  };
+
+  const pageNumbers = getPageNumbers();
+
+  return (
+    <div
+      style={{
+        display: "flex",
+        gap: "6px",
+        alignItems: "center",
+        flexWrap: "wrap",
+        justifyContent: "center",
+      }}
+    >
+      {/* Précédent */}
+      <button
+        style={page === 1 || loading ? btnDisabled : btnBase}
+        disabled={page === 1 || loading}
+        onClick={() => onPageChange(page - 1)}
+      >
+        ‹ Précédent
+      </button>
+
+      {/* Numéros */}
+      {pageNumbers.map((p, i) =>
+        p === "..." ? (
+          <span
+            key={`ellipsis-${i}`}
+            style={{ color: "#6b7280", padding: "8px 4px", userSelect: "none" }}
+          >
+            …
+          </span>
+        ) : (
+          <button
+            key={p}
+            style={p === page ? btnActive : loading ? btnDisabled : btnBase}
+            disabled={loading}
+            onClick={() => p !== page && onPageChange(p)}
+            onMouseEnter={(e) => {
+              if (p !== page && !loading) {
+                e.currentTarget.style.background = "rgba(167,139,250,0.12)";
+                e.currentTarget.style.borderColor = "rgba(167,139,250,0.5)";
+              }
+            }}
+            onMouseLeave={(e) => {
+              if (p !== page && !loading) {
+                e.currentTarget.style.background = "transparent";
+                e.currentTarget.style.borderColor = "rgba(255,255,255,0.12)";
+              }
+            }}
+          >
+            {p}
+          </button>
+        ),
+      )}
+
+      {/* Suivant */}
+      <button
+        style={!hasMore || loading ? btnDisabled : btnBase}
+        disabled={!hasMore || loading}
+        onClick={() => onPageChange(page + 1)}
+        onMouseEnter={(e) => {
+          if (hasMore && !loading) {
+            e.currentTarget.style.background = "rgba(167,139,250,0.12)";
+            e.currentTarget.style.borderColor = "rgba(167,139,250,0.5)";
+          }
+        }}
+        onMouseLeave={(e) => {
+          if (hasMore && !loading) {
+            e.currentTarget.style.background = "transparent";
+            e.currentTarget.style.borderColor = "rgba(255,255,255,0.12)";
+          }
+        }}
+      >
+        Suivant ›
+      </button>
+    </div>
+  );
+};
+
+// ─────────────────────────────────────────────
+// Composant principal Accueil
+// ─────────────────────────────────────────────
 const Accueil = ({
   onGameClick,
   onUserClick,
@@ -38,6 +184,8 @@ const Accueil = ({
   const [activeCategory, setActiveCategory] = useState("Tous");
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
+  // Estimation du nombre total de pages : on commence à 10, on ajuste au fur et à mesure
+  const [estimatedTotal, setEstimatedTotal] = useState(10);
   const PAGE_SIZE = 12;
   const [params, setParams] = useState({
     sortBy: "total_rating",
@@ -98,9 +246,16 @@ const Accueil = ({
 
           const newUsers = res.data.results?.users || [];
           setUsers((prev) => (append ? [...prev, ...newUsers] : newUsers));
-          setHasMore(newUsers.length === PAGE_SIZE);
+          const more = newUsers.length === PAGE_SIZE;
+          setHasMore(more);
+
+          // Mise à jour de l'estimation pour les users
+          if (!more) {
+            setEstimatedTotal(targetPage);
+          } else {
+            setEstimatedTotal((prev) => Math.max(prev, targetPage + 3));
+          }
         } else {
-          // Sélection de l'endpoint
           let endpoint;
           if (hasSearchTerm) {
             endpoint = "search";
@@ -110,13 +265,11 @@ const Accueil = ({
             endpoint = "popular";
           }
 
-          // Paramètres unifiés — sortBy et order envoyés dans TOUS les cas
           const queryParams = {
             page: targetPage,
             limit: PAGE_SIZE,
             sortBy: params.sortBy || "total_rating",
             order: params.sortOrder || "desc",
-            // Alias pour les backends qui attendent "sort" ou "sortOrder"
             sort: params.sortBy || "total_rating",
             sortOrder: params.sortOrder || "desc",
           };
@@ -130,7 +283,6 @@ const Accueil = ({
             params: queryParams,
           });
 
-          // Extraction des données : gère les formats [Array], {games: []}, et {results: {games: []}}
           const rawData = res.data;
           let newGames = [];
           if (Array.isArray(rawData)) newGames = rawData;
@@ -139,7 +291,9 @@ const Accueil = ({
           else if (rawData.results && Array.isArray(rawData.results))
             newGames = rawData.results;
 
-          // Tri côté client en fallback si le backend ne trie pas correctement
+          // Si le backend renvoie un total, on s'en sert ; sinon on estime
+          const backendTotal = rawData.total || rawData.totalPages || null;
+
           newGames = sortGamesLocally(
             newGames,
             params.sortBy,
@@ -147,7 +301,26 @@ const Accueil = ({
           );
 
           setGames((prev) => (append ? [...prev, ...newGames] : newGames));
-          setHasMore(newGames.length === PAGE_SIZE);
+
+          const more = newGames.length === PAGE_SIZE;
+          setHasMore(more);
+
+          // Mise à jour de l'estimation :
+          // - Si le backend donne un total exact → on le calcule
+          // - Si on arrive à la dernière page → on fixe
+          // - Sinon on projette : page actuelle + marge croissante
+          if (backendTotal) {
+            setEstimatedTotal(Math.ceil(backendTotal / PAGE_SIZE));
+          } else if (!more) {
+            setEstimatedTotal(targetPage);
+          } else {
+            // On augmente l'estimation progressivement au fur et à mesure qu'on avance
+            setEstimatedTotal((prev) => {
+              const projected =
+                targetPage + Math.max(3, Math.round(targetPage * 0.5));
+              return Math.max(prev, projected);
+            });
+          }
         }
 
         setPage(targetPage);
@@ -163,7 +336,6 @@ const Accueil = ({
     [searchTerm, params, searchType, PAGE_SIZE],
   );
 
-  // Tri local en fallback (si l'endpoint filtered/popular ignore sortBy/order)
   const sortGamesLocally = (gamesList, sortBy, sortOrder) => {
     if (!gamesList || gamesList.length === 0) return gamesList;
 
@@ -196,16 +368,18 @@ const Accueil = ({
     return sorted;
   };
 
-  // Réinitialise les listes uniquement lors du changement de catégorie principale
+  // Reset lors du changement de type de recherche
   useEffect(() => {
     setGames([]);
     setUsers([]);
     setPage(1);
     setHasMore(true);
+    setEstimatedTotal(10);
   }, [searchType]);
 
   useEffect(() => {
     const delay = setTimeout(() => {
+      setEstimatedTotal(10); // reset l'estimation à chaque nouveau filtre/recherche
       fetchResults(1, false).then(() => setPage(1));
     }, 500);
     return () => clearTimeout(delay);
@@ -488,6 +662,7 @@ const Accueil = ({
         </div>
       )}
 
+      {/* ── Pagination ── */}
       {(games.length > 0 || users.length > 0) && (
         <div
           style={{
@@ -511,43 +686,17 @@ const Accueil = ({
             </button>
           )}
 
-          <div style={{ display: "flex", gap: "12px", alignItems: "center" }}>
-            <button
-              className="category-btn"
-              disabled={page === 1 || loading}
-              onClick={() => fetchResults(page - 1, false)}
-              style={{
-                opacity: page === 1 || loading ? 0.4 : 1,
-                padding: "8px 20px",
-              }}
-            >
-              Précédent
-            </button>
-            <span
-              className="section-count"
-              style={{
-                padding: "8px 24px",
-                minWidth: "120px",
-                textAlign: "center",
-              }}
-            >
-              Page {page}
-            </span>
-            <button
-              className="category-btn"
-              disabled={!hasMore || loading}
-              onClick={() => fetchResults(page + 1, false)}
-              style={{
-                opacity: !hasMore || loading ? 0.4 : 1,
-                padding: "8px 20px",
-              }}
-            >
-              Suivant
-            </button>
-          </div>
+          <PaginationBar
+            page={page}
+            estimatedTotal={estimatedTotal}
+            hasMore={hasMore}
+            loading={loading}
+            onPageChange={(p) => fetchResults(p, false)}
+          />
         </div>
       )}
 
+      {/* ── Jeux à venir ── */}
       {searchType === "games" && !searchTerm && (
         <div style={{ marginTop: "3rem" }}>
           <div className="section-header">
