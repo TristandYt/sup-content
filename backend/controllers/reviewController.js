@@ -57,14 +57,22 @@ exports.getMyReviews = async (req, res, next) => {
     const userId = req.user.id;
     const page = parseInt(req.query.page) || 1;
     const limitSize = parseInt(req.query.limit) || REVIEWS_PAGE_SIZE;
+    const { lastVisible } = req.query; // Curseur pour startAfter
 
     let query = db
       .collection("reviews")
       .where("userId", "==", userId)
       .orderBy("updatedAt", "desc");
 
-    const offset = (page - 1) * limitSize;
-    query = query.offset(offset).limit(limitSize);
+    if (lastVisible) {
+      const lastDoc = await db.collection("reviews").doc(lastVisible).get();
+      if (lastDoc.exists) query = query.startAfter(lastDoc);
+    } else if (page > 1) {
+      // Fallback si le front utilise encore "page"
+      query = query.offset((page - 1) * limitSize);
+    }
+
+    query = query.limit(limitSize);
 
     const snapshot = await query.get();
     const reviews = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
@@ -81,26 +89,32 @@ exports.getMyReviews = async (req, res, next) => {
   }
 };
 
-// ── Récupérer les critiques d'un jeu avec comments et note moyenne ────────────
+// Récupérer les critiques d'un jeu avec comments et note moyenne
 exports.getGameReviews = async (req, res, next) => {
   try {
     const gameId = req.params.gameId.toString();
     const page = parseInt(req.query.page) || 1;
     const limitSize = parseInt(req.query.limit) || REVIEWS_PAGE_SIZE;
+    const { lastVisible } = req.query;
 
     let query = db
       .collection("reviews")
       .where("gameId", "==", gameId)
       .orderBy("updatedAt", "desc");
 
-    const offset = (page - 1) * limitSize;
-    query = query.offset(offset).limit(limitSize);
+    if (lastVisible) {
+      const lastDoc = await db.collection("reviews").doc(lastVisible).get();
+      if (lastDoc.exists) query = query.startAfter(lastDoc);
+    } else if (page > 1) {
+      query = query.offset((page - 1) * limitSize);
+    }
+
+    query = query.limit(limitSize);
 
     const snapshot = await query.get();
     const reviews = [];
     let totalRating = 0;
 
-    // FIX 2 : on fetch la sous-collection comments pour chaque review
     await Promise.all(
       snapshot.docs.map(async (doc) => {
         const data = doc.data();
@@ -115,21 +129,18 @@ exports.getGameReviews = async (req, res, next) => {
         const comments = commentsSnap.docs.map((c) => ({
           id: c.id,
           ...c.data(),
-          // pseudo fallback sur userId si absent
           pseudo: c.data().pseudo || c.data().userId,
         }));
 
         reviews.push({
           id: doc.id,
           ...data,
-          // FIX 1 : pseudo fallback
           pseudo: data.pseudo || data.userId,
           comments,
         });
       }),
     );
 
-    // Re-trier car Promise.all ne garantit pas l'ordre
     reviews.sort((a, b) => {
       const ta = a.updatedAt?._seconds || 0;
       const tb = b.updatedAt?._seconds || 0;
@@ -152,7 +163,7 @@ exports.getGameReviews = async (req, res, next) => {
   }
 };
 
-// ── Supprimer une critique ────────────────────────────────────────────────────
+// Supprimer une critique 
 exports.deleteReview = async (req, res, next) => {
   try {
     const userId = req.user.id;
@@ -185,7 +196,7 @@ exports.deleteReview = async (req, res, next) => {
   }
 };
 
-// ── Liker ou retirer un like ──────────────────────────────────────────────────
+// Liker ou retirer un like 
 exports.toggleLikeReview = async (req, res, next) => {
   try {
     const userId = req.user.id;
@@ -229,7 +240,7 @@ exports.toggleLikeReview = async (req, res, next) => {
   }
 };
 
-// ── Commenter une critique ────────────────────────────────────────────────────
+// Commenter une critique
 exports.commentReview = async (req, res, next) => {
   try {
     const userId = req.user.id;
@@ -251,7 +262,7 @@ exports.commentReview = async (req, res, next) => {
         .json({ success: false, msg: "Critique introuvable" });
     }
 
-    // FIX 3 : on stocke pseudo dans le comment
+    // on stocke pseudo dans le comment
     const commentRef = await reviewRef.collection("comments").add({
       userId,
       pseudo: pseudo || userId,
@@ -272,7 +283,7 @@ exports.commentReview = async (req, res, next) => {
       });
     }
 
-    // FIX 3 : on renvoie le comment complet pour mise à jour immédiate côté front
+    // on renvoie le comment complet pour mise à jour immédiate côté front
     res.status(201).json({
       success: true,
       msg: "Commentaire ajouté",

@@ -6,9 +6,15 @@ const express = require("express");
 const router = express.Router();
 const { isAdmin } = require("../middlewares/roleMiddleware");
 const userController = require("../controllers/userController");
+const authMiddleware = require("../middlewares/auth");
+const ensureFirestoreProfile = require("../middlewares/ensureFirestoreProfile");
+
 // Routes publiques
 router.get("/:userId/profile", userController.getPublicProfile);
+
 // Routes privées
+router.use(authMiddleware, ensureFirestoreProfile);
+
 router.get("/profile", userController.getProfile);
 router.put("/profile", userController.updateProfile);
 router.put("/password", userController.updatePassword);

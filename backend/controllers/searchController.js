@@ -1,11 +1,31 @@
 // Recherche globale et recommandations
-const { db } = require("../Services/Firebase");
+const { admin, db } = require("../Services/Firebase");
 const IGDBService = require("../Services/Api_igdb");
-const { filterGamesByAge } = require("../utils/pegiHelper");
+
+const getOptionalUserId = async (req) => {
+  const authHeader = req.headers.authorization;
+  if (authHeader && authHeader.startsWith("Bearer ")) {
+    try {
+      const token = authHeader.split("Bearer ")[1];
+      const decodedToken = await admin.auth().verifyIdToken(token);
+      return decodedToken.uid;
+    } catch (err) {
+      return null;
+    }
+  }
+  return null;
+};
 
 exports.searchAll = async (req, res, next) => {
   try {
-    const { q = "", type = "all", genre, year } = req.query;
+    let { q = "", type = "all", genre, year, page = 1, limit = 10 } = req.query;
+
+    // Protection contre les requêtes trop longues (surcharge mémoire)
+    q = q.substring(0, 100);
+    
+    const p = Math.max(1, parseInt(page) || 1);
+    const l = Math.min(50, Math.max(1, parseInt(limit) || 10));
+    const offset = (p - 1) * l;
 
     let users = [];
     let games = [];
@@ -18,14 +38,9 @@ exports.searchAll = async (req, res, next) => {
           .collection("users")
           .where("username", ">=", q)
           .where("username", "<=", q + "\uf8ff")
-          .limit(10)
+          .offset(offset)
+          .limit(l)
           .get();
-
-        users = usersSnap.docs.map((doc) => ({
-          id: doc.id,
-          username: doc.data().username,
-          avatarUrl: doc.data().profileData?.avatarUrl || null,
-        }));
 
         users = usersSnap.docs.map((doc) => {
           const data = doc.data();
@@ -47,7 +62,8 @@ exports.searchAll = async (req, res, next) => {
           .where("isPrivate", "==", false)
           .where("name", ">=", q)
           .where("name", "<=", q + "\uf8ff")
-          .limit(10)
+          .offset(offset)
+          .limit(l)
           .get();
 
         lists = listsSnap.docs.map((doc) => ({
@@ -60,13 +76,14 @@ exports.searchAll = async (req, res, next) => {
     // Recherche jeux IGDB
     if (type === "all" || type === "games") {
       try {
-        games = await IGDBService.advancedSearch(q, genre, year);
+        // Affiche toujours les jeux pour adultes dans les résultats de recherche
+        games = await IGDBService.advancedSearch(q, genre, year, true, l, offset);
       } catch (igdbError) {
         console.error("Erreur IGDB recherche avancée", igdbError.message);
       }
     }
 
-    res.json({ success: true, results: { users, lists, games } });
+    res.json({ success: true, page: p, limit: l, results: { users, lists, games } });
   } catch (error) {
     next(error);
   }
@@ -77,7 +94,6 @@ exports.getRecommendations = async (req, res, next) => {
     const userId = req.user.id;
     const userDoc = await db.collection("users").doc(userId).get();
     const favorites = userDoc.data().favorites || [];
-    const birthDate = userDoc.data().birthDate;
     let recommendations = [];
 
     // Recommandations via favoris
@@ -86,7 +102,8 @@ exports.getRecommendations = async (req, res, next) => {
       try {
         const result = await IGDBService.getSimilarGames(gameId);
         if (result.length > 0 && result[0].similar_games) {
-          recommendations = result[0].similar_games;
+          // On limite à 10 recommandations pour ne pas surcharger le front
+          recommendations = result[0].similar_games.slice(0, 10);
         }
       } catch (igdbError) {
         console.error("Erreur IGDB recommandation:", igdbError.message);
@@ -95,10 +112,8 @@ exports.getRecommendations = async (req, res, next) => {
 
     // Fallback : jeux populaires
     if (recommendations.length === 0) {
-      recommendations = await IGDBService.getPopularGames();
+      recommendations = await IGDBService.getPopularGames("total_rating", "desc", 15, 0, true);
     }
-
-    recommendations = filterGamesByAge(recommendations, birthDate);
 
     res.json({ success: true, recommendations });
   } catch (error) {
