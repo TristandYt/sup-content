@@ -66,7 +66,7 @@ exports.oauthCallback = async (req, res, next) => {
     try {
         const userId = req.user.uid || req.user.id;
         const userDoc = await db.collection('users').doc(userId).get();
-        
+
         res.status(200).json({
             success: true,
             uid: userId,
