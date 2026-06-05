@@ -42,14 +42,14 @@ exports.getPopularGames = async (req, res, next) => {
 
 exports.searchGames = async (req, res, next) => {
   try {
-    const { q, page, limit } = req.query;
+    const { q, page, limit, genre, platform, style } = req.query;
     if (!q)
       return res
         .status(400)
         .json({ success: false, msg: "Paramètre q manquant" });
     const { limit: lim, offset } = getOffset(page, limit);
     
-    let games = await IGDBService.searchGames(q, lim, offset, true);
+    let games = await IGDBService.searchGames(q, lim, offset, true, { genre, platform, style });
     res.json(games);
   } catch (error) {
     next(error);
@@ -155,7 +155,7 @@ exports.getUpcomingGames = async (req, res, next) => {
 
 exports.getGamesFiltered = async (req, res, next) => {
   try {
-    const { style, genre, platform, page, limit } = req.query;
+    const { style, genre, platform, sortBy, order, page, limit } = req.query;
     const { limit: lim, offset } = getOffset(page, limit);
     
     let games = await IGDBService.getGamesFiltered(
@@ -163,6 +163,8 @@ exports.getGamesFiltered = async (req, res, next) => {
         style,
         genre,
         platform,
+        sortBy,
+        order,
         limit: lim,
         offset,
       },
