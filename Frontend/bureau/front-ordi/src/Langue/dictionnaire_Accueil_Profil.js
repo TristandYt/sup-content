@@ -1,8 +1,9 @@
 export const resources = {
-  Français: {
+  fr: {
     translation: {
       profileTitle: "Mon Profil",
       bioLabel: "Ma Biographie",
+      websiteLabel: "Site Web",
       langLabel: "Langue de l'interface",
       emailLabel: "Email de contact",
       btnUpdate: "METTRE À JOUR LE PROFIL",
@@ -12,13 +13,28 @@ export const resources = {
       genreGame: "Jeu",
       alertSuccess: "Profil mis à jour !",
       identifiedAs: "Identifié en tant que",
-      placeholderBio: "Écrivez quelques mots sur vous..."
-    }
+      placeholderBio: "Écrivez quelques mots sur vous...",
+      placeholderWebsite: "https://votre-site.com",
+      signup_title: "Inscription",
+      label_pseudo: "Pseudo",
+      placeholder_pseudo: "Votre nom de joueur",
+      label_email: "Email",
+      placeholder_email: "votre@email.com",
+      label_password: "Mot de passe",
+      label_confirm_password: "Confirmer le mot de passe",
+      button_signup: "S'INSCRIRE",
+      loading: "Chargement...",
+      already_registered: "Déjà inscrit ?",
+      login_link: "Connexion",
+      error_fields_empty: "Veuillez remplir tous les champs.",
+      error_password_match: "Les mots de passe ne correspondent pas.",
+    },
   },
-  English: {
+  en: {
     translation: {
       profileTitle: "My Profile",
       bioLabel: "My Biography",
+      websiteLabel: "Website",
       langLabel: "Interface Language",
       emailLabel: "Contact Email",
       btnUpdate: "UPDATE PROFILE",
@@ -28,7 +44,21 @@ export const resources = {
       genreGame: "Game",
       alertSuccess: "Profile updated!",
       identifiedAs: "Logged in as",
-      placeholderBio: "Write a few words about yourself..."
-    }
-  }
+      placeholderBio: "Write a few words about yourself...",
+      placeholderWebsite: "https://your-website.com",
+      signup_title: "Sign Up",
+      label_pseudo: "Username",
+      placeholder_pseudo: "Your gamer name",
+      label_email: "Email",
+      placeholder_email: "your@email.com",
+      label_password: "Password",
+      label_confirm_password: "Confirm Password",
+      button_signup: "SIGN UP",
+      loading: "Loading...",
+      already_registered: "Already registered?",
+      login_link: "Login",
+      error_fields_empty: "Please fill in all fields.",
+      error_password_match: "Passwords do not match.",
+    },
+  },
 };

@@ -1,8 +1,135 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    match /{document=**} {
-      allow read, write: if true;
+
+    // --- Fonctions utilitaires ---
+
+    function isSignedIn() {
+      return request.auth != null;
     }
+
+    function isOwner(userId) {
+      return request.auth.uid == userId;
+    }
+
+    function isAdmin() {
+      return isSignedIn() &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    function isBanned() {
+      return isSignedIn() &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isBanned == true;
+    }
+
+    function notBanned() {
+      return !isBanned();
+    }
+
+    function mutualFollow(userA, userB) {
+      return exists(/databases/$(database)/documents/follows/$(userA + '_' + userB)) &&
+             exists(/databases/$(database)/documents/follows/$(userB + '_' + userA));
+    }
+
+    // --- users ---
+    match /users/{userId} {
+      allow read: if isOwner(userId) || isAdmin();
+      allow write: if false; // Sécurisé : Passage obligatoire par l'API Express
+
+      // Bibliothèque personnelle (sous-collection)
+      match /library/{gameId} {
+        allow read: if isSignedIn() && isOwner(userId);
+        allow write: if false;
+      }
+    }
+
+    // --- games (cache IGDB — lecture seule côté client) ---
+    match /games/{gameId} {
+      allow read: if isSignedIn();
+      allow write: if false;
+    }
+
+    // --- reviews ---
+    match /reviews/{reviewId} {
+      allow read: if isSignedIn();
+      allow write: if false;
+
+      // Commentaires d'une critique (sous-collection)
+      match /comments/{commentId} {
+        allow read: if isSignedIn();
+        allow write: if false;
+      }
+    }
+
+    // --- follows ---
+    match /follows/{followId} {
+      allow read: if isSignedIn();
+      allow write: if false;
+    }
+
+    // --- notifications ---
+    match /notifications/{notificationId} {
+      // Lecture : uniquement le destinataire
+      allow read: if isSignedIn() &&
+                     resource.data.userId == request.auth.uid;
+      allow write: if false;
+    }
+
+    // --- conversations ---
+    match /conversations/{conversationId} {
+      function isParticipant() {
+        return isSignedIn() && request.auth.uid in resource.data.participants;
+      }
+
+      allow read: if isParticipant();
+      allow write: if false;
+
+      // Messages (sous-collection)
+      match /messages/{messageId} {
+        function isConvParticipant() {
+          return isSignedIn() &&
+            request.auth.uid in get(/databases/$(database)/documents/conversations/$(conversationId)).data.participants;
+        }
+
+        allow read: if isConvParticipant();
+        allow write: if false;
+      }
+    }
+
+    // --- threads (Forum) ---
+    match /threads/{threadId} {
+      allow read: if isSignedIn();
+      allow write: if false;
+    }
+
+    // --- posts (Réponses Forum) ---
+    match /posts/{postId} {
+      allow read: if isSignedIn();
+      allow write: if false;
+    }
+
+    // --- custom_lists ---
+    match /custom_lists/{listId} {
+      // Lecture : propriétaire toujours, autres utilisateurs si la liste est publique
+      allow read: if isSignedIn() &&
+                     (resource.data.userId == request.auth.uid || resource.data.isPrivate == false);
+      allow write: if false;
+    }
+
+    // --- reports ---
+    match /reports/{reportId} {
+      // Lecture : admins uniquement
+      allow read: if isAdmin();
+      allow write: if false;
+    }
+
+    // --- logs (historique des actions) ---
+    match /logs/{logId} {
+      // Lecture : admins uniquement
+      allow read: if isAdmin();
+      // Écriture : uniquement le backend via Admin SDK
+      allow write: if false;
+    }
+
   }
 }

@@ -1,57 +1,101 @@
-const express = require('express');
-const cors = require('cors');
-const dotenv = require('dotenv');
-const admin = require('firebase-admin');
-const listRoutes = require('./routes/listRouter');
-const reviewRoutes = require('./routes/reviewRouter');
-const followRoutes = require('./routes/followRouter');
-const feedRoutes = require('./routes/feedRouter');
+/*
+ * Backend Express principal.
+ * Port 3000
+ */
+const express = require("express");
+const cors = require("cors");
+const helmet = require("helmet");
+const rateLimit = require("express-rate-limit");
+const dotenv = require("dotenv");
 
 dotenv.config();
 
-// configuration Firebase
-if (process.env.FIRESTORE_EMULATOR_HOST) {
-  admin.initializeApp({ projectId: 'demo-supcontent' });
-  console.log("Connecté à l'émulateur Firebase (Docker)");
-} else {
-  try {
-    const serviceAccount = require('./chemin/vers/notre/cle-firebase.json'); // a modif
-    admin.initializeApp({
-      credential: admin.credential.cert(serviceAccount)
-    });
-    console.log("Connecté au vrai Firebase Cloud");
-  } catch(err) {
-    console.log("Attention: Fichier firebase-key.json introuvable. (Ignoré pour les tests locaux) : "/*, err*/);
-    admin.initializeApp({projectId: 'demo-supcontent'});
-  }
-}
-
-const db = admin.firestore();
-const auth = admin.auth();
-
-module.exports = { db, auth };
+require("./Services/Firebase");
 
 const app = express();
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 3000;
 
-app.use(cors());
+// Sécurité des en-têtes HTTP
+app.use(helmet());
+
+// Définition dynamique des origines CORS depuis le fichier .env
+const allowedOrigins = process.env.CORS_ORIGINS 
+  ? process.env.CORS_ORIGINS.split(",") 
+  : [
+      "http://localhost:3001",
+      "http://127.0.0.1:3001",
+      "http://localhost:5173",
+      "http://127.0.0.1:5173",
+    ];
+
+// Configuration CORS stricte
+app.use(
+  cors({
+    origin: allowedOrigins,
+    methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
+    credentials: true,
+  }),
+);
+
+// Limitation du taux de requêtes
+const apiLimiter = rateLimit({
+  windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS) || 15 * 60 * 1000,
+  max: parseInt(process.env.RATE_LIMIT_MAX) || 200,
+  message: {
+    success: false,
+    msg: "Trop de requêtes effectuées depuis cette IP, veuillez réessayer plus tard.",
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+app.use("/api", apiLimiter);
+
 app.use(express.json());
 
-// Routes
-const authRoutes = require('./routes/authRouter');
-const gameRoutes = require('./routes/games');
-const userRoutes = require('./routes/usersRouter');
+// Configuration Swagger
+const yaml = require("yamljs");
+const swaggerUi = require("swagger-ui-express");
+const swaggerDocument = yaml.load("./swagger.yaml");
+app.use("/swagger", swaggerUi.serve, swaggerUi.setup(swaggerDocument, {
+  customCss: ".swagger-ui .topbar { display: none }",
+  customSiteTitle: "SupContent API Docs"
+}));
+
+const authMiddleware = require("./middlewares/auth");
+const ensureFirestoreProfile = require("./middlewares/ensureFirestoreProfile");
 const errorHandler = require("./middlewares/errorHandlers");
 
-app.use('/api/auth', authRoutes);
-app.use('/api/games', gameRoutes);
-app.use('/api/users', userRoutes);
-app.use('/api/lists', listRoutes);
-app.use('/api/reviews', reviewRoutes);
-app.use('/api/follows', followRoutes);
-app.use('/api/feeds', feedRoutes);
+const authRoutes = require("./Routes/authRouter");
+const gameRoutes = require("./Routes/games");
+const userRoutes = require("./Routes/usersRouter");
+const listRoutes = require("./Routes/listRouter");
+const reviewRoutes = require("./Routes/reviewRouter");
+const followRoutes = require("./Routes/followRouter");
+const feedRoutes = require("./Routes/feedRouter");
+const conversationRoutes = require("./Routes/conversationRouter");
+const searchRoutes = require("./Routes/searchRouter");
+const notificationRoutes = require("./Routes/notificationRouter");
+const moderationRoutes = require("./Routes/moderationRouter");
+const interactionRoutes = require("./Routes/interactionsRouter");
+const forumRoutes = require("./Routes/forumRouter");
 
-// middleware
+// Routes publiques
+app.use("/api/auth", authRoutes);
+app.use("/api/games", gameRoutes);
+app.use("/api/search", searchRoutes);
+app.use("/api/reviews", reviewRoutes);
+
+// Routes avec auth
+app.use("/api/users", userRoutes);
+app.use("/api/lists", authMiddleware, ensureFirestoreProfile, listRoutes);
+app.use("/api/follows", authMiddleware, ensureFirestoreProfile, followRoutes);
+app.use("/api/feeds", authMiddleware, ensureFirestoreProfile, feedRoutes);
+app.use("/api/conversations",authMiddleware,ensureFirestoreProfile,conversationRoutes,);
+app.use("/api/notifications",authMiddleware,ensureFirestoreProfile,notificationRoutes,);
+app.use("/api/moderation",authMiddleware,ensureFirestoreProfile,moderationRoutes,);
+app.use("/api/interactions",authMiddleware,ensureFirestoreProfile,interactionRoutes,);
+app.use("/api/forum", authMiddleware, ensureFirestoreProfile, forumRoutes);
+
 app.use(errorHandler);
 
 app.listen(PORT, () => {

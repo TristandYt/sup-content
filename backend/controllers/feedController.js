@@ -1,53 +1,97 @@
-// backend/controllers/feedController.js
-const admin = require('firebase-admin');
+// Fil d'actualité (Abonnements)
+const { db } = require('../Services/Firebase');
 
-const getDb = () => admin.apps.length ? admin.firestore() : null;
+const FEED_PAGE_SIZE = 20;
 
 exports.getNewsFeed = async (req, res, next) => {
     try {
-        const db = getDb();
-        if (!db) throw new Error("Base de données non initialisée");
-
         const userId = req.user.id;
+        const page = parseInt(req.query.page) || 1;
+        const limitSize = parseInt(req.query.limit) || FEED_PAGE_SIZE;
 
-        // recup la liste des ID des personnes que le user suit
         const followsSnapshot = await db.collection('follows')
             .where('followerId', '==', userId)
             .get();
 
-        const followingIds = [];
-        followsSnapshot.forEach(doc => {
-            followingIds.push(doc.data().followingId);
-        });
+        const allFollowingIds = followsSnapshot.docs.map(doc => doc.data().followingId);
 
-        // si l'user ne suit personne --> son fil est vide (sadge)
-        if (followingIds.length === 0) {
-            return res.json({ success: true, feed: [], msg: "Abonnez-vous à des utilisateurs pour voir leur activité !" });
+        if (allFollowingIds.length === 0) {
+            return res.json({
+                success: true,
+                feed: [],
+                page,
+                totalPages: 0,
+                msg: 'Suivez des utilisateurs pour voir leur activité',
+            });
         }
 
-        //sachant que dans firestore la command in n'accepte qu'un max de 10 valeurs vu que c'est un projet local
-        // on prend que les 10 premiers abonnement mais on pourra augmenter avec le temps on verra
-        const topFollowingIds = followingIds.slice(0, 10);
+        const chunks = [];
+        for (let i = 0; i < allFollowingIds.length; i += 10) {
+            chunks.push(allFollowingIds.slice(i, i + 10));
+        }
 
-        // recup les critiques recentes de ces user
-        const reviewsSnapshot = await db.collection('reviews')
-            .where('userId', 'in', topFollowingIds)
-            .orderBy('updatedAt', 'desc') // On trie du plus récent au plus ancien
-            .limit(20) // pour l'instant on limite a 20 post pour pas faire bruler le front
-            .get();
+        // 1. Récupération des critiques (Reviews)
+        const reviewPromises = chunks.map(chunk => {
+            return db.collection('reviews')
+                .where('userId', 'in', chunk)
+                .orderBy('updatedAt', 'desc')
+                .limit(FEED_PAGE_SIZE).get();
+        });
 
-        const feed = [];
-        reviewsSnapshot.forEach(doc => {
-            feed.push({
-                id: doc.id, // l'ID de la critique
-                type: 'REVIEW_ADDED', // on precise le type d'action pour aider le front-end
-                data: doc.data()
+        // 2. Récupération des ajouts en Bibliothèque (Library)
+        const libraryPromises = allFollowingIds.map(fId => {
+            return db.collection('users').doc(fId).collection('library')
+                .orderBy('updatedAt', 'desc')
+                .limit(FEED_PAGE_SIZE).get();
+        });
+
+        const [reviewSnapshots, librarySnapshots] = await Promise.all([
+            Promise.all(reviewPromises),
+            Promise.all(libraryPromises)
+        ]);
+        
+        let allFeedItems = [];
+        reviewSnapshots.forEach(snap => {
+            snap.docs.forEach(doc => {
+                allFeedItems.push({
+                    id: doc.id,
+                    type: 'REVIEW_ADDED',
+                    data: doc.data(),
+                    updatedAt: doc.data().updatedAt?.toDate()
+                });
             });
         });
 
-        // renvoyer le fil d'actualité au front-end
-        res.json({ success: true, feed });
+        librarySnapshots.forEach((snap, index) => {
+            const fId = allFollowingIds[index];
+            snap.docs.forEach(doc => {
+                allFeedItems.push({
+                    id: `lib_${fId}_${doc.id}`,
+                    type: 'LIBRARY_UPDATED',
+                    data: { userId: fId, ...doc.data() },
+                    updatedAt: doc.data().updatedAt?.toDate()
+                });
+            });
+        });
 
+        // Tri chronologique global (Critiques + Bibliothèque combinées)
+        allFeedItems.sort((a, b) => (b.updatedAt?.getTime() || 0) - (a.updatedAt?.getTime() || 0));
+        
+        const startIndex = (page - 1) * limitSize;
+        const endIndex = page * limitSize;
+        const feed = allFeedItems.slice(startIndex, endIndex);
+        const totalPages = Math.ceil(allFeedItems.length / limitSize);
+
+        feed.forEach(item => delete item.updatedAt);
+
+        res.json({
+            success: true,
+            totalItems: allFeedItems.length,
+            page,
+            totalPages,
+            limit: limitSize,
+            feed,
+        });
     } catch (error) {
         next(error);
     }

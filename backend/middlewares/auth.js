@@ -1,35 +1,29 @@
-/* --------- Verif les requetes --------- */
-const jwt = require("jsonwebtoken");
-const router = require("../routes/games");
+/*
+ * Middleware d'authentification Firebase.
+ * Vérifie le token Authorization et attache l'UID à req.user.
+ */
+const { auth } = require('../Services/Firebase');
 
-const auth = (req, res, next) => {
-    /* --------- Get header autorisation (le front end enverra "bearer le_token_ici) --------- */
-    const authHeader = req.headers('Authorization');
-    const token = authHeader.authorization && authHeader.authorization.split(' ')[1]; // --> sépare "bearer" du token
+const authMiddleware = async (req, res, next) => {
 
-    /* --------- if no token --> block  --------- */
+    const authHeader = req.headers['authorization'];
+    const token = authHeader && authHeader.split(' ')[1];
+
     if (!token) {
-        return res.status(401).json({
-            success: false,
-            msg: 'Accès refusé: Aucun token fourni'
-        });
+        return res.status(401).json({ success: false, msg: 'Accès refusé: Aucun token' });
     }
 
     try {
-        /* --------- check et decode token --------- */
-        const decoded = jwt.verify(token, process.env.JWT_SECRET || 'super_secret_temp');
-
-        /* --------- attache data user (id firestore) a la query --------- */
-        req.user = decoded.user;
-
-        /* --------- q vers controller --------- */
+        
+        const decodedToken = await auth.verifyIdToken(token);
+        
+        
+        req.user = { id: decodedToken.uid };
+        
         next();
-       } catch (err) {
-        res.status(401).json({
-            success: false,
-            msg: 'Erreur lors de la connexion',
-        });
+    } catch (error) {
+        res.status(401).json({ success: false, msg: 'Session expirée ou invalide' });
     }
-    };
+};
 
-module.exports = auth;
+module.exports = authMiddleware;
