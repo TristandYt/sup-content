@@ -28,6 +28,13 @@ const App = () => {
   const [navStack, setNavStack] = useState([{ page: "accueil" }]);
   const current = navStack[navStack.length - 1];
   const currentPage = current.page;
+  const [theme, setTheme] = useState('dark');
+
+  const toggleTheme = () => {
+    const newTheme = theme === 'dark' ? 'light' : 'dark';
+    setTheme(newTheme);
+    document.documentElement.className = newTheme;
+  };
 
   const navigate = (entry) => {
     setNavStack((prev) => [...prev, entry]);
@@ -708,8 +715,14 @@ const App = () => {
                               >
                                 Paramètres
                               </button>
-                              <button className="dropdown-item" onClick={() => { /* Logique Thème */ }}>
-                                Thèmes
+                              <button
+                                  className="dropdown-item"
+                                  onClick={() => {
+                                    toggleTheme();
+                                    setDropdownOpened(false);
+                                  }}
+                              >
+                                Thème : {theme === 'dark' ? 'Sombre' : 'Clair'}
                               </button>
 
                               <div className="dropdown-divider"></div>

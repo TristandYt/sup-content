@@ -1,3 +1,28 @@
+/* default theme sombre */
+:root, .dark {
+  --bg-color: #0a0a0f;
+  --text-color: white;
+  --card-bg: rgba(255, 255, 255, 0.08);
+}
+
+/* theme clair */
+.light {
+  --bg-color: #f0f2f5;
+  --text-color: #1a1a1a;
+  --card-bg: rgba(0, 0, 0, 0.05);
+}
+
+/* appliquer couleur au conteneur */
+.app-container {
+  background-color: var(--bg-color) !important;
+  color: var(--text-color) !important;
+  transition: all 0.3s ease;
+}
+
+.card, .auth-card {
+  background: var(--card-bg) !important;
+}
+
 /* ============================================
    ACCUEIL PAGE - MODERN GAMING STYLE
    ============================================ */
@@ -2152,8 +2177,8 @@ select {
   background: rgba(10, 10, 15, 0.8);
   border: 1px solid rgba(255, 255, 255, 0.1);
   color: white;
-  width: 60px; /* Augmenté pour plus de visibilité */
-  height: 140px; /* Prend environ la moitié de la hauteur d'une carte */
+  width: 60px;
+  height: 140px;
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -2175,6 +2200,10 @@ select {
   border-radius: 0 8px 8px 0;
 }
 
+/* ============================================
+   PROFILE DROPDOWN
+   ============================================ */
+
 .profile-dropdown-container {
   position: relative;
   display: flex;
@@ -2183,7 +2212,6 @@ select {
 
 .dropdown-menu {
   position: absolute;
-  /* On force le menu à se placer exactement en dessous du conteneur, + 12px d'espace */
   top: calc(100% + 12px);
   right: 0;
   background: rgba(20, 20, 30, 0.98);
@@ -2191,13 +2219,11 @@ select {
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 0.75rem;
   box-shadow: 0 16px 40px rgba(0, 0, 0, 0.6);
-  min-width: 220px; /* Un peu plus large pour être confortable */
+  min-width: 220px;
   display: flex;
   flex-direction: column;
-  z-index: 9999; /* On s'assure qu'il passe au-dessus de tout le reste */
+  z-index: 9999;
   padding: 0.5rem;
-
-  /* Animation YouTube-style (s'ouvre depuis le haut à droite) */
   transform-origin: top right;
   animation: dropdownSlideFade 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
@@ -2234,7 +2260,7 @@ select {
 .dropdown-item:hover {
   background: rgba(255, 255, 255, 0.08);
   color: white;
-  padding-left: 1.25rem; /* Petit effet de décalage très moderne */
+  padding-left: 1.25rem;
 }
 
 .dropdown-divider {
