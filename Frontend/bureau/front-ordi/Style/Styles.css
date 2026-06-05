@@ -2277,3 +2277,265 @@ select {
   background: rgba(239, 68, 68, 0.15);
   color: #fca5a5;
 }
+
+/* ============================================
+   THEME CLAIR (OVERRIDES)
+   ============================================ */
+
+/*  variable globale theme clair */
+.light {
+  --bg-color: #f3f4f6; /* Fond général gris très doux (évite le blanc pur qui agresse les yeux) */
+  --text-color: #111827; /* Texte presque noir */
+  --text-muted: #4b5563; /* Texte secondaire gris foncé */
+  --card-bg: #ffffff; /* Cartes en blanc pur pour contraster avec le fond */
+  --card-border: rgba(0, 0, 0, 0.08); /* Bordures subtiles sombres */
+  --hover-bg: rgba(0, 0, 0, 0.05); /* Effet de survol assombri */
+  --nav-bg: rgba(255, 255, 255, 0.95); /* Navbar blanche avec flou */
+  --dropdown-bg: rgba(255, 255, 255, 0.98);
+  --input-bg: #f9fafb;
+}
+
+/* fond et texte globaux clair */
+.light body,
+.light html,
+.light .app-container,
+.light .accueil-container,
+.light .messaging-container {
+  background-color: var(--bg-color);
+  color: var(--text-color);
+}
+
+/* titre degrade */
+.light .hero-title,
+.light .section-title,
+.light .auth-title,
+.light .messaging-title {
+  background: linear-gradient(to right, #111827, #6b7280);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.light .hero-subtitle,
+.light .empty-text,
+.light .auth-subtitle,
+.light .messaging-contact-status,
+.light .messaging-no-messages-text,
+.light .messaging-message-time {
+  color: var(--text-muted);
+}
+
+/* navbar et menu deroulant */
+.light .modern-navbar {
+  background: var(--nav-bg);
+  border-bottom: 1px solid var(--card-border);
+}
+
+.light .dropdown-menu,
+.light .notifications-dropdown {
+  background: var(--dropdown-bg);
+  border: 1px solid var(--card-border);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.08);
+}
+
+.light .dropdown-item,
+.light .notification-item p,
+.light .notifications-header h3 {
+  color: var(--text-color);
+}
+
+.light .dropdown-item:hover,
+.light .notification-item:hover {
+  background: var(--hover-bg);
+}
+
+.light .dropdown-divider {
+  background: var(--card-border);
+}
+
+.light .nav-icon-btn,
+.light .search-close-btn {
+  color: var(--text-muted);
+}
+
+.light .nav-icon-btn:hover,
+.light .search-close-btn:hover {
+  background: var(--hover-bg);
+  color: var(--text-color);
+}
+
+/* game card et auth */
+.light .game-card-modern,
+.light .auth-card {
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.02);
+}
+
+.light .game-card-modern:hover {
+  border-color: rgba(147, 51, 234, 0.4);
+  box-shadow: 0 10px 25px rgba(147, 51, 234, 0.15);
+}
+
+.light .game-image-container {
+  background-color: #e5e7eb;
+}
+
+.light .game-title {
+  color: var(--text-color);
+}
+
+.light .game-year {
+  color: var(--text-muted);
+}
+
+/* texte en dessous des jeux */
+.light .game-overlay {
+  background: linear-gradient(to top, var(--card-bg) 0%, rgba(255,255,255, 0.5) 50%, transparent 100%);
+}
+
+.light .rating-badge {
+  background: rgba(255, 255, 255, 0.9);
+  color: #111827;
+  border: 1px solid rgba(0,0,0,0.1);
+}
+
+.light .rating-badge .rating-value {
+  color: #111827;
+}
+
+/* input, select et recherche */
+.light .search-bar-wrapper,
+.light .filter-select,
+.light .auth-input,
+.light .messaging-input,
+.light .status-select {
+  background-color: var(--input-bg);
+  border: 1px solid var(--card-border);
+  color: var(--text-color);
+}
+
+.light .search-bar-wrapper:focus-within,
+.light .filter-select:focus,
+.light .auth-input:focus,
+.light .messaging-input:focus {
+  background-color: #ffffff;
+  border-color: #9333ea;
+  box-shadow: 0 0 0 3px rgba(147, 51, 234, 0.1);
+}
+
+.light .search-input-modern,
+.light .search-input-modern::placeholder,
+.light .auth-input::placeholder,
+.light .messaging-input::placeholder {
+  color: var(--text-muted);
+}
+
+/* bouton de categories */
+.light .category-btn,
+.light .lang-btn,
+.light .messaging-action-btn,
+.light .messaging-attach-btn {
+  background: var(--card-bg);
+  color: var(--text-muted);
+  border: 1px solid var(--card-border);
+}
+
+.light .category-btn:hover,
+.light .lang-btn:hover,
+.light .messaging-action-btn:hover,
+.light .messaging-attach-btn:hover {
+  background: var(--hover-bg);
+  color: var(--text-color);
+}
+
+.light .category-btn.active,
+.light .lang-btn.active {
+  background: linear-gradient(to right, #9333ea, #3b82f6);
+  color: white;
+  border: none;
+}
+
+/* messagerie */
+.light .messaging-sidebar,
+.light .messaging-main,
+.light .messaging-chat-header,
+.light .messaging-input-area {
+  background: var(--card-bg);
+  border-color: var(--card-border);
+}
+
+.light .messaging-contact-item:hover {
+  background: var(--hover-bg);
+}
+
+.light .messaging-contact-item.active {
+  background: rgba(147, 51, 234, 0.1);
+  border-left-color: #9333ea;
+}
+
+.light .messaging-contact-name,
+.light .messaging-header-name {
+  color: var(--text-color);
+}
+
+/* bulle de chat */
+.light .messaging-message.received .messaging-message-bubble {
+  background: #f3f4f6;
+  color: #111827;
+  border: 1px solid var(--card-border);
+}
+
+/* resume des jeux */
+.light .game-details-layout p,
+.light .game-description,
+.light .game-summary {
+  color: var(--text-muted) !important;
+  line-height: 1.6;
+}
+
+/* info du jeu */
+.light .game-sidebar-modern p,
+.light .game-sidebar-modern span,
+.light .game-info-item,
+.light .game-meta-list {
+  color: var(--text-muted) !important;
+}
+/* accentuer info */
+.light .game-sidebar-modern strong,
+.light .game-sidebar-modern b {
+  color: var(--text-color) !important;
+}
+
+
+/* forum clair */
+.light [style*="color: white"],
+.light [style*="color: #fff"],
+.light [style*="color: #FFF"],
+.light [style*="color: rgb(255, 255, 255)"] {
+  color: var(--text-color) !important;
+}
+
+.light .main-content-wrapper h2,
+.light .main-content-wrapper h3,
+.light .main-content-wrapper h4,
+.light .main-content-wrapper strong,
+.light .main-content-wrapper b {
+  color: var(--text-color) !important;
+}
+
+.light .main-content-wrapper div[style*="border"] > div > p,
+.light .main-content-wrapper div[style*="border"] > div > span,
+.light .main-content-wrapper div[style*="border"] > div > div {
+  color: var(--text-muted) !important;
+}
+
+.light .main-content-wrapper div[style*="border"] svg {
+  color: var(--text-muted) !important;
+  stroke: var(--text-muted) !important;
+}
+
+light .main-content-wrapper button *,
+.light .main-content-wrapper button {
+  color: inherit;
+}
