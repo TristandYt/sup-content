@@ -32,20 +32,12 @@ class IGDBService {
     }
   }
 
-  async searchGames(title, limit = 15, offset = 0, includeAdultThemes = false, filters = {}) {
-    let whereClauses = [];
-    if (!includeAdultThemes) {
-      whereClauses.push("themes != (42)");
-    }
-    if (filters.genre) whereClauses.push(`genres = (${filters.genre})`);
-    if (filters.platform) whereClauses.push(`platforms = (${filters.platform})`);
-    if (filters.style) whereClauses.push(`themes = (${filters.style})`);
-
-    const whereString = whereClauses.length > 0 ? `where ${whereClauses.join(" & ")};` : "";
+  async searchGames(title, limit = 15, offset = 0, includeAdultThemes = false) {
+    const adultFilter = includeAdultThemes ? "" : "where themes != (42);";
     const query = `
       fields name, cover.image_id, total_rating, summary, first_release_date, genres.name, age_ratings.category, age_ratings.rating;
       search "${title}";
-      ${whereString}
+      ${adultFilter}
       limit ${limit};
       offset ${offset};
     `;
@@ -57,16 +49,20 @@ class IGDBService {
     order = "desc",
     limit = 15,
     offset = 0,
-    includeAdultThemes = false
+    includeAdultThemes = false,
   ) {
-    // Gestion des alias potentiels envoyés par le front
     let field = "total_rating";
     if (sortBy === "name" || sortBy === "nom") field = "name";
-    if (sortBy === "first_release_date" || sortBy === "date" || sortBy === "release_date") field = "first_release_date";
-    
-    // Gestion des alias pour l'ordre
+    if (
+      sortBy === "first_release_date" ||
+      sortBy === "date" ||
+      sortBy === "release_date"
+    )
+      field = "first_release_date";
+
     let direction = "desc";
-    if (order === "asc" || order === "ascendant" || order === "croissant") direction = "asc";
+    if (order === "asc" || order === "ascendant" || order === "croissant")
+      direction = "asc";
 
     const adultFilter = includeAdultThemes ? "" : " & themes != (42)";
     const query = `
@@ -79,7 +75,14 @@ class IGDBService {
     return this.request("games", query);
   }
 
-  async advancedSearch(q, genre, year, includeAdultThemes = false, limit = 20, offset = 0) {
+  async advancedSearch(
+    q,
+    genre,
+    year,
+    includeAdultThemes = false,
+    limit = 20,
+    offset = 0,
+  ) {
     let query = `fields name, cover.image_id, first_release_date, total_rating, genres.name, age_ratings.category, age_ratings.rating; limit ${limit}; offset ${offset};`;
     let whereClauses = [];
 
@@ -100,7 +103,7 @@ class IGDBService {
       whereClauses.push("total_rating_count > 10");
 
     if (!includeAdultThemes) {
-      whereClauses.push("themes != (42)"); // Bloque les jeux érotiques / nudité
+      whereClauses.push("themes != (42)");
     }
 
     if (whereClauses.length > 0) query += ` where ${whereClauses.join(" & ")};`;
@@ -121,42 +124,33 @@ class IGDBService {
     return this.request("games", query);
   }
 
-  async getGamesFiltered({ style, genre, platform, sortBy = "total_rating", order = "desc", limit = 15, offset = 0 }, includeAdultThemes = false) {
-    let field = "total_rating";
-    if (sortBy === "name" || sortBy === "nom") field = "name";
-    if (sortBy === "first_release_date" || sortBy === "date" || sortBy === "release_date") field = "first_release_date";
-
-    let direction = "desc";
-    if (order === "asc" || order === "ascendant" || order === "croissant") direction = "asc";
-
-    let query = `fields name, cover.image_id, first_release_date, total_rating, genres.name, age_ratings.category, age_ratings.rating; limit ${limit}; offset ${offset}; sort ${field} ${direction};`;
+  async getGamesFiltered(
+    { style, genre, platform, limit = 15, offset = 0 },
+    includeAdultThemes = false,
+  ) {
+    let query = `fields name, cover.image_id, first_release_date, total_rating, genres.name, age_ratings.category, age_ratings.rating; limit ${limit}; offset ${offset};`;
     let whereClauses = [];
     if (genre) whereClauses.push(`genres = (${genre})`);
     if (platform) whereClauses.push(`platforms = (${platform})`);
     if (style) whereClauses.push(`themes = (${style})`);
 
     if (!includeAdultThemes) {
-      whereClauses.push("themes != (42)"); // Bloque les jeux érotiques / nudité
-    }
-
-    if (field === "total_rating") {
-      whereClauses.push("total_rating != null");
-    } else if (field === "first_release_date") {
-      whereClauses.push("first_release_date != null");
+      whereClauses.push("themes != (42)");
     }
 
     if (whereClauses.length > 0) query += ` where ${whereClauses.join(" & ")};`;
     return this.request("games", query);
   }
 
-  // Détails d'un jeu avec DLC et expansions 
+  // Détails d'un jeu avec DLC et expansions
   async getGameDetails(gameId) {
     const query = `
-      fields name, cover.image_id, summary, genres.name, platforms.name,
+      fields name, cover.image_id, summary, total_rating, total_rating_count,
+             genres.name, platforms.name, themes,
              screenshots.image_id, first_release_date,
              age_ratings.category, age_ratings.rating,
-             dlcs.name, dlcs.cover.image_id, dlcs.first_release_date,
-             expansions.name, expansions.cover.image_id, expansions.first_release_date;
+             dlcs.name, dlcs.cover.image_id, dlcs.first_release_date, dlcs.summary,
+             expansions.name, expansions.cover.image_id, expansions.first_release_date, expansions.summary;
       where id = ${gameId};
     `;
     return this.request("games", query);
@@ -164,7 +158,6 @@ class IGDBService {
 
   // DLC et expansions d'un jeu
   async getGameDlcsAndExpansions(gameId) {
-    // Récupère les DLC (category=1) et expansions (category=2) liés au jeu parent
     const query = `
       fields name, cover.image_id, first_release_date, category, summary;
       where parent_game = ${gameId} & category = (1,2);
