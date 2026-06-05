@@ -10,6 +10,7 @@ import Jeu from "./pages/Jeu";
 import Messagerie from "./pages/messagerie";
 import AdminDashboard from "./pages/AdminDashboard";
 import Forum from "./pages/Forum";
+import ThemeToggle from './components/ThemeToggle';
 import "../Style/Styles.css";
 import "./Langue/i18n";
 
@@ -28,6 +29,13 @@ const App = () => {
   const [navStack, setNavStack] = useState([{ page: "accueil" }]);
   const current = navStack[navStack.length - 1];
   const currentPage = current.page;
+  const [theme, setTheme] = useState('dark');
+
+  const toggleTheme = () => {
+    const newTheme = theme === 'dark' ? 'light' : 'dark';
+    setTheme(newTheme);
+    document.documentElement.className = newTheme;
+  };
 
   const navigate = (entry) => {
     setNavStack((prev) => [...prev, entry]);
@@ -45,6 +53,20 @@ const App = () => {
   const goHome = () => {
     setNavStack([{ page: "accueil" }]);
   };
+
+  // ── etat menu deroulant ──────────────────────────────────────────────────────
+  const [isDropdownOpened, setDropdownOpened] = useState(false);
+  const dropdownRef = useRef(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setDropdownOpened(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   // ── Auth persistante ──────────────────────────────────────────────────────
   const [user, setUser] = useState(null);
@@ -212,6 +234,13 @@ const App = () => {
     goHome();
   };
 
+  const handleLogout = () => {
+    setUser(null);
+    setDropdownOpened(false);
+    auth.signOut();
+    goHome();
+  };
+
   const handleShowGame = (id) => navigate({ page: "jeu", gameId: id });
   const handleUserClick = (userId) =>
     navigate({ page: "utilisateur_public", userId });
@@ -301,6 +330,8 @@ const App = () => {
                   TGMF
                 </h1>
               </div>
+
+
 
               <div className="navbar-actions">
                 {navStack.length > 1 && (
@@ -625,68 +656,82 @@ const App = () => {
                   </svg>
                 </button>
 
-                <button
-                  className="nav-user-btn"
-                  onClick={() =>
-                    navigate({ page: user ? "utilisateur" : "login" })
-                  }
-                  style={{
-                    padding:
-                      user?.avatar || user?.photoURL
-                        ? "4px 12px 4px 4px"
-                        : "0.5rem 1rem",
-                    display: "flex",
-                    alignItems: "center",
-                  }}
-                >
-                  {user ? (
-                    <>
-                      {user.avatar || user.photoURL ? (
-                        <img
-                          src={user.avatar || user.photoURL}
-                          alt=""
-                          style={{
-                            width: "32px",
-                            height: "32px",
-                            borderRadius: "50%",
-                            objectFit: "cover",
-                          }}
-                        />
-                      ) : (
-                        <svg
-                          width="18"
-                          height="18"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth="2"
-                        >
-                          <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-                          <circle cx="12" cy="7" r="4"></circle>
-                        </svg>
-                      )}
-                      <span>
-                        {user.username || user.pseudo || user.displayName}
-                      </span>
-                    </>
-                  ) : (
-                    <>
-                      <svg
-                        width="18"
-                        height="18"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2"
+                <div className="profile-dropdown-container" ref={dropdownRef}>
+                  {!user ? (
+                      <button
+                          className="nav-user-btn"
+                          onClick={() => navigate({ page: "login" })}
+                          style={{ padding: "0.5rem 1rem", display: "flex", alignItems: "center", gap: "8px" }}
                       >
-                        <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"></path>
-                        <polyline points="10 17 15 12 10 7"></polyline>
-                        <line x1="15" y1="12" x2="3" y2="12"></line>
-                      </svg>
-                      <span>Connexion</span>
-                    </>
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"></path>
+                          <polyline points="10 17 15 12 10 7"></polyline>
+                          <line x1="15" y1="12" x2="3" y2="12"></line>
+                        </svg>
+                        <span>S'inscrire / Connexion</span>
+                      </button>
+                  ) : (
+                      <>
+                        <button
+                            className="nav-user-btn"
+                            onClick={() => setDropdownOpened(!isDropdownOpened)}
+                            style={{
+                              padding: user?.avatar || user?.photoURL ? "4px 12px 4px 4px" : "0.5rem 1rem",
+                              display: "flex",
+                              alignItems: "center",
+                              gap: "8px"
+                            }}
+                        >
+                          {user.avatar || user.photoURL ? (
+                              <img
+                                  src={user.avatar || user.photoURL}
+                                  alt=""
+                                  style={{
+                                    width: "32px",
+                                    height: "32px",
+                                    borderRadius: "50%",
+                                    objectFit: "cover",
+                                  }}
+                              />
+                          ) : (
+                              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                                <circle cx="12" cy="7" r="4"></circle>
+                              </svg>
+                          )}
+                          <span>{user.username || user.pseudo || user.displayName}</span>
+                        </button>
+
+                        {isDropdownOpened && (
+                            <div className="dropdown-menu">
+                              <button
+                                  className="dropdown-item"
+                                  onClick={() => { setDropdownOpened(false); navigate({ page: "utilisateur" }); }}
+                              >
+                                Profil
+                              </button>
+                              <button
+                                  className="dropdown-item"
+                                  onClick={() => { setDropdownOpened(false); navigate({ page: "parametres" }); }}
+                              >
+                                Paramètres
+                              </button>
+                              <div className="dropdown-item">
+                                <span>Thème</span>
+                                <ThemeToggle theme={theme} toggleTheme={toggleTheme} />
+                              </div>
+
+                              <div className="dropdown-divider"></div>
+
+                              <button className="dropdown-item logout-btn" onClick={handleLogout}>
+                                Se déconnecter
+                              </button>
+                            </div>
+                        )}
+                      </>
                   )}
-                </button>
+                </div>
+
               </div>
             </>
           ) : (
