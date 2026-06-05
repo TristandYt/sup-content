@@ -5,6 +5,7 @@ import { auth } from "../Service/firebase";
 import "../../Style/Styles.css";
 import defaultCover from "../assets/fr-default-large_default.jpg";
 
+
 const authAxios = async () => {
   const token = await auth.currentUser?.getIdToken(true);
   return axios.create({

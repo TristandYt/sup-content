@@ -10,6 +10,7 @@ import Jeu from "./pages/Jeu";
 import Messagerie from "./pages/messagerie";
 import AdminDashboard from "./pages/AdminDashboard";
 import Forum from "./pages/Forum";
+import ThemeToggle from './components/ThemeToggle';
 import "../Style/Styles.css";
 import "./Langue/i18n";
 
@@ -715,15 +716,10 @@ const App = () => {
                               >
                                 Paramètres
                               </button>
-                              <button
-                                  className="dropdown-item"
-                                  onClick={() => {
-                                    toggleTheme();
-                                    setDropdownOpened(false);
-                                  }}
-                              >
-                                Thème : {theme === 'dark' ? 'Sombre' : 'Clair'}
-                              </button>
+                              <div className="dropdown-item">
+                                <span>Thème</span>
+                                <ThemeToggle theme={theme} toggleTheme={toggleTheme} />
+                              </div>
 
                               <div className="dropdown-divider"></div>
 
