@@ -1,5 +1,6 @@
 /* default theme sombre */
-:root, .dark {
+:root,
+.dark {
   --bg-color: #0a0a0f;
   --text-color: white;
   --card-bg: rgba(255, 255, 255, 0.08);
@@ -19,7 +20,8 @@
   transition: all 0.3s ease;
 }
 
-.card, .auth-card {
+.card,
+.auth-card {
   background: var(--card-bg) !important;
 }
 
@@ -739,7 +741,7 @@ body {
   border-radius: 50%;
   border: 1px solid rgba(255, 255, 255, 0.1);
   background: transparent;
-  color: #9ca3af;
+  color: #ffffff;
   cursor: pointer;
   transition: all 0.2s ease;
 }
@@ -2404,13 +2406,18 @@ select {
 
 /* texte en dessous des jeux */
 .light .game-overlay {
-  background: linear-gradient(to top, var(--card-bg) 0%, rgba(255,255,255, 0.5) 50%, transparent 100%);
+  background: linear-gradient(
+    to top,
+    var(--card-bg) 0%,
+    rgba(255, 255, 255, 0.5) 50%,
+    transparent 100%
+  );
 }
 
 .light .rating-badge {
   background: rgba(255, 255, 255, 0.9);
   color: #111827;
-  border: 1px solid rgba(0,0,0,0.1);
+  border: 1px solid rgba(0, 0, 0, 0.1);
 }
 
 .light .rating-badge .rating-value {
@@ -2519,7 +2526,6 @@ select {
 .light .game-sidebar-modern b {
   color: var(--text-color) !important;
 }
-
 
 /* forum clair */
 .light [style*="color: white"],

@@ -11,21 +11,88 @@ const authAxios = async () => {
   });
 };
 
+/* ── Dropdown générique réutilisable ── */
+const GameDropdown = ({ results, onSelect }) => (
+  <div
+    style={{
+      position: "absolute",
+      top: "calc(100% + 6px)",
+      left: 0,
+      right: 0,
+      background: "#0f172a",
+      border: "1px solid rgba(147,51,234,0.35)",
+      borderRadius: "12px",
+      zIndex: 9999,
+      overflow: "hidden",
+      boxShadow: "0 12px 40px rgba(0,0,0,0.6)",
+    }}
+  >
+    {results.map((g) => (
+      <div
+        key={g.id}
+        style={{
+          padding: "10px 14px",
+          cursor: "pointer",
+          display: "flex",
+          alignItems: "center",
+          gap: "12px",
+          borderBottom: "1px solid rgba(255,255,255,0.04)",
+          transition: "background 0.15s",
+        }}
+        onMouseDown={() => onSelect(g)}
+        onMouseEnter={(e) =>
+          (e.currentTarget.style.background = "rgba(147,51,234,0.18)")
+        }
+        onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
+      >
+        {g.cover?.image_id ? (
+          <img
+            src={`https://images.igdb.com/igdb/image/upload/t_thumb/${g.cover.image_id}.jpg`}
+            alt=""
+            style={{
+              width: "28px",
+              height: "36px",
+              borderRadius: "4px",
+              objectFit: "cover",
+              flexShrink: 0,
+            }}
+          />
+        ) : (
+          <div
+            style={{
+              width: "28px",
+              height: "36px",
+              borderRadius: "4px",
+              background: "rgba(147,51,234,0.2)",
+              flexShrink: 0,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              fontSize: "0.7rem",
+            }}
+          >
+            🎮
+          </div>
+        )}
+        <span style={{ color: "#e2e8f0", fontSize: "0.9rem" }}>{g.name}</span>
+      </div>
+    ))}
+  </div>
+);
+
 const Forum = ({ user, onGameClick, initialThread = null }) => {
   const [threads, setThreads] = useState([]);
   const [selectedThread, setSelectedThread] = useState(null);
   const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [view, setView] = useState("list"); // "list" ou "detail"
+  const [view, setView] = useState("list");
 
-  // Recherche / filtre par jeu
   const [gameFilter, setGameFilter] = useState("");
   const [gameIdFilter, setGameIdFilter] = useState("");
   const [gameSearchResults, setGameSearchResults] = useState([]);
   const [searchingGames, setSearchingGames] = useState(false);
   const [showGameSuggestions, setShowGameSuggestions] = useState(false);
 
-  // Formulaires
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [newThread, setNewThread] = useState({
     title: "",
@@ -35,10 +102,10 @@ const Forum = ({ user, onGameClick, initialThread = null }) => {
   });
   const [newPostContent, setNewPostContent] = useState("");
 
-  // initialThread peut être :
-  //   { thread }            → ouvrir directement ce fil
-  //   { gameId, gameName }  → afficher la liste filtrée sur ce jeu
-  //   null                  → liste normale
+  const [newThreadGameSearch, setNewThreadGameSearch] = useState("");
+  const [newThreadGameResults, setNewThreadGameResults] = useState([]);
+  const [showNewThreadGameSugg, setShowNewThreadGameSugg] = useState(false);
+
   useEffect(() => {
     if (!initialThread) {
       fetchThreads();
@@ -51,7 +118,7 @@ const Forum = ({ user, onGameClick, initialThread = null }) => {
     }
   }, [initialThread]);
 
-  /* ── Recherche de jeux pour le filtre ── */
+  /* Recherche jeu — filtre */
   useEffect(() => {
     if (!gameFilter || gameFilter.length < 2) {
       setGameSearchResults([]);
@@ -78,6 +145,28 @@ const Forum = ({ user, onGameClick, initialThread = null }) => {
     return () => clearTimeout(timer);
   }, [gameFilter]);
 
+  /* Recherche jeu — formulaire */
+  useEffect(() => {
+    if (!newThreadGameSearch || newThreadGameSearch.length < 2) {
+      setNewThreadGameResults([]);
+      setShowNewThreadGameSugg(false);
+      return;
+    }
+    const timer = setTimeout(async () => {
+      try {
+        const api = auth.currentUser
+          ? await authAxios()
+          : axios.create({ baseURL: "http://localhost:3000/api" });
+        const res = await api.get(
+          `/games/search?q=${encodeURIComponent(newThreadGameSearch)}&limit=5`,
+        );
+        setNewThreadGameResults(res.data || []);
+        setShowNewThreadGameSugg(true);
+      } catch (_) {}
+    }, 350);
+    return () => clearTimeout(timer);
+  }, [newThreadGameSearch]);
+
   const fetchThreads = async (gameId = gameIdFilter) => {
     setLoading(true);
     try {
@@ -86,9 +175,7 @@ const Forum = ({ user, onGameClick, initialThread = null }) => {
         : axios.create({ baseURL: "http://localhost:3000/api" });
       const url = gameId ? `/forum/threads?gameId=${gameId}` : "/forum/threads";
       const res = await api.get(url);
-      if (res.data.success) {
-        setThreads(res.data.threads);
-      }
+      if (res.data.success) setThreads(res.data.threads);
     } catch (err) {
       console.error("Erreur fetchThreads:", err);
     } finally {
@@ -128,6 +215,7 @@ const Forum = ({ user, onGameClick, initialThread = null }) => {
       });
       if (res.data.success) {
         setNewThread({ title: "", content: "", gameId: "", gameName: "" });
+        setNewThreadGameSearch("");
         setShowCreateForm(false);
         fetchThreads();
       }
@@ -156,7 +244,6 @@ const Forum = ({ user, onGameClick, initialThread = null }) => {
     }
   };
 
-  /* ── Sélectionner un jeu dans le filtre ── */
   const selectGameFilter = (game) => {
     setGameFilter(game.name);
     setGameIdFilter(String(game.id));
@@ -170,32 +257,6 @@ const Forum = ({ user, onGameClick, initialThread = null }) => {
     setShowGameSuggestions(false);
     fetchThreads("");
   };
-
-  /* ── Sélectionner un jeu dans le formulaire de création ── */
-  const [newThreadGameSearch, setNewThreadGameSearch] = useState("");
-  const [newThreadGameResults, setNewThreadGameResults] = useState([]);
-  const [showNewThreadGameSugg, setShowNewThreadGameSugg] = useState(false);
-
-  useEffect(() => {
-    if (!newThreadGameSearch || newThreadGameSearch.length < 2) {
-      setNewThreadGameResults([]);
-      setShowNewThreadGameSugg(false);
-      return;
-    }
-    const timer = setTimeout(async () => {
-      try {
-        const api = auth.currentUser
-          ? await authAxios()
-          : axios.create({ baseURL: "http://localhost:3000/api" });
-        const res = await api.get(
-          `/games/search?q=${encodeURIComponent(newThreadGameSearch)}&limit=5`,
-        );
-        setNewThreadGameResults(res.data || []);
-        setShowNewThreadGameSugg(true);
-      } catch (_) {}
-    }, 350);
-    return () => clearTimeout(timer);
-  }, [newThreadGameSearch]);
 
   if (loading && view === "list") {
     return (
@@ -220,7 +281,8 @@ const Forum = ({ user, onGameClick, initialThread = null }) => {
       <div className="main-content-wrapper">
         {view === "list" ? (
           <>
-            <div className="section-header">
+            {/* Header */}
+            <div className="section-header" style={{ marginBottom: "20px" }}>
               <h3 className="section-title">Discussions récentes</h3>
               {user && (
                 <button
@@ -232,12 +294,9 @@ const Forum = ({ user, onGameClick, initialThread = null }) => {
               )}
             </div>
 
-            {/* ── FILTRE PAR JEU ── */}
+            {/* Filtre par jeu */}
             <div
-              style={{
-                marginBottom: "20px",
-                position: "relative",
-              }}
+              style={{ marginBottom: "20px", position: "relative", zIndex: 50 }}
             >
               <div
                 style={{ display: "flex", gap: "10px", alignItems: "center" }}
@@ -245,7 +304,11 @@ const Forum = ({ user, onGameClick, initialThread = null }) => {
                 <div style={{ position: "relative", flex: 1 }}>
                   <input
                     className="filter-select"
-                    style={{ width: "100%", paddingLeft: "36px" }}
+                    style={{
+                      width: "100%",
+                      paddingLeft: "12px",
+                      boxSizing: "border-box",
+                    }}
                     placeholder="🔍 Filtrer par jeu..."
                     value={gameFilter}
                     onChange={(e) => {
@@ -271,67 +334,16 @@ const Forum = ({ user, onGameClick, initialThread = null }) => {
                         color: "#6b7280",
                       }}
                     >
-                      ...
+                      …
                     </span>
                   )}
                   {showGameSuggestions && gameSearchResults.length > 0 && (
-                    <div
-                      style={{
-                        position: "absolute",
-                        top: "calc(100% + 6px)",
-                        left: 0,
-                        right: 0,
-                        background: "#1e293b",
-                        border: "1px solid rgba(147,51,234,0.3)",
-                        borderRadius: "10px",
-                        zIndex: 100,
-                        overflow: "hidden",
-                        boxShadow: "0 8px 32px rgba(0,0,0,0.4)",
-                      }}
-                    >
-                      {gameSearchResults.map((g) => (
-                        <div
-                          key={g.id}
-                          style={{
-                            padding: "10px 14px",
-                            cursor: "pointer",
-                            display: "flex",
-                            alignItems: "center",
-                            gap: "10px",
-                            transition: "background 0.15s",
-                          }}
-                          onMouseDown={() => selectGameFilter(g)}
-                          onMouseEnter={(e) =>
-                            (e.currentTarget.style.background =
-                              "rgba(147,51,234,0.15)")
-                          }
-                          onMouseLeave={(e) =>
-                            (e.currentTarget.style.background = "transparent")
-                          }
-                        >
-                          {g.cover?.image_id && (
-                            <img
-                              src={`https://images.igdb.com/igdb/image/upload/t_thumb/${g.cover.image_id}.jpg`}
-                              alt=""
-                              style={{
-                                width: "28px",
-                                height: "36px",
-                                borderRadius: "4px",
-                                objectFit: "cover",
-                              }}
-                            />
-                          )}
-                          <span
-                            style={{ color: "#e2e8f0", fontSize: "0.9rem" }}
-                          >
-                            {g.name}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
+                    <GameDropdown
+                      results={gameSearchResults}
+                      onSelect={selectGameFilter}
+                    />
                   )}
                 </div>
-
                 {gameIdFilter && (
                   <button
                     className="category-btn"
@@ -346,7 +358,6 @@ const Forum = ({ user, onGameClick, initialThread = null }) => {
                   </button>
                 )}
               </div>
-
               {gameIdFilter && (
                 <p
                   style={{
@@ -360,49 +371,72 @@ const Forum = ({ user, onGameClick, initialThread = null }) => {
               )}
             </div>
 
-            {/* ── FORMULAIRE NOUVEAU SUJET ── */}
+            {/* Formulaire nouveau sujet */}
             {showCreateForm && (
-              <form
+              <div
                 className="game-card-modern"
                 style={{
-                  padding: "20px",
-                  marginBottom: "20px",
+                  padding: "24px",
+                  marginBottom: "24px",
                   cursor: "default",
-                  overflow: "visible", // Permet aux suggestions de déborder de la carte
                 }}
-                onSubmit={handleCreateThread}
               >
+                <h4
+                  style={{
+                    margin: "0 0 16px 0",
+                    color: "#c4b5fd",
+                    fontSize: "1rem",
+                  }}
+                >
+                  ✏️ Créer un nouveau sujet
+                </h4>
+
                 <input
                   className="filter-select"
-                  style={{ width: "100%", marginBottom: "10px" }}
+                  style={{
+                    width: "100%",
+                    marginBottom: "12px",
+                    boxSizing: "border-box",
+                  }}
                   placeholder="Titre du sujet"
                   value={newThread.title}
                   onChange={(e) =>
                     setNewThread({ ...newThread, title: e.target.value })
                   }
-                  required
                 />
+
                 <textarea
                   className="filter-select"
                   style={{
                     width: "100%",
-                    minHeight: "100px",
-                    marginBottom: "10px",
+                    minHeight: "110px",
+                    marginBottom: "12px",
                     paddingTop: "10px",
+                    boxSizing: "border-box",
+                    resize: "vertical",
                   }}
                   placeholder="Contenu de votre message..."
                   value={newThread.content}
                   onChange={(e) =>
                     setNewThread({ ...newThread, content: e.target.value })
                   }
-                  required
                 />
 
-                {/* Lier à un jeu */}
-                <div style={{ position: "relative", marginBottom: "10px" }}>
+                {/* Lier à un jeu — dropdown isolée avec son propre zIndex */}
+                <div
+                  style={{
+                    position: "relative",
+                    marginBottom: "16px",
+                    zIndex: 9999,
+                  }}
+                >
                   <input
                     className="filter-select"
-                    style={{ width: "100%" }}
+                    style={{
+                      width: "100%",
+                      boxSizing: "border-box",
+                      paddingRight: newThread.gameId ? "36px" : "12px",
+                    }}
                     placeholder="🎮 Lier à un jeu (optionnel)..."
                     value={newThread.gameName || newThreadGameSearch}
                     onChange={(e) => {
@@ -420,7 +454,7 @@ const Forum = ({ user, onGameClick, initialThread = null }) => {
                         right: "12px",
                         top: "50%",
                         transform: "translateY(-50%)",
-                        fontSize: "0.8rem",
+                        fontSize: "0.85rem",
                         color: "#9333ea",
                       }}
                     >
@@ -428,81 +462,61 @@ const Forum = ({ user, onGameClick, initialThread = null }) => {
                     </span>
                   )}
                   {showNewThreadGameSugg && newThreadGameResults.length > 0 && (
-                    <div
+                    <GameDropdown
+                      results={newThreadGameResults}
+                      onSelect={(g) => {
+                        setNewThread({
+                          ...newThread,
+                          gameId: String(g.id),
+                          gameName: g.name,
+                        });
+                        setNewThreadGameSearch(g.name);
+                        setShowNewThreadGameSugg(false);
+                      }}
+                    />
+                  )}
+                  {newThread.gameId && (
+                    <p
                       style={{
-                        position: "absolute",
-                        top: "calc(100% + 6px)",
-                        left: 0,
-                        right: 0,
-                        background: "#1e293b",
-                        border: "1px solid rgba(147,51,234,0.3)",
-                        borderRadius: "10px",
-                        zIndex: 100,
-                        overflow: "hidden",
-                        boxShadow: "0 8px 32px rgba(0,0,0,0.4)",
+                        fontSize: "0.78rem",
+                        color: "#9333ea",
+                        marginTop: "5px",
                       }}
                     >
-                      {newThreadGameResults.map((g) => (
-                        <div
-                          key={g.id}
-                          style={{
-                            padding: "10px 14px",
-                            cursor: "pointer",
-                            display: "flex",
-                            alignItems: "center",
-                            gap: "10px",
-                          }}
-                          onMouseDown={() => {
-                            setNewThread({
-                              ...newThread,
-                              gameId: String(g.id),
-                              gameName: g.name,
-                            });
-                            setNewThreadGameSearch(g.name);
-                            setShowNewThreadGameSugg(false);
-                          }}
-                          onMouseEnter={(e) =>
-                            (e.currentTarget.style.background =
-                              "rgba(147,51,234,0.15)")
-                          }
-                          onMouseLeave={(e) =>
-                            (e.currentTarget.style.background = "transparent")
-                          }
-                        >
-                          {g.cover?.image_id && (
-                            <img
-                              src={`https://images.igdb.com/igdb/image/upload/t_thumb/${g.cover.image_id}.jpg`}
-                              alt=""
-                              style={{
-                                width: "28px",
-                                height: "36px",
-                                borderRadius: "4px",
-                                objectFit: "cover",
-                              }}
-                            />
-                          )}
-                          <span
-                            style={{ color: "#e2e8f0", fontSize: "0.9rem" }}
-                          >
-                            {g.name}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
+                      🎮 Lié à <strong>{newThread.gameName}</strong>
+                    </p>
                   )}
                 </div>
 
-                <button
-                  type="submit"
-                  className="nav-user-btn"
-                  style={{ width: "100%", justifyContent: "center" }}
-                >
-                  Publier
-                </button>
-              </form>
+                <div style={{ display: "flex", gap: "10px" }}>
+                  <button
+                    className="nav-user-btn"
+                    style={{ flex: 1, justifyContent: "center" }}
+                    onClick={handleCreateThread}
+                  >
+                    Publier
+                  </button>
+                  <button
+                    className="category-btn"
+                    style={{ borderColor: "#ef4444", color: "#f87171" }}
+                    onClick={() => {
+                      setShowCreateForm(false);
+                      setNewThread({
+                        title: "",
+                        content: "",
+                        gameId: "",
+                        gameName: "",
+                      });
+                      setNewThreadGameSearch("");
+                    }}
+                  >
+                    Annuler
+                  </button>
+                </div>
+              </div>
             )}
 
-            {/* ── LISTE DES FILS ── */}
+            {/* Liste des fils */}
             <div className="comments-list-modern">
               {threads.length === 0 && (
                 <p
@@ -521,39 +535,62 @@ const Forum = ({ user, onGameClick, initialThread = null }) => {
                 <div
                   key={thread.id}
                   className="game-card-modern"
-                  style={{ padding: "15px", marginBottom: "10px" }}
+                  style={{
+                    padding: "16px 20px",
+                    marginBottom: "10px",
+                    cursor: "pointer",
+                    transition: "border-color 0.2s",
+                  }}
                   onClick={() => fetchThreadDetail(thread)}
+                  onMouseEnter={(e) =>
+                    (e.currentTarget.style.borderColor = "rgba(147,51,234,0.5)")
+                  }
+                  onMouseLeave={(e) => (e.currentTarget.style.borderColor = "")}
                 >
                   <div
                     style={{
                       display: "flex",
                       justifyContent: "space-between",
                       alignItems: "flex-start",
+                      gap: "12px",
                     }}
                   >
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <h4 style={{ margin: "0 0 5px 0", color: "#fff" }}>
+                      <h4
+                        style={{
+                          margin: "0 0 5px 0",
+                          color: "#fff",
+                          fontSize: "0.95rem",
+                        }}
+                      >
                         {thread.title}
                       </h4>
                       <p
                         style={{
-                          fontSize: "0.85rem",
+                          fontSize: "0.82rem",
                           color: "#94a3b8",
                           margin: 0,
                         }}
                       >
-                        Par {thread.authorName} • {thread.replyCount} réponses
+                        Par{" "}
+                        <strong style={{ color: "#c084fc" }}>
+                          {thread.authorName}
+                        </strong>
+                        {" · "}
+                        {thread.replyCount} réponse
+                        {thread.replyCount !== 1 ? "s" : ""}
                       </p>
                       {thread.gameId && (
                         <span
                           style={{
                             display: "inline-block",
                             marginTop: "6px",
-                            fontSize: "0.75rem",
+                            fontSize: "0.72rem",
                             color: "#c084fc",
                             background: "rgba(147,51,234,0.12)",
                             borderRadius: "6px",
                             padding: "2px 8px",
+                            border: "1px solid rgba(147,51,234,0.2)",
                           }}
                         >
                           🎮 Jeu lié
@@ -562,7 +599,7 @@ const Forum = ({ user, onGameClick, initialThread = null }) => {
                     </div>
                     <span
                       className="game-genre"
-                      style={{ flexShrink: 0, marginLeft: "10px" }}
+                      style={{ flexShrink: 0, fontSize: "0.75rem" }}
                     >
                       {thread.lastReplyAt?.seconds
                         ? new Date(
@@ -721,6 +758,7 @@ const Forum = ({ user, onGameClick, initialThread = null }) => {
                     minHeight: "80px",
                     marginBottom: "10px",
                     paddingTop: "10px",
+                    boxSizing: "border-box",
                   }}
                   placeholder="Votre réponse..."
                   value={newPostContent}
