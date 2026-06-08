@@ -182,9 +182,14 @@ const Forum = ({ user, onGameClick, initialThread = null }) => {
                         <div className="section-header"><h4>Réponses</h4></div>
                         <div className="comments-list-modern">
                             {posts.map((post) => (
-                                <div key={post.id} style={{ padding: "15px", marginBottom: "10px", background: "rgba(255,255,255,0.02)", borderRadius: "10px" }}>
-                                    <div style={{ fontWeight: "600", color: "#c084fc" }}>{post.authorName}</div>
-                                    <p>{post.content}</p>
+                                <div key={post.id} className="post-item">
+                                    <div style={{ display: "flex", gap: "12px", alignItems: "center" }}>
+                                        <img src={post.authorAvatarUrl || `https://api.dicebear.com/7.x/bottts/svg?seed=${post.authorName}`} alt="" style={{ width: "32px", height: "32px", borderRadius: "50%" }} />
+                                        <div>
+                                            <div style={{ fontWeight: "600", color: "#c084fc" }}>{post.authorName}</div>
+                                            <p style={{ margin: 0 }}>{post.content}</p>
+                                        </div>
+                                    </div>
                                 </div>
                             ))}
                         </div>

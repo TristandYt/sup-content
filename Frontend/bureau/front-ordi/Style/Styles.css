@@ -2558,3 +2558,37 @@ light .main-content-wrapper button *,
 .light .messaging-sidebar .messaging-contacts-list div {
   color: var(--text-muted) !important;
 }
+
+.light .game-card-modern h4 {
+  color: #111827 !important;
+}
+
+/* desc gris foncé */
+.light .game-card-modern p {
+  color: #374151 !important;
+}
+
+/* nom auteur */
+.light .game-card-modern strong {
+  color: #7c3aed !important;
+}
+
+/* nom jeu lié */
+.light .game-card-modern div[style*="color: #c084fc"] {
+  color: #7c3aed !important;
+  background: rgba(147, 51, 234, 0.1) !important;
+}
+
+.post-item {
+  padding: 15px;
+  margin-bottom: 10px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.02);
+  transition: background 0.3s ease;
+}
+
+/* bordure message forum clair */
+.light .post-item {
+  background: rgba(0, 0, 0, 0.06) !important; /* Un gris très léger qui fait ressortir le bloc */
+  border: 1px solid rgba(0, 0, 0, 0.05);
+}
