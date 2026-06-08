@@ -6,7 +6,7 @@ import { auth } from "../Service/firebase";
 import { useOAuth } from "../hooks/useOAuth";
 import "../../Style/Styles.css";
 
-const Register = ({ onSwitch }) => {
+const Register = ({ onSwitch, onLoginSuccess }) => {
   const { t, i18n } = useTranslation();
   const [formData, setFormData] = useState({
     pseudo: "",
@@ -59,9 +59,16 @@ const Register = ({ onSwitch }) => {
       await updateProfile(userCredential.user, {
         displayName: formData.pseudo,
       });
-      const idToken = await userCredential.user.getIdToken();
+      await userCredential.user.reload();
+      const idToken = await userCredential.user.getIdToken(true);
       localStorage.setItem("authToken", idToken);
-      onSwitch();
+      if (typeof onLoginSuccess === "function") {
+        onLoginSuccess({
+          pseudo: userCredential.user.displayName || formData.pseudo,
+          email: userCredential.user.email,
+          uid: userCredential.user.uid,
+        });
+      }
     } catch (err) {
       setError(
         FIREBASE_ERRORS[err.code] || "Erreur lors de la création du compte.",
@@ -76,7 +83,17 @@ const Register = ({ onSwitch }) => {
     setOAuthLoading("google");
     try {
       const response = await loginWithGoogle();
-      if (response.success) onSwitch();
+      if (response.success) {
+        if (typeof onLoginSuccess === "function") {
+          onLoginSuccess({
+            pseudo: response.profile.username,
+            email: response.profile.email,
+            uid: response.uid,
+            avatarUrl: response.profile.avatarUrl,
+            age: response.profile.age,
+          });
+        }
+      }
     } catch (err) {
       setError(err.message || "Erreur connexion Google");
     } finally {
@@ -89,7 +106,17 @@ const Register = ({ onSwitch }) => {
     setOAuthLoading("github");
     try {
       const response = await loginWithGithub();
-      if (response.success) onSwitch();
+      if (response.success) {
+        if (typeof onLoginSuccess === "function") {
+          onLoginSuccess({
+            pseudo: response.profile.username,
+            email: response.profile.email,
+            uid: response.uid,
+            avatarUrl: response.profile.avatarUrl,
+            age: response.profile.age,
+          });
+        }
+      }
     } catch (err) {
       setError(err.message || "Erreur connexion GitHub");
     } finally {

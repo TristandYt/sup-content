@@ -362,11 +362,7 @@ const AppInner = () => {
 
                 <button
                   className="nav-icon-btn"
-                  onClick={() => {
-                    setShowSearch(true);
-                    navigate("/");
-                    navigate("/catalogue");
-                  }}
+                  onClick={() => setShowSearch(true)}
                   title="Rechercher"
                 >
                   <svg

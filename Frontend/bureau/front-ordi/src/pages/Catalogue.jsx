@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import { auth } from "../Service/firebase";
@@ -151,90 +151,105 @@ const Catalogue = ({ onGameClick, user, searchTerm }) => {
   ];
   const [activeCategory, setActiveCategory] = useState("Tous");
 
+  // Refs stables pour éviter la boucle useCallback + useEffect
+  const paramsRef = useRef(params);
+  const searchTermRef = useRef(searchTerm);
+
+  useEffect(() => {
+    paramsRef.current = params;
+  }, [params]);
+  useEffect(() => {
+    searchTermRef.current = searchTerm;
+  }, [searchTerm]);
+
   const getImageUrl = (game) => {
     if (game.cover?.image_id)
       return `https://images.igdb.com/igdb/image/upload/t_cover_big/${game.cover.image_id}.jpg`;
     return defaultCover;
   };
 
-  const fetchGames = useCallback(
-    async (targetPage = 1) => {
-      setError(null);
-      setLoading(true);
-      window.scrollTo({ top: 0, behavior: "smooth" });
+  // fetchGames avec dépendances vides → fonction stable, lit params via ref
+  const fetchGames = useCallback(async (targetPage = 1) => {
+    const currentParams = paramsRef.current;
+    const currentSearchTerm = searchTermRef.current;
 
-      try {
-        const api = auth.currentUser
-          ? await authAxios()
-          : axios.create({ baseURL: "http://localhost:3000/api" });
+    setError(null);
+    setLoading(true);
+    window.scrollTo({ top: 0, behavior: "smooth" });
 
-        const hasSearchTerm = searchTerm && searchTerm.trim() !== "";
+    try {
+      const api = auth.currentUser
+        ? await authAxios()
+        : axios.create({ baseURL: "http://localhost:3000/api" });
 
-        const endpoint = hasSearchTerm
-          ? "search"
-          : params.genre || params.platform || params.style
-            ? "filtered"
-            : "popular";
+      const hasSearchTerm =
+        currentSearchTerm && currentSearchTerm.trim() !== "";
 
-        const res = await api.get(`/games/${endpoint}`, {
-          params: {
-            page: targetPage,
-            limit: PAGE_SIZE,
-            sortBy: params.sortBy,
-            order: params.sortOrder,
-            sort: params.sortBy,
-            sortOrder: params.sortOrder,
-            ...(hasSearchTerm && { q: searchTerm.trim() }),
-            ...(params.genre && { genre: params.genre }),
-            ...(params.platform && { platform: params.platform }),
-            ...(params.style && { style: params.style }),
-          },
-        });
+      const endpoint = hasSearchTerm
+        ? "search"
+        : currentParams.genre || currentParams.platform || currentParams.style
+          ? "filtered"
+          : "popular";
 
-        const raw = res.data;
-        let newGames = [];
-        if (Array.isArray(raw)) newGames = raw;
-        else if (raw.games) newGames = raw.games;
-        else if (raw.results?.games) newGames = raw.results.games;
-        else if (raw.results && Array.isArray(raw.results))
-          newGames = raw.results;
+      const res = await api.get(`/games/${endpoint}`, {
+        params: {
+          page: targetPage,
+          limit: PAGE_SIZE,
+          sortBy: currentParams.sortBy,
+          order: currentParams.sortOrder,
+          sort: currentParams.sortBy,
+          sortOrder: currentParams.sortOrder,
+          ...(hasSearchTerm && { q: currentSearchTerm.trim() }),
+          ...(currentParams.genre && { genre: currentParams.genre }),
+          ...(currentParams.platform && { platform: currentParams.platform }),
+          ...(currentParams.style && { style: currentParams.style }),
+        },
+      });
 
-        const backendTotal = raw.total || raw.totalPages || null;
-        const more = newGames.length === PAGE_SIZE;
+      const raw = res.data;
+      let newGames = [];
+      if (Array.isArray(raw)) newGames = raw;
+      else if (raw.games) newGames = raw.games;
+      else if (raw.results?.games) newGames = raw.results.games;
+      else if (raw.results && Array.isArray(raw.results))
+        newGames = raw.results;
 
-        setGames(newGames);
-        setHasMore(more);
-        setPage(targetPage);
+      const backendTotal = raw.total || raw.totalPages || null;
+      const more = newGames.length === PAGE_SIZE;
 
-        if (backendTotal) {
-          setEstimatedTotal(Math.ceil(backendTotal / PAGE_SIZE));
-        } else if (!more) {
-          setEstimatedTotal(targetPage);
-        } else {
-          setEstimatedTotal((prev) =>
-            Math.max(
-              prev,
-              targetPage + Math.max(3, Math.round(targetPage * 0.5)),
-            ),
-          );
-        }
-      } catch (err) {
-        console.error("Erreur catalogue:", err);
-        setError("Impossible de charger les jeux.");
-      } finally {
-        setLoading(false);
+      setGames(newGames);
+      setHasMore(more);
+      setPage(targetPage);
+
+      if (backendTotal) {
+        setEstimatedTotal(Math.ceil(backendTotal / PAGE_SIZE));
+      } else if (!more) {
+        setEstimatedTotal(targetPage);
+      } else {
+        setEstimatedTotal((prev) =>
+          Math.max(
+            prev,
+            targetPage + Math.max(3, Math.round(targetPage * 0.5)),
+          ),
+        );
       }
-    },
-    [params, searchTerm],
-  );
+    } catch (err) {
+      console.error("Erreur catalogue:", err);
+      setError("Impossible de charger les jeux.");
+    } finally {
+      setLoading(false);
+    }
+  }, []); // ← dépendances vides : fonction stable
 
+  // Déclenché uniquement quand params ou searchTerm changent (pas fetchGames)
   useEffect(() => {
     setEstimatedTotal(10);
+    setPage(1);
     const delay = setTimeout(() => {
       fetchGames(1);
-    }, 500); // Ajout d'un délai de 500ms pour la recherche
+    }, 400);
     return () => clearTimeout(delay);
-  }, [params, searchTerm, fetchGames]);
+  }, [params, searchTerm]); // ← fetchGames retiré des dépendances
 
   const handleCategoryChange = (value) => {
     setActiveCategory(
