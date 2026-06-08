@@ -27,13 +27,25 @@ const getOffset = (page, limit) => {
   return { limit: l, offset: (p - 1) * l };
 };
 
+const getAdultPreference = async (req) => {
+  const userId = await getOptionalUserId(req);
+  if (userId) {
+    const userDoc = await db.collection("users").doc(userId).get();
+    if (userDoc.exists) {
+      return userDoc.data().preferences?.showAdultGames || false;
+    }
+  }
+  return false;
+};
+
 exports.getPopularGames = async (req, res, next) => {
   try {
     const { sortBy, order, page, limit } = req.query;
     const { limit: lim, offset } = getOffset(page, limit);
     
     // Tout le monde voit les jeux dans la liste (isAdult = true)
-    let games = await IGDBService.getPopularGames(sortBy, order, lim, offset, true);
+    const showAdult = await getAdultPreference(req);
+    let games = await IGDBService.getPopularGames(sortBy, order, lim, offset, showAdult);
     res.json(games);
   } catch (error) {
     next(error);
@@ -48,8 +60,9 @@ exports.searchGames = async (req, res, next) => {
         .status(400)
         .json({ success: false, msg: "Paramètre q manquant" });
     const { limit: lim, offset } = getOffset(page, limit);
-    
-    let games = await IGDBService.searchGames(q, lim, offset, true);
+
+    const showAdult = await getAdultPreference(req);
+    let games = await IGDBService.searchGames(q, lim, offset, showAdult);
     res.json(games);
   } catch (error) {
     next(error);
@@ -145,8 +158,9 @@ exports.getUpcomingGames = async (req, res, next) => {
   try {
     const { page, limit } = req.query;
     const { limit: lim, offset } = getOffset(page, limit || 20);
-    
-    let games = await IGDBService.getUpcomingGames(lim, offset, true);
+
+    const showAdult = await getAdultPreference(req);
+    let games = await IGDBService.getUpcomingGames(lim, offset, showAdult);
     res.json(games);
   } catch (error) {
     next(error);
@@ -157,7 +171,8 @@ exports.getGamesFiltered = async (req, res, next) => {
   try {
     const { style, genre, platform, page, limit } = req.query;
     const { limit: lim, offset } = getOffset(page, limit);
-    
+
+    const showAdult = await getAdultPreference(req);
     let games = await IGDBService.getGamesFiltered(
       {
         style,
@@ -166,7 +181,7 @@ exports.getGamesFiltered = async (req, res, next) => {
         limit: lim,
         offset,
       },
-      true
+        showAdult
     );
     res.json(games);
   } catch (error) {

@@ -363,7 +363,7 @@ exports.getPreferences = async (req, res, next) => {
 exports.updatePreferences = async (req, res, next) => {
   try {
     const userId = req.user.id;
-    const { theme, language, emailNotifications, pushNotifications } = req.body;
+    const { theme, language, emailNotifications, pushNotifications, showAdultGames } = req.body;
 
     // Validation
     const validThemes = ["light", "dark"];
@@ -385,6 +385,7 @@ exports.updatePreferences = async (req, res, next) => {
       preferences.emailNotifications = emailNotifications;
     if (pushNotifications !== undefined)
       preferences.pushNotifications = pushNotifications;
+    if (showAdultGames !== undefined) preferences.showAdultGames = !!showAdultGames;
 
     updates.preferences = preferences;
 

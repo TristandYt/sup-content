@@ -8,7 +8,7 @@ import defaultCover from "../assets/fr-default-large_default.jpg";
 const authAxios = async () => {
   const firebaseUser = auth.currentUser;
   if (!firebaseUser) return null;
-  const token = await firebaseUser.getIdToken();
+  const token = await firebaseUser.getIdToken(true);
   return axios.create({
     baseURL: "http://localhost:3000/api",
     headers: { Authorization: `Bearer ${token}` },
@@ -1248,6 +1248,7 @@ const MyProfile = ({
       notifications: true,
       privateProfile: false,
       theme: "dark",
+      showAdultGames: false
     },
     avatar:
       user?.avatar ||
@@ -1670,8 +1671,42 @@ const MyProfile = ({
           {/* ── Onglet Paramètres ── */}
           {activeTab === "settings" && (
             <div>
-              <div className="section-header" style={{ marginBottom: "24px" }}>
-                <h2 className="section-title">Paramètres du compte</h2>
+              <div className="game-card-modern" style={{ padding: "20px", cursor: "default" }}>
+                <h4 className="game-title" style={{ marginBottom: "16px", fontSize: "0.95rem" }}>
+                  🔞 Contenu Adulte
+                </h4>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 0" }}>
+                  <div>
+                    <p style={{ margin: 0, fontSize: "0.9rem", color: "#e2e8f0" }}>Afficher les jeux +18</p>
+                    <p style={{ margin: 0, fontSize: "0.75rem", color: "#64748b" }}>Autoriser l'affichage du contenu classé mature</p>
+                  </div>
+                  <div
+                      onClick={() => handlePreferenceChange("showAdultGames", !profileData.preferences?.showAdultGames)}
+                      style={{
+                        width: "42px",
+                        height: "24px",
+                        borderRadius: "99px",
+                        cursor: "pointer",
+                        flexShrink: 0,
+                        background: profileData.preferences?.showAdultGames ? "#9333ea" : "rgba(255,255,255,0.1)",
+                        position: "relative",
+                        transition: "background 0.2s",
+                      }}
+                  >
+                    <div
+                        style={{
+                          position: "absolute",
+                          top: "3px",
+                          width: "18px",
+                          height: "18px",
+                          borderRadius: "50%",
+                          background: "#fff",
+                          transition: "left 0.2s",
+                          left: profileData.preferences?.showAdultGames ? "21px" : "3px",
+                        }}
+                    />
+                  </div>
+                </div>
               </div>
 
               <div

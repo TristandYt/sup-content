@@ -27,7 +27,6 @@ class IGDBService {
         console.warn("Token IGDB expiré ou révoqué. Nouvelle tentative...");
         return this.request(endpoint, query, true);
       }
-      console.error(`Erreur IGDB (${endpoint}):`, error.message);
       throw error;
     }
   }
@@ -41,6 +40,7 @@ class IGDBService {
     limit ${limit};
     offset ${offset};
   `;
+    console.log("DEBUG QUERY:", query);
     return this.request("games", query);
   }
 
@@ -94,6 +94,10 @@ class IGDBService {
     if (!includeAdultThemes) {
       whereClauses.push("themes != (42)"); // Bloque les jeux érotiques / nudité
     }
+
+    // if (!includeAdultThemes) {
+    //   whereClauses.push("(themes != (42) & age_ratings.rating != (12))");
+    // }
 
     if (whereClauses.length > 0) query += ` where ${whereClauses.join(" & ")};`;
 

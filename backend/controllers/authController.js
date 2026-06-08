@@ -25,7 +25,7 @@ exports.register = async (req, res, next) => {
             birthDate: birthDate,
             role: 'user',
             favorites: [],
-            preferences: { theme: 'dark', language: 'fr', emailNotifications: true, pushNotifications: true },
+            preferences: { theme: 'dark', language: 'fr', emailNotifications: true, pushNotifications: true, showAdultGames: false},
             profileData: { avatarUrl: null, website: '' },
             createdAt: admin.firestore.FieldValue.serverTimestamp(),
             updatedAt: admin.firestore.FieldValue.serverTimestamp()
