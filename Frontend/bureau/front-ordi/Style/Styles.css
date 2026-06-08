@@ -2279,7 +2279,7 @@ select {
 }
 
 /* ============================================
-   THEME CLAIR (OVERRIDES)
+   THEME CLAIR (OVERRIDES --> notamment avec le !important)
    ============================================ */
 
 /*  variable globale theme clair */
@@ -2538,4 +2538,14 @@ select {
 light .main-content-wrapper button *,
 .light .main-content-wrapper button {
   color: inherit;
+}
+
+.light .messaging-sidebar .messaging-contacts-list {
+  color: var(--text-muted) !important;
+}
+
+.light .messaging-sidebar .messaging-contacts-list p,
+.light .messaging-sidebar .messaging-contacts-list span,
+.light .messaging-sidebar .messaging-contacts-list div {
+  color: var(--text-muted) !important;
 }
