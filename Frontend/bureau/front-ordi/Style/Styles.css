@@ -51,6 +51,7 @@ body {
   position: relative;
   overflow: hidden;
   margin-bottom: 2rem;
+  padding: 0 0.5rem;
 }
 
 .hero-gradient {
@@ -67,8 +68,16 @@ body {
 
 .hero-content {
   position: relative;
-  padding: 3rem 0;
+  padding: 3rem 2rem;
   max-width: 800px;
+  background: linear-gradient(
+    135deg,
+    rgba(147, 51, 234, 0.08),
+    rgba(59, 130, 246, 0.05)
+  );
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 1.25rem;
+  backdrop-filter: blur(8px);
 }
 
 .hero-title {
