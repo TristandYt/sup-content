@@ -6,17 +6,19 @@ exports.createThread = async (req, res, next) => {
   try {
     if (!req.user) {
       return res
-        .status(401)
-        .json({ success: false, msg: "Utilisateur non authentifié" });
+          .status(401)
+          .json({ success: false, msg: "Utilisateur non authentifié" });
     }
 
     const userId = req.user.id;
-    const { title, content, gameId, pseudo, avatarUrl } = req.body;
+    // on ajoute gameName et gameCoverId à la recup du corps de la requête
+    const { title, content, gameId, gameName, gameCoverId, pseudo, avatarUrl } = req.body;
 
-    if (!title || !content) {
+    // on rend le gameId obligatoire dans la validation
+    if (!title || !content || !gameId) {
       return res
-        .status(400)
-        .json({ success: false, msg: "Titre et contenu requis" });
+          .status(400)
+          .json({ success: false, msg: "Titre, contenu et jeu lié requis" });
     }
 
     const threadRef = db.collection("threads").doc();
@@ -26,7 +28,12 @@ exports.createThread = async (req, res, next) => {
       authorId: userId,
       authorName: pseudo || "Anonyme",
       authorAvatarUrl: avatarUrl || null,
-      gameId: gameId || null,
+
+      // on enregistre les donnees du jeu
+      gameId: gameId,
+      gameName: gameName || "Général",
+      gameCoverId: gameCoverId || null,
+
       replyCount: 0,
       createdAt: admin.firestore.FieldValue.serverTimestamp(),
       lastReplyAt: admin.firestore.FieldValue.serverTimestamp(),
@@ -54,7 +61,15 @@ exports.getThreads = async (req, res, next) => {
     }
 
     const snapshot = await query.limit(50).get();
-    const threads = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+    const threads = snapshot.docs.map((doc) => {
+      const data = doc.data();
+      return {
+        id: doc.id,
+        ...data,
+        gameName: data.gameName || "Jeu inconnu",
+        gameCoverId: data.gameCoverId || null
+      };
+    });
 
     res.json({ success: true, threads });
   } catch (error) {

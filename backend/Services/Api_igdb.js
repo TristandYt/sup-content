@@ -33,14 +33,14 @@ class IGDBService {
   }
 
   async searchGames(title, limit = 15, offset = 0, includeAdultThemes = false) {
-    const adultFilter = includeAdultThemes ? "" : "where themes != (42);";
+    const adultFilter = includeAdultThemes ? "" : "& themes != (42)";
     const query = `
-      fields name, cover.image_id, total_rating, summary, first_release_date, genres.name, age_ratings.category, age_ratings.rating;
-      search "${title}";
-      ${adultFilter}
-      limit ${limit};
-      offset ${offset};
-    `;
+    fields name, cover.image_id;
+    search "${title}";
+    where cover != null ${adultFilter};
+    limit ${limit};
+    offset ${offset};
+  `;
     return this.request("games", query);
   }
 
@@ -74,8 +74,8 @@ class IGDBService {
   async advancedSearch(q, genre, year, includeAdultThemes = false, limit = 20, offset = 0) {
     let query = `fields name, cover.image_id, first_release_date, total_rating, genres.name, age_ratings.category, age_ratings.rating; limit ${limit}; offset ${offset};`;
     let whereClauses = [];
-
-    if (q) query += ` search "${q}";`;
+    // where au lieu de search
+    if (q) whereClauses.push(`name ~ * "${q}" *`);
     else if (genre || year) query += ` sort total_rating desc;`;
 
     if (genre) whereClauses.push(`genres = (${genre})`);

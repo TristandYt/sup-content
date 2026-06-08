@@ -1,4 +1,12 @@
 import React, { useState, useEffect, useRef } from "react";
+import {
+  BrowserRouter,
+  Routes,
+  Route,
+  useNavigate,
+  useParams,
+  useLocation,
+} from "react-router-dom";
 import axios from "axios";
 import { auth } from "./Service/firebase";
 import { onAuthStateChanged } from "firebase/auth";
@@ -10,67 +18,98 @@ import Jeu from "./pages/Jeu";
 import Messagerie from "./pages/messagerie";
 import AdminDashboard from "./pages/AdminDashboard";
 import Forum from "./pages/Forum";
-import ThemeToggle from './components/ThemeToggle';
+import ThemeToggle from "./components/ThemeToggle";
 import "../Style/Styles.css";
 import "./Langue/i18n";
 
 const authAxios = async () => {
   const firebaseUser = auth.currentUser;
   if (!firebaseUser) return null;
-  const token = await firebaseUser.getIdToken(); // Removed 'true' to use cached token
+  const token = await firebaseUser.getIdToken();
   return axios.create({
     baseURL: "http://localhost:3000/api",
     headers: { Authorization: `Bearer ${token}` },
   });
 };
 
-const App = () => {
-  // ── Navigation stack ──────────────────────────────────────────────────────
-  const [navStack, setNavStack] = useState([{ page: "accueil" }]);
-  const current = navStack[navStack.length - 1];
-  const currentPage = current.page;
-  const [theme, setTheme] = useState('dark');
+// ── Wrappers de pages pour extraire les params d'URL ──────────────────────────
+
+const JeuPage = ({
+                   user,
+                   handleShowGame,
+                   handleForumClick,
+                   setProfileRefresh,
+                 }) => {
+  const { gameId } = useParams();
+  const navigate = useNavigate();
+  return (
+      <Jeu
+          gameId={Number(gameId)}
+          onBack={() => navigate(-1)}
+          user={user}
+          onFavoriteChange={() => setProfileRefresh((n) => n + 1)}
+          onGameClick={handleShowGame}
+          onForumClick={handleForumClick}
+      />
+  );
+};
+
+const UtilisateurPublicPage = ({
+                                 user,
+                                 handleOpenMessaging,
+                                 handleShowGame,
+                               }) => {
+  const { userId } = useParams();
+  const navigate = useNavigate();
+  return (
+      <Utilisateur
+          key={userId}
+          targetUserId={userId}
+          user={user}
+          isPublic={true}
+          onBack={() => navigate(-1)}
+          onOpenMessaging={handleOpenMessaging}
+          onGameClick={handleShowGame}
+      />
+  );
+};
+
+// ── Composant interne avec accès au router ─────────────────────────────────────
+
+const AppInner = () => {
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  // ── GROUPEMENT DES HOOKS & STATES ──
+  const [theme, setTheme] = useState("dark");
+  const [isDropdownOpened, setDropdownOpened] = useState(false);
+  const [user, setUser] = useState(null);
+  const [authLoading, setAuthLoading] = useState(true);
+  const [profileRefresh, setProfileRefresh] = useState(0);
+  const [preselectedConversation, setPreselectedConversation] = useState(null);
+  const [showSearch, setShowSearch] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [unreadMessageCount, setUnreadMessageCount] = useState(0);
+  const [notifications, setNotifications] = useState([]);
+  const [showNotifications, setShowNotifications] = useState(false);
+
+  const dropdownRef = useRef(null);
+  const notifRef = useRef(null);
 
   const toggleTheme = () => {
-    const newTheme = theme === 'dark' ? 'light' : 'dark';
+    const newTheme = theme === "dark" ? "light" : "dark";
     setTheme(newTheme);
     document.documentElement.className = newTheme;
   };
 
-  const navigate = (entry) => {
-    setNavStack((prev) => [...prev, entry]);
-    window.scrollTo({ top: 0, behavior: "smooth" });
-  };
-
-  const goBack = () => {
-    setNavStack((prev) => {
-      if (prev.length <= 1) return [{ page: "accueil" }];
-      return prev.slice(0, -1);
-    });
-    window.scrollTo({ top: 0, behavior: "smooth" });
-  };
-
-  const goHome = () => {
-    setNavStack([{ page: "accueil" }]);
-  };
-
-  // ── etat menu deroulant ──────────────────────────────────────────────────────
-  const [isDropdownOpened, setDropdownOpened] = useState(false);
-  const dropdownRef = useRef(null);
-
   useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+    const handleClickOutside = (e) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target))
         setDropdownOpened(false);
-      }
     };
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
-
-  // ── Auth persistante ──────────────────────────────────────────────────────
-  const [user, setUser] = useState(null);
-  const [authLoading, setAuthLoading] = useState(true);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
@@ -78,10 +117,10 @@ const App = () => {
         try {
           const token = await firebaseUser.getIdToken();
           const res = await axios.get(
-            "http://localhost:3000/api/users/profile",
-            {
-              headers: { Authorization: `Bearer ${token}` },
-            },
+              "http://localhost:3000/api/users/profile",
+              {
+                headers: { Authorization: `Bearer ${token}` },
+              },
           );
           if (res.data.success && res.data.user) {
             const u = res.data.user;
@@ -108,7 +147,7 @@ const App = () => {
             });
           }
         } catch (err) {
-          console.warn("Erreur récupération profil au démarrage:", err);
+          console.warn("Erreur récupération profil:", err);
           setUser({
             uid: firebaseUser.uid,
             email: firebaseUser.email,
@@ -123,23 +162,27 @@ const App = () => {
       }
       setAuthLoading(false);
     });
-
     return () => unsubscribe();
   }, []);
 
-  // ── State annexe ──────────────────────────────────────────────────────────
-  const [profileRefresh, setProfileRefresh] = useState(0);
-  const [preselectedConversation, setPreselectedConversation] = useState(null);
+  // Fix: Déléguer les resets à la boucle d'événements pour éviter les "cascading renders"
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setShowSearch(false);
+      setSearchTerm("");
+    }, 0);
+    return () => clearTimeout(timer);
+  }, [location.pathname]);
 
-  // ── Search ────────────────────────────────────────────────────────────────
-  const [showSearch, setShowSearch] = useState(false);
-  const [searchTerm, setSearchTerm] = useState("");
+  // Fix: Déléguer le reset du compteur pour éviter les "cascading renders"
+  useEffect(() => {
+    if (location.pathname === "/messagerie") {
+      const timer = setTimeout(() => setUnreadMessageCount(0), 0);
+      return () => clearTimeout(timer);
+    }
+  }, [location.pathname]);
 
-  // ── Notifications ─────────────────────────────────────────────────────────
-  const [notifications, setNotifications] = useState([]);
-  const [showNotifications, setShowNotifications] = useState(false);
-  const notifRef = useRef(null);
-
+  // ── Notifications ───────────────────────────────────────────────────────
   const fetchNotifications = async () => {
     if (!auth.currentUser) return;
     try {
@@ -148,7 +191,7 @@ const App = () => {
       const res = await api.get("/notifications");
       if (res.data.success) setNotifications(res.data.notifications);
     } catch (err) {
-      console.error("Erreur notifications:", err);
+      console.warn("Erreur récupération notifications:", err);
     }
   };
 
@@ -158,41 +201,28 @@ const App = () => {
       const interval = setInterval(fetchNotifications, 30000);
       return () => clearInterval(interval);
     } else {
-      setNotifications([]);
+      const timer = setTimeout(() => setNotifications([]), 0);
+      return () => clearTimeout(timer);
     }
   }, [user?.uid]);
 
-  // ── Unread messages count ─────────────────────────────────────────────────
-  const [unreadMessageCount, setUnreadMessageCount] = useState(0);
-  const myId = user?.uid || user?.id || "";
-
+  // ── Unread messages ─────────────────────────────────────────────────────
   const fetchUnreadMessageCount = async () => {
     if (!auth.currentUser) return;
     try {
       const api = await authAxios();
       if (!api) return;
       const res = await api.get("/conversations");
-      if (res.data.success) {
+      if (res.data.success !== false) {
         const convs = res.data.conversations || [];
-        // On compte les conversations dont le dernier message n'est pas de moi
-        // et dont unreadCount > 0 (si le backend le fournit), sinon on vérifie
-        // lastMessageSender
-        const unread = convs.filter((c) => {
-          if (c.unreadCount && c.unreadCount > 0) return true;
-          // Fallback : dernier message envoyé par quelqu'un d'autre
-          if (
-            c.lastMessage &&
-            c.lastMessageSender &&
-            String(c.lastMessageSender) !== String(myId)
-          ) {
-            return true;
-          }
-          return false;
-        });
-        setUnreadMessageCount(unread.length);
+        const total = convs.reduce(
+            (acc, c) => acc + (Number(c.unreadCount) || 0),
+            0,
+        );
+        setUnreadMessageCount(total);
       }
     } catch (err) {
-      console.error("Erreur unread messages:", err);
+      console.warn("Erreur unread messages count:", err);
     }
   };
 
@@ -202,17 +232,10 @@ const App = () => {
       const interval = setInterval(fetchUnreadMessageCount, 5000);
       return () => clearInterval(interval);
     } else {
-      setUnreadMessageCount(0);
+      const timer = setTimeout(() => setUnreadMessageCount(0), 0);
+      return () => clearTimeout(timer);
     }
-  }, [user?.uid, myId]);
-
-  // Quand on ouvre la messagerie, on remet le compteur à 0 visuellement
-  // (il sera recalculé au prochain poll)
-  useEffect(() => {
-    if (currentPage === "messagerie") {
-      setUnreadMessageCount(0);
-    }
-  }, [currentPage]);
+  }, [user?.uid]);
 
   useEffect(() => {
     const handle = (e) => {
@@ -223,35 +246,29 @@ const App = () => {
     return () => document.removeEventListener("mousedown", handle);
   }, []);
 
-  useEffect(() => {
-    setShowSearch(false);
-    setSearchTerm("");
-  }, [currentPage]);
-
-  // ── Handlers ──────────────────────────────────────────────────────────────
+  // ── Handlers de navigation ──────────────────────────────────────────────
   const handleLoginSuccess = (userData) => {
     setUser(userData);
-    goHome();
+    navigate("/");
   };
 
   const handleLogout = () => {
     setUser(null);
     setDropdownOpened(false);
     auth.signOut();
-    goHome();
+    navigate("/");
   };
 
-  const handleShowGame = (id) => navigate({ page: "jeu", gameId: id });
-  const handleUserClick = (userId) =>
-    navigate({ page: "utilisateur_public", userId });
+  const handleShowGame = (id) => navigate(`/jeu/${id}`);
+  const handleUserClick = (userId) => navigate(`/profil/${userId}`);
   const handleOpenMessaging = (conversation) => {
     setPreselectedConversation(conversation);
-    navigate({ page: "messagerie" });
+    navigate("/messagerie");
   };
-  const handleAdminClick = () => navigate({ page: "admin" });
+  const handleAdminClick = () => navigate("/admin");
   const handleForumClick = (payload) =>
-    navigate({ page: "forum", forumThread: payload });
-  const handleOpenForum = () => navigate({ page: "forum", forumThread: null });
+      navigate("/forum", { state: { forumThread: payload } });
+  const handleOpenForum = () => navigate("/forum");
 
   const handleNotificationClick = async (notif) => {
     if (!notif.isRead) {
@@ -259,10 +276,10 @@ const App = () => {
         const api = await authAxios();
         await api.patch(`/notifications/${notif.id}/read`);
         setNotifications((prev) =>
-          prev.map((n) => (n.id === notif.id ? { ...n, isRead: true } : n)),
+            prev.map((n) => (n.id === notif.id ? { ...n, isRead: true } : n)),
         );
       } catch (err) {
-        console.error("Erreur mark as read:", err);
+        console.warn("Erreur lecture notification:", err);
       }
     }
     if (notif.gameId) handleShowGame(notif.gameId);
@@ -286,579 +303,639 @@ const App = () => {
 
   const unreadCount = notifications.filter((n) => !n.isRead).length;
 
-  // ── Écran de chargement ───────────────────────────────────────────────────
   if (authLoading) {
     return (
-      <div
-        className="app-container"
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          minHeight: "100vh",
-        }}
-      >
-        <div style={{ textAlign: "center" }}>
-          <div className="loading-spinner" style={{ margin: "0 auto 16px" }} />
-          <p style={{ color: "#64748b", fontSize: "0.9rem" }}>Chargement…</p>
+        <div
+            className="app-container"
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              minHeight: "100vh",
+            }}
+        >
+          <div style={{ textAlign: "center" }}>
+            <div className="loading-spinner" style={{ margin: "0 auto 16px" }} />
+            <p style={{ color: "#64748b", fontSize: "0.9rem" }}>Chargement…</p>
+          </div>
         </div>
-      </div>
     );
   }
 
-  // ── Render ────────────────────────────────────────────────────────────────
   return (
-    <div className="app-container">
-      {/* ══ NAVBAR ══════════════════════════════════════════════════════════ */}
-      <nav className="modern-navbar">
-        <div className="navbar-container">
-          {!showSearch ? (
-            <>
-              <div className="navbar-logo-section">
-                <div
-                  className="logo-icon"
-                  onClick={goHome}
-                  style={{ cursor: "pointer" }}
-                >
-                  <span className="logo-emoji">🎮</span>
-                </div>
-                <h1
-                  className="logo-text"
-                  onClick={goHome}
-                  style={{ cursor: "pointer" }}
-                >
-                  TGMF
-                </h1>
-              </div>
-
-
-
-              <div className="navbar-actions">
-                {navStack.length > 1 && (
-                  <button
-                    className="nav-icon-btn"
-                    onClick={goBack}
-                    title="Retour"
-                    style={{ color: "#c084fc" }}
-                  >
-                    <svg
-                      width="20"
-                      height="20"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2.5"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
+      <div className="app-container">
+        {/* ══ NAVBAR ══════════════════════════════════════════════════════════ */}
+        <nav className="modern-navbar">
+          <div className="navbar-container">
+            {!showSearch ? (
+                <>
+                  <div className="navbar-logo-section">
+                    <div
+                        className="logo-icon"
+                        onClick={() => navigate("/")}
+                        style={{ cursor: "pointer" }}
                     >
-                      <polyline points="15 18 9 12 15 6" />
-                    </svg>
-                  </button>
-                )}
+                      <span className="logo-emoji">🎮</span>
+                    </div>
+                    <h1
+                        className="logo-text"
+                        onClick={() => navigate("/")}
+                        style={{ cursor: "pointer" }}
+                    >
+                      TGMF
+                    </h1>
+                  </div>
 
-                <button
-                  className="nav-icon-btn"
-                  onClick={() => {
-                    setShowSearch(true);
-                    goHome();
-                  }}
-                  title="Rechercher"
-                >
-                  <svg
-                    width="20"
-                    height="20"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                  >
-                    <circle cx="11" cy="11" r="8"></circle>
-                    <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-                  </svg>
-                </button>
+                  <div className="navbar-actions">
+                    {location.pathname !== "/" && (
+                        <button
+                            className="nav-icon-btn"
+                            onClick={() => navigate(-1)}
+                            title="Retour"
+                            style={{ color: "#c084fc" }}
+                        >
+                          <svg
+                              width="20"
+                              height="20"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="2.5"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                          >
+                            <polyline points="15 18 9 12 15 6" />
+                          </svg>
+                        </button>
+                    )}
 
-                {user && (
-                  <div ref={notifRef} style={{ position: "relative" }}>
                     <button
-                      className="nav-icon-btn"
-                      onClick={() => setShowNotifications((v) => !v)}
-                      title="Notifications"
-                      style={{ position: "relative" }}
+                        className="nav-icon-btn"
+                        onClick={() => {
+                          setShowSearch(true);
+                          navigate("/");
+                        }}
+                        title="Rechercher"
                     >
                       <svg
-                        width="20"
-                        height="20"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2"
+                          width="20"
+                          height="20"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2"
                       >
-                        <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
-                        <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+                        <circle cx="11" cy="11" r="8"></circle>
+                        <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
                       </svg>
-                      {unreadCount > 0 && (
-                        <span
-                          style={{
-                            position: "absolute",
-                            top: "-4px",
-                            right: "-4px",
-                            background: "#9333ea",
-                            color: "#fff",
-                            borderRadius: "99px",
-                            fontSize: "0.62rem",
-                            fontWeight: "700",
-                            padding: "1px 5px",
-                            minWidth: "16px",
-                            textAlign: "center",
-                            boxShadow: "0 0 0 2px #0f0f1a",
-                          }}
-                        >
-                          {unreadCount > 9 ? "9+" : unreadCount}
-                        </span>
-                      )}
                     </button>
 
-                    {showNotifications && (
-                      <div
-                        style={{
-                          position: "absolute",
-                          top: "calc(100% + 10px)",
-                          right: 0,
-                          width: "320px",
-                          maxHeight: "420px",
-                          background: "#1a1a2e",
-                          border: "1px solid rgba(147,51,234,0.3)",
-                          borderRadius: "16px",
-                          boxShadow: "0 20px 60px rgba(0,0,0,0.5)",
-                          zIndex: 9999,
-                          overflow: "hidden",
-                          display: "flex",
-                          flexDirection: "column",
-                        }}
-                      >
-                        <div
-                          style={{
-                            display: "flex",
-                            justifyContent: "space-between",
-                            alignItems: "center",
-                            padding: "12px 16px",
-                            borderBottom: "1px solid rgba(255,255,255,0.07)",
-                          }}
-                        >
+                    {user && (
+                        <div ref={notifRef} style={{ position: "relative" }}>
+                          <button
+                              className="nav-icon-btn"
+                              onClick={() => setShowNotifications((v) => !v)}
+                              title="Notifications"
+                              style={{ position: "relative" }}
+                          >
+                            <svg
+                                width="20"
+                                height="20"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth="2"
+                            >
+                              <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+                              <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+                            </svg>
+                            {unreadCount > 0 && (
+                                <span
+                                    style={{
+                                      position: "absolute",
+                                      top: "-4px",
+                                      right: "-4px",
+                                      background: "#9333ea",
+                                      color: "#fff",
+                                      borderRadius: "99px",
+                                      fontSize: "0.62rem",
+                                      fontWeight: "700",
+                                      padding: "1px 5px",
+                                      minWidth: "16px",
+                                      textAlign: "center",
+                                      boxShadow: "0 0 0 2px #0f0f1a",
+                                    }}
+                                >
+                          {unreadCount > 9 ? "9+" : unreadCount}
+                        </span>
+                            )}
+                          </button>
+
+                          {showNotifications && (
+                              <div
+                                  style={{
+                                    position: "absolute",
+                                    top: "calc(100% + 10px)",
+                                    right: 0,
+                                    width: "320px",
+                                    maxHeight: "420px",
+                                    background: "#1a1a2e",
+                                    border: "1px solid rgba(147,51,234,0.3)",
+                                    borderRadius: "16px",
+                                    boxShadow: "0 20px 60px rgba(0,0,0,0.5)",
+                                    zIndex: 9999,
+                                    overflow: "hidden",
+                                    display: "flex",
+                                    flexDirection: "column",
+                                  }}
+                              >
+                                <div
+                                    style={{
+                                      display: "flex",
+                                      justifyContent: "space-between",
+                                      alignItems: "center",
+                                      padding: "12px 16px",
+                                      borderBottom: "1px solid rgba(255,255,255,0.07)",
+                                    }}
+                                >
                           <span
-                            style={{
-                              fontWeight: "600",
-                              fontSize: "0.9rem",
-                              color: "#e2e8f0",
-                            }}
+                              style={{
+                                fontWeight: "600",
+                                fontSize: "0.9rem",
+                                color: "#e2e8f0",
+                              }}
                           >
                             Notifications
                             {unreadCount > 0 && (
-                              <span
-                                style={{
-                                  marginLeft: "8px",
-                                  background: "rgba(147,51,234,0.2)",
-                                  color: "#c084fc",
-                                  borderRadius: "99px",
-                                  fontSize: "0.68rem",
-                                  padding: "1px 7px",
-                                }}
-                              >
+                                <span
+                                    style={{
+                                      marginLeft: "8px",
+                                      background: "rgba(147,51,234,0.2)",
+                                      color: "#c084fc",
+                                      borderRadius: "99px",
+                                      fontSize: "0.68rem",
+                                      padding: "1px 7px",
+                                    }}
+                                >
                                 {unreadCount} nouvelles
                               </span>
                             )}
                           </span>
-                          {unreadCount > 0 && (
-                            <button
-                              onClick={async () => {
-                                try {
-                                  const api = await authAxios();
-                                  await api.patch("/notifications/read-all");
-                                  setNotifications((prev) =>
-                                    prev.map((n) => ({ ...n, isRead: true })),
-                                  );
-                                } catch (_) {}
-                              }}
-                              style={{
-                                background: "none",
-                                border: "none",
-                                cursor: "pointer",
-                                color: "#9333ea",
-                                fontSize: "0.72rem",
-                                fontWeight: "600",
-                              }}
-                            >
-                              Tout lire
-                            </button>
-                          )}
-                        </div>
-                        <div style={{ overflowY: "auto", flex: 1 }}>
-                          {notifications.length === 0 ? (
-                            <div
-                              style={{
-                                padding: "32px 20px",
-                                textAlign: "center",
-                              }}
-                            >
-                              <div
-                                style={{
-                                  fontSize: "1.8rem",
-                                  marginBottom: "8px",
-                                }}
-                              >
-                                🔕
-                              </div>
-                              <p
-                                style={{
-                                  color: "rgba(255,255,255,0.3)",
-                                  fontSize: "0.82rem",
-                                }}
-                              >
-                                Aucune notification
-                              </p>
-                            </div>
-                          ) : (
-                            notifications.map((n) => (
-                              <div
-                                key={n.id}
-                                onClick={() => handleNotificationClick(n)}
-                                style={{
-                                  display: "flex",
-                                  alignItems: "flex-start",
-                                  gap: "10px",
-                                  padding: "11px 16px",
-                                  background: n.isRead
-                                    ? "transparent"
-                                    : "rgba(147,51,234,0.07)",
-                                  borderBottom:
-                                    "1px solid rgba(255,255,255,0.04)",
-                                  cursor: "pointer",
-                                }}
-                                onMouseEnter={(e) =>
-                                  (e.currentTarget.style.background =
-                                    "rgba(255,255,255,0.04)")
-                                }
-                                onMouseLeave={(e) =>
-                                  (e.currentTarget.style.background = n.isRead
-                                    ? "transparent"
-                                    : "rgba(147,51,234,0.07)")
-                                }
-                              >
-                                <div style={{ flex: 1, minWidth: 0 }}>
-                                  <p
-                                    style={{
-                                      margin: 0,
-                                      fontSize: "0.8rem",
-                                      color: "#cbd5e1",
-                                      lineHeight: "1.4",
-                                    }}
-                                  >
-                                    {notifLabel(n)}
-                                  </p>
-                                  <span
-                                    style={{
-                                      fontSize: "0.68rem",
-                                      color: "rgba(255,255,255,0.25)",
-                                      marginTop: "3px",
-                                      display: "block",
-                                    }}
-                                  >
-                                    {n.createdAt?.seconds
-                                      ? new Date(
-                                          n.createdAt.seconds * 1000,
-                                        ).toLocaleDateString()
-                                      : n.createdAt?._seconds
-                                        ? new Date(
-                                            n.createdAt._seconds * 1000,
-                                          ).toLocaleDateString()
-                                        : "Récemment"}
-                                  </span>
+                                  {unreadCount > 0 && (
+                                      <button
+                                          onClick={async () => {
+                                            try {
+                                              const api = await authAxios();
+                                              await api.patch("/notifications/read-all");
+                                              setNotifications((prev) =>
+                                                  prev.map((n) => ({ ...n, isRead: true })),
+                                              );
+                                            } catch (err) {
+                                              console.warn("Erreur read all notifications:", err);
+                                            }
+                                          }}
+                                          style={{
+                                            background: "none",
+                                            border: "none",
+                                            cursor: "pointer",
+                                            color: "#9333ea",
+                                            fontSize: "0.72rem",
+                                            fontWeight: "600",
+                                          }}
+                                      >
+                                        Tout lire
+                                      </button>
+                                  )}
                                 </div>
-                                {!n.isRead && (
-                                  <div
-                                    style={{
-                                      width: "7px",
-                                      height: "7px",
-                                      borderRadius: "50%",
-                                      background: "#9333ea",
-                                      flexShrink: 0,
-                                      marginTop: "4px",
-                                    }}
-                                  />
-                                )}
+                                <div style={{ overflowY: "auto", flex: 1 }}>
+                                  {notifications.length === 0 ? (
+                                      <div
+                                          style={{
+                                            padding: "32px 20px",
+                                            textAlign: "center",
+                                          }}
+                                      >
+                                        <div
+                                            style={{
+                                              fontSize: "1.8rem",
+                                              marginBottom: "8px",
+                                            }}
+                                        >
+                                          🔕
+                                        </div>
+                                        <p
+                                            style={{
+                                              color: "rgba(255,255,255,0.3)",
+                                              fontSize: "0.82rem",
+                                            }}
+                                        >
+                                          Aucune notification
+                                        </p>
+                                      </div>
+                                  ) : (
+                                      notifications.map((n) => (
+                                          <div
+                                              key={n.id}
+                                              onClick={() => handleNotificationClick(n)}
+                                              style={{
+                                                display: "flex",
+                                                alignItems: "flex-start",
+                                                gap: "10px",
+                                                padding: "11px 16px",
+                                                background: n.isRead
+                                                    ? "transparent"
+                                                    : "rgba(147,51,234,0.07)",
+                                                borderBottom:
+                                                    "1px solid rgba(255,255,255,0.04)",
+                                                cursor: "pointer",
+                                              }}
+                                              onMouseEnter={(e) =>
+                                                  (e.currentTarget.style.background =
+                                                      "rgba(255,255,255,0.04)")
+                                              }
+                                              onMouseLeave={(e) =>
+                                                  (e.currentTarget.style.background = n.isRead
+                                                      ? "transparent"
+                                                      : "rgba(147,51,234,0.07)")
+                                              }
+                                          >
+                                            <div style={{ flex: 1, minWidth: 0 }}>
+                                              <p
+                                                  style={{
+                                                    margin: 0,
+                                                    fontSize: "0.8rem",
+                                                    color: "#cbd5e1",
+                                                    lineHeight: "1.4",
+                                                  }}
+                                              >
+                                                {notifLabel(n)}
+                                              </p>
+                                              <span
+                                                  style={{
+                                                    fontSize: "0.68rem",
+                                                    color: "rgba(255,255,255,0.25)",
+                                                    marginTop: "3px",
+                                                    display: "block",
+                                                  }}
+                                              >
+                                    {n.createdAt?.seconds
+                                        ? new Date(
+                                            n.createdAt.seconds * 1000,
+                                        ).toLocaleDateString()
+                                        : n.createdAt?._seconds
+                                            ? new Date(
+                                                n.createdAt._seconds * 1000,
+                                            ).toLocaleDateString()
+                                            : "Récemment"}
+                                  </span>
+                                            </div>
+                                            {!n.isRead && (
+                                                <div
+                                                    style={{
+                                                      width: "7px",
+                                                      height: "7px",
+                                                      borderRadius: "50%",
+                                                      background: "#9333ea",
+                                                      flexShrink: 0,
+                                                      marginTop: "4px",
+                                                    }}
+                                                />
+                                            )}
+                                          </div>
+                                      ))
+                                  )}
+                                </div>
                               </div>
-                            ))
                           )}
                         </div>
-                      </div>
                     )}
-                  </div>
-                )}
 
-                {user && (
-                  <button
-                    className="nav-icon-btn"
-                    onClick={() => {
-                      setPreselectedConversation(null);
-                      navigate({ page: "messagerie" });
-                    }}
-                    title="Messagerie"
-                    style={{ position: "relative" }}
-                  >
-                    <svg
-                      width="20"
-                      height="20"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                    >
-                      <line x1="22" y1="2" x2="11" y2="13"></line>
-                      <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
-                    </svg>
-                    {unreadMessageCount > 0 && (
-                      <span
-                        style={{
-                          position: "absolute",
-                          top: "-4px",
-                          right: "-4px",
-                          background: "#9333ea",
-                          color: "#fff",
-                          borderRadius: "99px",
-                          fontSize: "0.62rem",
-                          fontWeight: "700",
-                          padding: "1px 5px",
-                          minWidth: "16px",
-                          textAlign: "center",
-                          boxShadow: "0 0 0 2px #0f0f1a",
-                        }}
-                      >
+                    {user && (
+                        <button
+                            className="nav-icon-btn"
+                            onClick={() => {
+                              setPreselectedConversation(null);
+                              navigate("/messagerie");
+                            }}
+                            title="Messagerie"
+                            style={{ position: "relative" }}
+                        >
+                          <svg
+                              width="20"
+                              height="20"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="2"
+                          >
+                            <line x1="22" y1="2" x2="11" y2="13"></line>
+                            <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                          </svg>
+                          {unreadMessageCount > 0 && (
+                              <span
+                                  style={{
+                                    position: "absolute",
+                                    top: "-4px",
+                                    right: "-4px",
+                                    background: "#9333ea",
+                                    color: "#fff",
+                                    borderRadius: "99px",
+                                    fontSize: "0.62rem",
+                                    fontWeight: "700",
+                                    padding: "1px 5px",
+                                    minWidth: "16px",
+                                    textAlign: "center",
+                                    boxShadow: "0 0 0 2px #0f0f1a",
+                                  }}
+                              >
                         {unreadMessageCount > 9 ? "9+" : unreadMessageCount}
                       </span>
-                    )}
-                  </button>
-                )}
-
-                <button
-                  className="nav-icon-btn"
-                  onClick={handleOpenForum}
-                  title="Forum"
-                >
-                  <svg
-                    width="20"
-                    height="20"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                  >
-                    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
-                  </svg>
-                </button>
-
-                <div className="profile-dropdown-container" ref={dropdownRef}>
-                  {!user ? (
-                      <button
-                          className="nav-user-btn"
-                          onClick={() => navigate({ page: "login" })}
-                          style={{ padding: "0.5rem 1rem", display: "flex", alignItems: "center", gap: "8px" }}
-                      >
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                          <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"></path>
-                          <polyline points="10 17 15 12 10 7"></polyline>
-                          <line x1="15" y1="12" x2="3" y2="12"></line>
-                        </svg>
-                        <span>S'inscrire / Connexion</span>
-                      </button>
-                  ) : (
-                      <>
-                        <button
-                            className="nav-user-btn"
-                            onClick={() => setDropdownOpened(!isDropdownOpened)}
-                            style={{
-                              padding: user?.avatar || user?.photoURL ? "4px 12px 4px 4px" : "0.5rem 1rem",
-                              display: "flex",
-                              alignItems: "center",
-                              gap: "8px"
-                            }}
-                        >
-                          {user.avatar || user.photoURL ? (
-                              <img
-                                  src={user.avatar || user.photoURL}
-                                  alt=""
-                                  style={{
-                                    width: "32px",
-                                    height: "32px",
-                                    borderRadius: "50%",
-                                    objectFit: "cover",
-                                  }}
-                              />
-                          ) : (
-                              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-                                <circle cx="12" cy="7" r="4"></circle>
-                              </svg>
                           )}
-                          <span>{user.username || user.pseudo || user.displayName}</span>
                         </button>
+                    )}
 
-                        {isDropdownOpened && (
-                            <div className="dropdown-menu">
-                              <button
-                                  className="dropdown-item"
-                                  onClick={() => { setDropdownOpened(false); navigate({ page: "utilisateur" }); }}
-                              >
-                                Profil
-                              </button>
-                              <button
-                                  className="dropdown-item"
-                                  onClick={() => { setDropdownOpened(false); navigate({ page: "parametres" }); }}
-                              >
-                                Paramètres
-                              </button>
-                              <div className="dropdown-item">
-                                <span>Thème</span>
-                                <ThemeToggle theme={theme} toggleTheme={toggleTheme} />
-                              </div>
+                    <button
+                        className="nav-icon-btn"
+                        onClick={handleOpenForum}
+                        title="Forum"
+                    >
+                      <svg
+                          width="20"
+                          height="20"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                      >
+                        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+                      </svg>
+                    </button>
 
-                              <div className="dropdown-divider"></div>
+                    <div className="profile-dropdown-container" ref={dropdownRef}>
+                      {!user ? (
+                          <button
+                              className="nav-user-btn"
+                              onClick={() => navigate("/login")}
+                              style={{
+                                padding: "0.5rem 1rem",
+                                display: "flex",
+                                alignItems: "center",
+                                gap: "8px",
+                              }}
+                          >
+                            <svg
+                                width="18"
+                                height="18"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth="2"
+                            >
+                              <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"></path>
+                              <polyline points="10 17 15 12 10 7"></polyline>
+                              <line x1="15" y1="12" x2="3" y2="12"></line>
+                            </svg>
+                            <span>S'inscrire / Connexion</span>
+                          </button>
+                      ) : (
+                          <>
+                            <button
+                                className="nav-user-btn"
+                                onClick={() => setDropdownOpened(!isDropdownOpened)}
+                                style={{
+                                  padding:
+                                      user?.avatar || user?.photoURL
+                                          ? "4px 12px 4px 4px"
+                                          : "0.5rem 1rem",
+                                  display: "flex",
+                                  alignItems: "center",
+                                  gap: "8px",
+                                }}
+                            >
+                              {user.avatar || user.photoURL ? (
+                                  <img
+                                      src={user.avatar || user.photoURL}
+                                      alt=""
+                                      style={{
+                                        width: "32px",
+                                        height: "32px",
+                                        borderRadius: "50%",
+                                        objectFit: "cover",
+                                      }}
+                                  />
+                              ) : (
+                                  <svg
+                                      width="18"
+                                      height="18"
+                                      viewBox="0 0 24 24"
+                                      fill="none"
+                                      stroke="currentColor"
+                                      strokeWidth="2"
+                                  >
+                                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                                    <circle cx="12" cy="7" r="4"></circle>
+                                  </svg>
+                              )}
+                              <span>
+                          {user.username || user.pseudo || user.displayName}
+                        </span>
+                            </button>
 
-                              <button className="dropdown-item logout-btn" onClick={handleLogout}>
-                                Se déconnecter
-                              </button>
-                            </div>
-                        )}
-                      </>
-                  )}
-                </div>
-
-              </div>
-            </>
-          ) : (
-            <div className="navbar-search-mode">
-              <div className="search-bar-wrapper">
-                <input
-                  autoFocus
-                  type="text"
-                  placeholder="Rechercher des jeux, discussions, utilisateurs..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="search-input-modern"
-                />
-                <div className="search-icon-wrapper">
-                  <svg
-                    width="20"
-                    height="20"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2.5"
+                            {isDropdownOpened && (
+                                <div className="dropdown-menu">
+                                  <button
+                                      className="dropdown-item"
+                                      onClick={() => {
+                                        setDropdownOpened(false);
+                                        navigate("/profil");
+                                      }}
+                                  >
+                                    Profil
+                                  </button>
+                                  <button
+                                      className="dropdown-item"
+                                      onClick={() => {
+                                        setDropdownOpened(false);
+                                        navigate("/profil");
+                                      }}
+                                  >
+                                    Paramètres
+                                  </button>
+                                  <div className="dropdown-item">
+                                    <span>Thème</span>
+                                    <ThemeToggle
+                                        theme={theme}
+                                        toggleTheme={toggleTheme}
+                                    />
+                                  </div>
+                                  <div className="dropdown-divider"></div>
+                                  <button
+                                      className="dropdown-item logout-btn"
+                                      onClick={handleLogout}
+                                  >
+                                    Se déconnecter
+                                  </button>
+                                </div>
+                            )}
+                          </>
+                      )}
+                    </div>
+                  </div>
+                </>
+            ) : (
+                <div className="navbar-search-mode">
+                  <div className="search-bar-wrapper">
+                    <input
+                        autoFocus
+                        type="text"
+                        placeholder="Rechercher des jeux, discussions, utilisateurs..."
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        className="search-input-modern"
+                    />
+                    <div className="search-icon-wrapper">
+                      <svg
+                          width="20"
+                          height="20"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2.5"
+                      >
+                        <circle cx="11" cy="11" r="8"></circle>
+                        <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                      </svg>
+                    </div>
+                  </div>
+                  <button
+                      className="search-close-btn"
+                      onClick={() => {
+                        setShowSearch(false);
+                        setSearchTerm("");
+                      }}
+                      style={{
+                        color: "#ffffff",
+                        fontSize: "1.3rem",
+                        fontWeight: "300",
+                      }}
                   >
-                    <circle cx="11" cy="11" r="8"></circle>
-                    <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-                  </svg>
+                    ✕
+                  </button>
                 </div>
-              </div>
-              <button
-                className="search-close-btn"
-                onClick={() => {
-                  setShowSearch(false);
-                  setSearchTerm("");
-                }}
-              >
-                <svg
-                  width="20"
-                  height="20"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                >
-                  <line x1="18" y1="6" x2="6" y2="18"></line>
-                  <line x1="6" y1="6" x2="18" y2="18"></line>
-                </svg>
-              </button>
-            </div>
-          )}
-        </div>
-      </nav>
+            )}
+          </div>
+        </nav>
 
-      {/* ══ CONTENU ══════════════════════════════════════════════════════════ */}
-      <main className="main-content-wrapper">
-        {currentPage === "accueil" && (
-          <Accueil
-            onGameClick={handleShowGame}
-            onUserClick={handleUserClick}
-            searchTerm={searchTerm}
-            user={user}
-            onAdminClick={handleAdminClick}
-          />
-        )}
-        {currentPage === "jeu" && (
-          <Jeu
-            gameId={current.gameId}
-            onBack={goBack}
-            user={user}
-            onFavoriteChange={() => setProfileRefresh((n) => n + 1)}
-            onGameClick={handleShowGame}
-            onForumClick={handleForumClick}
-          />
-        )}
-        {currentPage === "login" && (
-          <Login
-            onSwitch={() => navigate({ page: "register" })}
-            onLoginSuccess={handleLoginSuccess}
-          />
-        )}
-        {currentPage === "register" && (
-          <Register onSwitch={() => navigate({ page: "login" })} />
-        )}
-        {currentPage === "utilisateur" && (
-          <Utilisateur
-            key={profileRefresh}
-            user={user}
-            onLoginSuccess={(updatedUser) =>
-              setUser((prev) => ({ ...prev, ...updatedUser }))
-            }
-            onLogout={() => {
-              setUser(null);
-              auth.signOut();
-              goHome();
-            }}
-            onGameClick={handleShowGame}
-            onAdminClick={handleAdminClick}
-          />
-        )}
-        {currentPage === "utilisateur_public" && (
-          <Utilisateur
-            key={current.userId}
-            targetUserId={current.userId}
-            user={user}
-            isPublic={true}
-            onBack={goBack}
-            onOpenMessaging={handleOpenMessaging}
-            onGameClick={handleShowGame}
-          />
-        )}
-        {currentPage === "messagerie" && (
-          <Messagerie
-            user={user}
-            preselectedConversation={preselectedConversation}
-            onConversationOpen={() => setPreselectedConversation(null)}
-            onMessagesRead={fetchUnreadMessageCount}
-          />
-        )}
-        {currentPage === "forum" && (
-          <Forum
-            user={user}
-            onGameClick={handleShowGame}
-            initialThread={current.forumThread}
-          />
-        )}
-        {currentPage === "admin" && <AdminDashboard onBack={goBack} />}
-      </main>
-    </div>
+        {/* ══ ROUTES ══════════════════════════════════════════════════════════ */}
+        <main className="main-content-wrapper">
+          <Routes>
+            <Route
+                path="/"
+                element={
+                  <Accueil
+                      onGameClick={handleShowGame}
+                      onUserClick={handleUserClick}
+                      searchTerm={searchTerm}
+                      user={user}
+                      onAdminClick={handleAdminClick}
+                  />
+                }
+            />
+            <Route
+                path="/jeu/:gameId"
+                element={
+                  <JeuPage
+                      user={user}
+                      handleShowGame={handleShowGame}
+                      handleForumClick={handleForumClick}
+                      setProfileRefresh={setProfileRefresh}
+                  />
+                }
+            />
+            <Route
+                path="/login"
+                element={
+                  <Login
+                      onSwitch={() => navigate("/register")}
+                      onLoginSuccess={handleLoginSuccess}
+                  />
+                }
+            />
+            <Route
+                path="/register"
+                element={<Register onSwitch={() => navigate("/login")} />}
+            />
+            <Route
+                path="/profil"
+                element={
+                  <Utilisateur
+                      key={profileRefresh}
+                      user={user}
+                      onLoginSuccess={(updatedUser) =>
+                          setUser((prev) => ({ ...prev, ...updatedUser }))
+                      }
+                      onLogout={() => {
+                        setUser(null);
+                        auth.signOut();
+                        navigate("/");
+                      }}
+                      onGameClick={handleShowGame}
+                      onAdminClick={handleAdminClick}
+                  />
+                }
+            />
+            <Route
+                path="/profil/:userId"
+                element={
+                  <UtilisateurPublicPage
+                      user={user}
+                      handleOpenMessaging={handleOpenMessaging}
+                      handleShowGame={handleShowGame}
+                  />
+                }
+            />
+            <Route
+                path="/messagerie"
+                element={
+                  <Messagerie
+                      user={user}
+                      preselectedConversation={preselectedConversation}
+                      onConversationOpen={() => setPreselectedConversation(null)}
+                      onMessagesRead={fetchUnreadMessageCount}
+                  />
+                }
+            />
+            <Route
+                path="/forum"
+                element={<ForumPage user={user} handleShowGame={handleShowGame} />}
+            />
+            <Route
+                path="/admin"
+                element={<AdminDashboard onBack={() => navigate(-1)} />}
+            />
+          </Routes>
+        </main>
+      </div>
   );
 };
+
+// Wrapper Forum pour lire le state de location (forumThread)
+const ForumPage = ({ user, handleShowGame }) => {
+  const location = useLocation();
+  const forumThread = location.state?.forumThread || null;
+  return (
+      <Forum
+          user={user}
+          onGameClick={handleShowGame}
+          initialThread={forumThread}
+      />
+  );
+};
+
+const App = () => (
+    <BrowserRouter>
+      <AppInner />
+    </BrowserRouter>
+);
 
 export default App;
