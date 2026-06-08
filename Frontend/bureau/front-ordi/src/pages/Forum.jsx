@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import axios from "axios";
 import { auth } from "../Service/firebase";
 import "../../Style/Styles.css";
@@ -11,7 +11,7 @@ const authAxios = async () => {
   });
 };
 
-/* ── Dropdown générique réutilisable ── */
+/* ── Dropdown jeu ── */
 const GameDropdown = ({ results, onSelect }) => (
   <div
     style={{
@@ -37,7 +37,6 @@ const GameDropdown = ({ results, onSelect }) => (
           alignItems: "center",
           gap: "12px",
           borderBottom: "1px solid rgba(255,255,255,0.04)",
-          transition: "background 0.15s",
         }}
         onMouseDown={() => onSelect(g)}
         onMouseEnter={(e) =>
@@ -80,12 +79,294 @@ const GameDropdown = ({ results, onSelect }) => (
   </div>
 );
 
+/* ── Modale création de sujet ── */
+const CreateThreadModal = ({ user, onClose, onCreated }) => {
+  const [newThread, setNewThread] = useState({
+    title: "",
+    content: "",
+    gameId: "",
+    gameName: "",
+  });
+  const [gameSearch, setGameSearch] = useState("");
+  const [gameResults, setGameResults] = useState([]);
+  const [showGameSugg, setShowGameSugg] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (!gameSearch || gameSearch.length < 2) {
+      setGameResults([]);
+      setShowGameSugg(false);
+      return;
+    }
+    const timer = setTimeout(async () => {
+      try {
+        const api = auth.currentUser
+          ? await authAxios()
+          : axios.create({ baseURL: "http://localhost:3000/api" });
+        const res = await api.get(
+          `/games/search?q=${encodeURIComponent(gameSearch)}&limit=6`,
+        );
+        setGameResults(res.data || []);
+        setShowGameSugg(true);
+      } catch (_) {}
+    }, 350);
+    return () => clearTimeout(timer);
+  }, [gameSearch]);
+
+  const handleSubmit = async () => {
+    if (!newThread.title.trim() || !newThread.content.trim()) return;
+    setSubmitting(true);
+    try {
+      const api = await authAxios();
+      const res = await api.post("/forum/threads", {
+        title: newThread.title,
+        content: newThread.content,
+        gameId: newThread.gameId || null,
+        pseudo: user?.pseudo || user?.username,
+        avatarUrl: user?.avatar || user?.photoURL,
+      });
+      if (res.data.success) {
+        onCreated();
+        onClose();
+      }
+    } catch {
+      alert("Erreur lors de la création du sujet.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <>
+      {/* Fond sombre */}
+      <div
+        onClick={onClose}
+        style={{
+          position: "fixed",
+          inset: 0,
+          background: "rgba(0,0,0,0.7)",
+          zIndex: 1000,
+          backdropFilter: "blur(4px)",
+        }}
+      />
+      {/* Modale */}
+      <div
+        style={{
+          position: "fixed",
+          top: "50%",
+          left: "50%",
+          transform: "translate(-50%, -50%)",
+          zIndex: 1001,
+          width: "90%",
+          maxWidth: "560px",
+          background: "#1a1a2e",
+          border: "1px solid rgba(147,51,234,0.35)",
+          borderRadius: "20px",
+          padding: "28px",
+          boxShadow: "0 24px 80px rgba(0,0,0,0.6)",
+          maxHeight: "90vh",
+          overflowY: "auto",
+        }}
+      >
+        {/* Header */}
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            marginBottom: "24px",
+          }}
+        >
+          <h3 style={{ margin: 0, color: "#c4b5fd", fontSize: "1.1rem" }}>
+            ✏️ Nouveau sujet
+          </h3>
+          <button
+            onClick={onClose}
+            style={{
+              background: "none",
+              border: "none",
+              cursor: "pointer",
+              color: "#fff",
+              fontSize: "1.4rem",
+              lineHeight: 1,
+              padding: "0 4px",
+            }}
+          >
+            ✕
+          </button>
+        </div>
+
+        {/* Titre */}
+        <label
+          style={{
+            display: "block",
+            fontSize: "0.8rem",
+            color: "#94a3b8",
+            marginBottom: "6px",
+          }}
+        >
+          Titre du sujet *
+        </label>
+        <input
+          className="filter-select"
+          style={{
+            width: "100%",
+            marginBottom: "16px",
+            boxSizing: "border-box",
+          }}
+          placeholder="Ex: Vos impressions sur God of War ?"
+          value={newThread.title}
+          onChange={(e) =>
+            setNewThread({ ...newThread, title: e.target.value })
+          }
+        />
+
+        {/* Contenu */}
+        <label
+          style={{
+            display: "block",
+            fontSize: "0.8rem",
+            color: "#94a3b8",
+            marginBottom: "6px",
+          }}
+        >
+          Contenu *
+        </label>
+        <textarea
+          className="filter-select"
+          style={{
+            width: "100%",
+            minHeight: "130px",
+            marginBottom: "16px",
+            paddingTop: "10px",
+            boxSizing: "border-box",
+            resize: "vertical",
+          }}
+          placeholder="Partagez votre avis, posez une question..."
+          value={newThread.content}
+          onChange={(e) =>
+            setNewThread({ ...newThread, content: e.target.value })
+          }
+        />
+
+        {/* Lier un jeu */}
+        <label
+          style={{
+            display: "block",
+            fontSize: "0.8rem",
+            color: "#94a3b8",
+            marginBottom: "6px",
+          }}
+        >
+          🎮 Lier à un jeu <span style={{ opacity: 0.5 }}>(optionnel)</span>
+        </label>
+
+        {/* Jeu sélectionné */}
+        {newThread.gameId ? (
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "10px",
+              padding: "10px 14px",
+              marginBottom: "16px",
+              background: "rgba(147,51,234,0.12)",
+              border: "1px solid rgba(147,51,234,0.4)",
+              borderRadius: "10px",
+            }}
+          >
+            <span style={{ fontSize: "0.9rem", color: "#c084fc", flex: 1 }}>
+              ✓ {newThread.gameName}
+            </span>
+            <button
+              onClick={() => {
+                setNewThread({ ...newThread, gameId: "", gameName: "" });
+                setGameSearch("");
+              }}
+              style={{
+                background: "none",
+                border: "none",
+                cursor: "pointer",
+                color: "#94a3b8",
+                fontSize: "1rem",
+                lineHeight: 1,
+              }}
+            >
+              ✕
+            </button>
+          </div>
+        ) : (
+          <div style={{ position: "relative", marginBottom: "16px" }}>
+            <input
+              className="filter-select"
+              style={{ width: "100%", boxSizing: "border-box" }}
+              placeholder="Rechercher un jeu..."
+              value={gameSearch}
+              onChange={(e) => {
+                setGameSearch(e.target.value);
+              }}
+              onBlur={() => setTimeout(() => setShowGameSugg(false), 150)}
+              onFocus={() => gameResults.length > 0 && setShowGameSugg(true)}
+            />
+            {showGameSugg && gameResults.length > 0 && (
+              <GameDropdown
+                results={gameResults}
+                onSelect={(g) => {
+                  setNewThread({
+                    ...newThread,
+                    gameId: String(g.id),
+                    gameName: g.name,
+                  });
+                  setGameSearch(g.name);
+                  setShowGameSugg(false);
+                }}
+              />
+            )}
+          </div>
+        )}
+
+        {/* Boutons */}
+        <div style={{ display: "flex", gap: "10px", marginTop: "8px" }}>
+          <button
+            className="nav-user-btn"
+            style={{
+              flex: 1,
+              justifyContent: "center",
+              opacity:
+                submitting ||
+                !newThread.title.trim() ||
+                !newThread.content.trim()
+                  ? 0.5
+                  : 1,
+            }}
+            onClick={handleSubmit}
+            disabled={
+              submitting || !newThread.title.trim() || !newThread.content.trim()
+            }
+          >
+            {submitting ? "Publication..." : "Publier"}
+          </button>
+          <button
+            className="category-btn"
+            style={{ borderColor: "#ef4444", color: "#f87171" }}
+            onClick={onClose}
+          >
+            Annuler
+          </button>
+        </div>
+      </div>
+    </>
+  );
+};
+
+/* ── Forum principal ── */
 const Forum = ({ user, onGameClick, initialThread = null }) => {
   const [threads, setThreads] = useState([]);
   const [selectedThread, setSelectedThread] = useState(null);
   const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [view, setView] = useState("list");
+  const [showCreateModal, setShowCreateModal] = useState(false);
 
   const [gameFilter, setGameFilter] = useState("");
   const [gameIdFilter, setGameIdFilter] = useState("");
@@ -93,18 +374,7 @@ const Forum = ({ user, onGameClick, initialThread = null }) => {
   const [searchingGames, setSearchingGames] = useState(false);
   const [showGameSuggestions, setShowGameSuggestions] = useState(false);
 
-  const [showCreateForm, setShowCreateForm] = useState(false);
-  const [newThread, setNewThread] = useState({
-    title: "",
-    content: "",
-    gameId: "",
-    gameName: "",
-  });
   const [newPostContent, setNewPostContent] = useState("");
-
-  const [newThreadGameSearch, setNewThreadGameSearch] = useState("");
-  const [newThreadGameResults, setNewThreadGameResults] = useState([]);
-  const [showNewThreadGameSugg, setShowNewThreadGameSugg] = useState(false);
 
   useEffect(() => {
     if (!initialThread) {
@@ -118,7 +388,6 @@ const Forum = ({ user, onGameClick, initialThread = null }) => {
     }
   }, [initialThread]);
 
-  /* Recherche jeu — filtre */
   useEffect(() => {
     if (!gameFilter || gameFilter.length < 2) {
       setGameSearchResults([]);
@@ -144,28 +413,6 @@ const Forum = ({ user, onGameClick, initialThread = null }) => {
     }, 350);
     return () => clearTimeout(timer);
   }, [gameFilter]);
-
-  /* Recherche jeu — formulaire */
-  useEffect(() => {
-    if (!newThreadGameSearch || newThreadGameSearch.length < 2) {
-      setNewThreadGameResults([]);
-      setShowNewThreadGameSugg(false);
-      return;
-    }
-    const timer = setTimeout(async () => {
-      try {
-        const api = auth.currentUser
-          ? await authAxios()
-          : axios.create({ baseURL: "http://localhost:3000/api" });
-        const res = await api.get(
-          `/games/search?q=${encodeURIComponent(newThreadGameSearch)}&limit=5`,
-        );
-        setNewThreadGameResults(res.data || []);
-        setShowNewThreadGameSugg(true);
-      } catch (_) {}
-    }, 350);
-    return () => clearTimeout(timer);
-  }, [newThreadGameSearch]);
 
   const fetchThreads = async (gameId = gameIdFilter) => {
     setLoading(true);
@@ -202,28 +449,6 @@ const Forum = ({ user, onGameClick, initialThread = null }) => {
     }
   };
 
-  const handleCreateThread = async (e) => {
-    e.preventDefault();
-    try {
-      const api = await authAxios();
-      const res = await api.post("/forum/threads", {
-        title: newThread.title,
-        content: newThread.content,
-        gameId: newThread.gameId || null,
-        pseudo: user?.pseudo || user?.username,
-        avatarUrl: user?.avatar || user?.photoURL,
-      });
-      if (res.data.success) {
-        setNewThread({ title: "", content: "", gameId: "", gameName: "" });
-        setNewThreadGameSearch("");
-        setShowCreateForm(false);
-        fetchThreads();
-      }
-    } catch (err) {
-      alert("Erreur lors de la création du sujet.");
-    }
-  };
-
   const handleAddPost = async (e) => {
     e.preventDefault();
     if (!newPostContent.trim()) return;
@@ -239,7 +464,7 @@ const Forum = ({ user, onGameClick, initialThread = null }) => {
         setNewPostContent("");
         fetchThreadDetail(selectedThread);
       }
-    } catch (err) {
+    } catch {
       alert("Erreur lors de l'ajout de la réponse.");
     }
   };
@@ -268,6 +493,15 @@ const Forum = ({ user, onGameClick, initialThread = null }) => {
 
   return (
     <div className="accueil-container">
+      {/* Modale création */}
+      {showCreateModal && (
+        <CreateThreadModal
+          user={user}
+          onClose={() => setShowCreateModal(false)}
+          onCreated={() => fetchThreads()}
+        />
+      )}
+
       <div className="hero-section" style={{ minHeight: "150px" }}>
         <div className="hero-gradient" />
         <div className="hero-content">
@@ -281,22 +515,21 @@ const Forum = ({ user, onGameClick, initialThread = null }) => {
       <div className="main-content-wrapper">
         {view === "list" ? (
           <>
-            {/* Header */}
             <div className="section-header" style={{ marginBottom: "20px" }}>
               <h3 className="section-title">Discussions récentes</h3>
               {user && (
                 <button
                   className="category-btn active"
-                  onClick={() => setShowCreateForm(!showCreateForm)}
+                  onClick={() => setShowCreateModal(true)}
                 >
-                  {showCreateForm ? "Annuler" : "+ Nouveau sujet"}
+                  + Nouveau sujet
                 </button>
               )}
             </div>
 
             {/* Filtre par jeu */}
             <div
-              style={{ marginBottom: "20px", position: "relative", zIndex: 50 }}
+              style={{ marginBottom: "20px", position: "relative", zIndex: 10 }}
             >
               <div
                 style={{ display: "flex", gap: "10px", alignItems: "center" }}
@@ -370,151 +603,6 @@ const Forum = ({ user, onGameClick, initialThread = null }) => {
                 </p>
               )}
             </div>
-
-            {/* Formulaire nouveau sujet */}
-            {showCreateForm && (
-              <div
-                className="game-card-modern"
-                style={{
-                  padding: "24px",
-                  marginBottom: "24px",
-                  cursor: "default",
-                }}
-              >
-                <h4
-                  style={{
-                    margin: "0 0 16px 0",
-                    color: "#c4b5fd",
-                    fontSize: "1rem",
-                  }}
-                >
-                  ✏️ Créer un nouveau sujet
-                </h4>
-
-                <input
-                  className="filter-select"
-                  style={{
-                    width: "100%",
-                    marginBottom: "12px",
-                    boxSizing: "border-box",
-                  }}
-                  placeholder="Titre du sujet"
-                  value={newThread.title}
-                  onChange={(e) =>
-                    setNewThread({ ...newThread, title: e.target.value })
-                  }
-                />
-
-                <textarea
-                  className="filter-select"
-                  style={{
-                    width: "100%",
-                    minHeight: "110px",
-                    marginBottom: "12px",
-                    paddingTop: "10px",
-                    boxSizing: "border-box",
-                    resize: "vertical",
-                  }}
-                  placeholder="Contenu de votre message..."
-                  value={newThread.content}
-                  onChange={(e) =>
-                    setNewThread({ ...newThread, content: e.target.value })
-                  }
-                />
-
-                {/* Lier à un jeu — dropdown isolée avec son propre zIndex */}
-                <div
-                  style={{
-                    position: "relative",
-                    marginBottom: "16px",
-                    zIndex: 9999,
-                  }}
-                >
-                  <input
-                    className="filter-select"
-                    style={{
-                      width: "100%",
-                      boxSizing: "border-box",
-                      paddingRight: newThread.gameId ? "36px" : "12px",
-                    }}
-                    placeholder="🎮 Lier à un jeu (optionnel)..."
-                    value={newThread.gameName || newThreadGameSearch}
-                    onChange={(e) => {
-                      setNewThreadGameSearch(e.target.value);
-                      setNewThread({ ...newThread, gameId: "", gameName: "" });
-                    }}
-                    onBlur={() =>
-                      setTimeout(() => setShowNewThreadGameSugg(false), 150)
-                    }
-                  />
-                  {newThread.gameId && (
-                    <span
-                      style={{
-                        position: "absolute",
-                        right: "12px",
-                        top: "50%",
-                        transform: "translateY(-50%)",
-                        fontSize: "0.85rem",
-                        color: "#9333ea",
-                      }}
-                    >
-                      ✓
-                    </span>
-                  )}
-                  {showNewThreadGameSugg && newThreadGameResults.length > 0 && (
-                    <GameDropdown
-                      results={newThreadGameResults}
-                      onSelect={(g) => {
-                        setNewThread({
-                          ...newThread,
-                          gameId: String(g.id),
-                          gameName: g.name,
-                        });
-                        setNewThreadGameSearch(g.name);
-                        setShowNewThreadGameSugg(false);
-                      }}
-                    />
-                  )}
-                  {newThread.gameId && (
-                    <p
-                      style={{
-                        fontSize: "0.78rem",
-                        color: "#9333ea",
-                        marginTop: "5px",
-                      }}
-                    >
-                      🎮 Lié à <strong>{newThread.gameName}</strong>
-                    </p>
-                  )}
-                </div>
-
-                <div style={{ display: "flex", gap: "10px" }}>
-                  <button
-                    className="nav-user-btn"
-                    style={{ flex: 1, justifyContent: "center" }}
-                    onClick={handleCreateThread}
-                  >
-                    Publier
-                  </button>
-                  <button
-                    className="category-btn"
-                    style={{ borderColor: "#ef4444", color: "#f87171" }}
-                    onClick={() => {
-                      setShowCreateForm(false);
-                      setNewThread({
-                        title: "",
-                        content: "",
-                        gameId: "",
-                        gameName: "",
-                      });
-                      setNewThreadGameSearch("");
-                    }}
-                  >
-                    Annuler
-                  </button>
-                </div>
-              </div>
-            )}
 
             {/* Liste des fils */}
             <div className="comments-list-modern">
