@@ -126,7 +126,7 @@ const PaginationBar = ({
   );
 };
 
-const Catalogue = ({ onGameClick, user }) => {
+const Catalogue = ({ onGameClick, user, searchTerm }) => {
   const navigate = useNavigate();
   const [games, setGames] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -168,8 +168,11 @@ const Catalogue = ({ onGameClick, user }) => {
           ? await authAxios()
           : axios.create({ baseURL: "http://localhost:3000/api" });
 
-        const endpoint =
-          params.genre || params.platform || params.style
+        const hasSearchTerm = searchTerm && searchTerm.trim() !== "";
+
+        const endpoint = hasSearchTerm
+          ? "search"
+          : params.genre || params.platform || params.style
             ? "filtered"
             : "popular";
 
@@ -181,6 +184,7 @@ const Catalogue = ({ onGameClick, user }) => {
             order: params.sortOrder,
             sort: params.sortBy,
             sortOrder: params.sortOrder,
+            ...(hasSearchTerm && { q: searchTerm.trim() }),
             ...(params.genre && { genre: params.genre }),
             ...(params.platform && { platform: params.platform }),
             ...(params.style && { style: params.style }),
@@ -221,13 +225,16 @@ const Catalogue = ({ onGameClick, user }) => {
         setLoading(false);
       }
     },
-    [params],
+    [params, searchTerm],
   );
 
   useEffect(() => {
     setEstimatedTotal(10);
-    fetchGames(1);
-  }, [params]);
+    const delay = setTimeout(() => {
+      fetchGames(1);
+    }, 500); // Ajout d'un délai de 500ms pour la recherche
+    return () => clearTimeout(delay);
+  }, [params, searchTerm, fetchGames]);
 
   const handleCategoryChange = (value) => {
     setActiveCategory(
@@ -241,9 +248,15 @@ const Catalogue = ({ onGameClick, user }) => {
       <div className="hero-section" style={{ minHeight: "160px" }}>
         <div className="hero-gradient" />
         <div className="hero-content">
-          <h2 className="hero-title">Catalogue complet</h2>
+          <h2 className="hero-title">
+            {searchTerm
+              ? `Résultats pour "${searchTerm}"`
+              : "Catalogue complet"}
+          </h2>
           <p className="hero-subtitle">
-            Explorez tous les jeux disponibles sur TGMF.
+            {searchTerm
+              ? `Découvrez les jeux correspondant à votre recherche dans notre base de données.`
+              : "Explorez tous les jeux disponibles sur TGMF."}
           </p>
         </div>
       </div>

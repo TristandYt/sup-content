@@ -365,6 +365,7 @@ const AppInner = () => {
                   onClick={() => {
                     setShowSearch(true);
                     navigate("/");
+                    navigate("/catalogue");
                   }}
                   title="Rechercher"
                 >
@@ -901,7 +902,13 @@ const AppInner = () => {
           />
           <Route
             path="/catalogue"
-            element={<Catalogue onGameClick={handleShowGame} user={user} />}
+            element={
+              <Catalogue
+                onGameClick={handleShowGame}
+                user={user}
+                searchTerm={searchTerm}
+              />
+            }
           />
           <Route
             path="/admin"
