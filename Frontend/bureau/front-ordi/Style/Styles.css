@@ -2592,3 +2592,17 @@ light .main-content-wrapper button *,
   background: rgba(0, 0, 0, 0.06) !important; /* Un gris très léger qui fait ressortir le bloc */
   border: 1px solid rgba(0, 0, 0, 0.05);
 }
+
+/* bouton navigation clair */
+.light .slider-nav-btn {
+  background: rgba(255, 255, 255, 0.85) !important; /* Fond blanc translucide */
+  color: #111827 !important; /* Texte sombre pour la flèche */
+  border: 1px solid rgba(0, 0, 0, 0.1) !important;
+}
+
+/* hover effet clair */
+.light .slider-nav-btn:hover {
+  background: #ffffff !important;
+  color: #9333ea !important; /* La flèche devient violette au survol */
+  border-color: #9333ea !important;
+}
