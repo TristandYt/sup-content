@@ -14,150 +14,6 @@ const authAxios = async () => {
 };
 
 // ─────────────────────────────────────────────
-// Composant PaginationBar
-// ─────────────────────────────────────────────
-const PaginationBar = ({
-  page,
-  estimatedTotal,
-  hasMore,
-  loading,
-  onPageChange,
-}) => {
-  const btnBase = {
-    padding: "8px 14px",
-    minWidth: "40px",
-    border: "1px solid rgba(255,255,255,0.12)",
-    borderRadius: "8px",
-    background: "transparent",
-    color: "#c4b5fd",
-    cursor: "pointer",
-    fontSize: "0.9rem",
-    transition: "all 0.15s",
-  };
-  const btnActive = {
-    ...btnBase,
-    background: "rgba(167,139,250,0.25)",
-    border: "1px solid #a78bfa",
-    color: "#fff",
-    fontWeight: "600",
-  };
-  const btnDisabled = {
-    ...btnBase,
-    opacity: 0.35,
-    cursor: "default",
-  };
-
-  // Génère les numéros à afficher :
-  // Toujours page 1, fenêtre ±1 autour de la page courante, … si saut, dernière page estimée
-  const getPageNumbers = () => {
-    const last = estimatedTotal;
-    const pages = new Set();
-
-    pages.add(1);
-
-    // fenêtre autour de la page courante
-    for (
-      let i = Math.max(2, page - 1);
-      i <= Math.min(last - 1, page + 1);
-      i++
-    ) {
-      pages.add(i);
-    }
-
-    if (last > 1) pages.add(last);
-
-    const sorted = [...pages].sort((a, b) => a - b);
-
-    // Insère les ellipsis là où il y a des sauts > 1
-    const result = [];
-    for (let i = 0; i < sorted.length; i++) {
-      if (i > 0 && sorted[i] - sorted[i - 1] > 1) {
-        result.push("...");
-      }
-      result.push(sorted[i]);
-    }
-    return result;
-  };
-
-  const pageNumbers = getPageNumbers();
-
-  return (
-    <div
-      style={{
-        display: "flex",
-        gap: "6px",
-        alignItems: "center",
-        flexWrap: "wrap",
-        justifyContent: "center",
-      }}
-    >
-      {/* Précédent */}
-      <button
-        style={page === 1 || loading ? btnDisabled : btnBase}
-        disabled={page === 1 || loading}
-        onClick={() => onPageChange(page - 1)}
-      >
-        ‹ Précédent
-      </button>
-
-      {/* Numéros */}
-      {pageNumbers.map((p, i) =>
-        p === "..." ? (
-          <span
-            key={`ellipsis-${i}`}
-            style={{ color: "#6b7280", padding: "8px 4px", userSelect: "none" }}
-          >
-            …
-          </span>
-        ) : (
-          <button
-            key={p}
-            style={p === page ? btnActive : loading ? btnDisabled : btnBase}
-            disabled={loading}
-            onClick={() => p !== page && onPageChange(p)}
-            onMouseEnter={(e) => {
-              if (p !== page && !loading) {
-                e.currentTarget.style.background = "rgba(167,139,250,0.12)";
-                e.currentTarget.style.borderColor = "rgba(167,139,250,0.5)";
-              }
-            }}
-            onMouseLeave={(e) => {
-              if (p !== page && !loading) {
-                e.currentTarget.style.background = "transparent";
-                e.currentTarget.style.borderColor = "rgba(255,255,255,0.12)";
-              }
-            }}
-          >
-            {p}
-          </button>
-        ),
-      )}
-
-      {/* Suivant */}
-      <button
-        style={!hasMore || loading ? btnDisabled : btnBase}
-        disabled={!hasMore || loading}
-        onClick={() => onPageChange(page + 1)}
-        onMouseEnter={(e) => {
-          if (hasMore && !loading) {
-            e.currentTarget.style.background = "rgba(167,139,250,0.12)";
-            e.currentTarget.style.borderColor = "rgba(167,139,250,0.5)";
-          }
-        }}
-        onMouseLeave={(e) => {
-          if (hasMore && !loading) {
-            e.currentTarget.style.background = "transparent";
-            e.currentTarget.style.borderColor = "rgba(255,255,255,0.12)";
-          }
-        }}
-      >
-        Suivant ›
-      </button>
-    </div>
-  );
-};
-
-// ─────────────────────────────────────────────
 // Composant principal Accueil
 // ─────────────────────────────────────────────
 const Accueil = ({
@@ -166,6 +22,7 @@ const Accueil = ({
   searchTerm,
   user,
   onAdminClick,
+  onOpenCatalogue,
 }) => {
   const { t } = useTranslation();
   const [games, setGames] = useState([]);
@@ -182,10 +39,6 @@ const Accueil = ({
   const UPCOMING_PAGE_SIZE = 20;
 
   const [activeCategory, setActiveCategory] = useState("Tous");
-  const [page, setPage] = useState(1);
-  const [hasMore, setHasMore] = useState(true);
-  // Estimation du nombre total de pages : on commence à 10, on ajuste au fur et à mesure
-  const [estimatedTotal, setEstimatedTotal] = useState(10);
   const PAGE_SIZE = 12;
   const [params, setParams] = useState({
     sortBy: "total_rating",
@@ -221,120 +74,78 @@ const Accueil = ({
     }
   };
 
-  const fetchResults = useCallback(
-    async (targetPage = 1, append = false) => {
-      setError(null);
-      setLoading(true);
+  const fetchResults = useCallback(async () => {
+    setError(null);
+    setLoading(true);
 
-      try {
-        const hasSearchTerm = searchTerm && searchTerm.trim() !== "";
-        const api = auth.currentUser
-          ? await authAxios()
-          : axios.create({ baseURL: "http://localhost:3000/api" });
+    try {
+      const hasSearchTerm = searchTerm && searchTerm.trim() !== "";
+      const api = auth.currentUser
+        ? await authAxios()
+        : axios.create({ baseURL: "http://localhost:3000/api" });
 
-        if (searchType === "users") {
-          const res = await api
-            .get(`/search`, {
-              params: {
-                q: hasSearchTerm ? searchTerm.trim() : "",
-                type: "users",
-                page: targetPage,
-                limit: PAGE_SIZE,
-              },
-            })
-            .catch(() => ({ data: { results: { users: [] } } }));
+      if (searchType === "users") {
+        const res = await api
+          .get(`/search`, {
+            params: {
+              q: hasSearchTerm ? searchTerm.trim() : "",
+              type: "users",
+              page: 1,
+              limit: PAGE_SIZE,
+            },
+          })
+          .catch(() => ({ data: { results: { users: [] } } }));
 
-          const newUsers = res.data.results?.users || [];
-          setUsers((prev) => (append ? [...prev, ...newUsers] : newUsers));
-          const more = newUsers.length === PAGE_SIZE;
-          setHasMore(more);
-
-          // Mise à jour de l'estimation pour les users
-          if (!more) {
-            setEstimatedTotal(targetPage);
-          } else {
-            setEstimatedTotal((prev) => Math.max(prev, targetPage + 3));
-          }
+        const newUsers = res.data.results?.users || [];
+        setUsers(newUsers);
+      } else {
+        let endpoint;
+        if (hasSearchTerm) {
+          endpoint = "search";
+        } else if (params.genre || params.platform || params.style) {
+          endpoint = "filtered";
         } else {
-          let endpoint;
-          if (hasSearchTerm) {
-            endpoint = "search";
-          } else if (params.genre || params.platform || params.style) {
-            endpoint = "filtered";
-          } else {
-            endpoint = "popular";
-          }
-
-          const queryParams = {
-            page: targetPage,
-            limit: PAGE_SIZE,
-            sortBy: params.sortBy || "total_rating",
-            order: params.sortOrder || "desc",
-            sort: params.sortBy || "total_rating",
-            sortOrder: params.sortOrder || "desc",
-          };
-
-          if (hasSearchTerm) queryParams.q = searchTerm.trim();
-          if (params.genre) queryParams.genre = params.genre;
-          if (params.platform) queryParams.platform = params.platform;
-          if (params.style) queryParams.style = params.style;
-
-          const res = await api.get(`/games/${endpoint}`, {
-            params: queryParams,
-          });
-
-          const rawData = res.data;
-          let newGames = [];
-          if (Array.isArray(rawData)) newGames = rawData;
-          else if (rawData.games) newGames = rawData.games;
-          else if (rawData.results?.games) newGames = rawData.results.games;
-          else if (rawData.results && Array.isArray(rawData.results))
-            newGames = rawData.results;
-
-          // Si le backend renvoie un total, on s'en sert ; sinon on estime
-          const backendTotal = rawData.total || rawData.totalPages || null;
-
-          newGames = sortGamesLocally(
-            newGames,
-            params.sortBy,
-            params.sortOrder,
-          );
-
-          setGames((prev) => (append ? [...prev, ...newGames] : newGames));
-
-          const more = newGames.length === PAGE_SIZE;
-          setHasMore(more);
-
-          // Mise à jour de l'estimation :
-          // - Si le backend donne un total exact → on le calcule
-          // - Si on arrive à la dernière page → on fixe
-          // - Sinon on projette : page actuelle + marge croissante
-          if (backendTotal) {
-            setEstimatedTotal(Math.ceil(backendTotal / PAGE_SIZE));
-          } else if (!more) {
-            setEstimatedTotal(targetPage);
-          } else {
-            // On augmente l'estimation progressivement au fur et à mesure qu'on avance
-            setEstimatedTotal((prev) => {
-              const projected =
-                targetPage + Math.max(3, Math.round(targetPage * 0.5));
-              return Math.max(prev, projected);
-            });
-          }
+          endpoint = "popular";
         }
 
-        setPage(targetPage);
-      } catch (err) {
-        console.error("Erreur API:", err);
-        setError(
-          "Impossible de contacter le service de recherche. Vérifiez votre connexion.",
-        );
-      } finally {
-        setLoading(false);
+        const queryParams = {
+          page: 1,
+          limit: PAGE_SIZE,
+          sortBy: params.sortBy || "total_rating",
+          order: params.sortOrder || "desc",
+          sort: params.sortBy || "total_rating",
+          sortOrder: params.sortOrder || "desc",
+        };
+
+        if (hasSearchTerm) queryParams.q = searchTerm.trim();
+        if (params.genre) queryParams.genre = params.genre;
+        if (params.platform) queryParams.platform = params.platform;
+        if (params.style) queryParams.style = params.style;
+
+        const res = await api.get(`/games/${endpoint}`, {
+          params: queryParams,
+        });
+
+        const rawData = res.data;
+        let newGames = [];
+        if (Array.isArray(rawData)) newGames = rawData;
+        else if (rawData.games) newGames = rawData.games;
+        else if (rawData.results?.games) newGames = rawData.results.games;
+        else if (rawData.results && Array.isArray(rawData.results))
+          newGames = rawData.results;
+
+        newGames = sortGamesLocally(newGames, params.sortBy, params.sortOrder);
+        setGames(newGames);
       }
-    },
-    [searchTerm, params, searchType, PAGE_SIZE],
-  );
+    } catch (err) {
+      console.error("Erreur API:", err);
+      setError(
+        "Impossible de contacter le service de recherche. Vérifiez votre connexion.",
+      );
+    } finally {
+      setLoading(false);
+    }
+  }, [searchTerm, params, searchType]);
 
   const sortGamesLocally = (gamesList, sortBy, sortOrder) => {
     if (!gamesList || gamesList.length === 0) return gamesList;
@@ -368,19 +179,14 @@ const Accueil = ({
     return sorted;
   };
 
-  // Reset lors du changement de type de recherche
   useEffect(() => {
     setGames([]);
     setUsers([]);
-    setPage(1);
-    setHasMore(true);
-    setEstimatedTotal(10);
   }, [searchType]);
 
   useEffect(() => {
     const delay = setTimeout(() => {
-      setEstimatedTotal(10); // reset l'estimation à chaque nouveau filtre/recherche
-      fetchResults(1, false).then(() => setPage(1));
+      fetchResults();
     }, 500);
     return () => clearTimeout(delay);
   }, [searchTerm, params, searchType]);
@@ -662,39 +468,29 @@ const Accueil = ({
         </div>
       )}
 
-      {/* ── Pagination ── */}
-      {(games.length > 0 || users.length > 0) && (
-        <div
-          style={{
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            gap: "16px",
-            marginTop: "40px",
-            padding: "20px",
-            borderTop: "1px solid rgba(255,255,255,0.05)",
-          }}
-        >
-          {hasMore && searchType === "games" && (
+      {/* ── Bouton catalogue ── */}
+      {searchType === "games" &&
+        !searchTerm &&
+        games.length > 0 &&
+        onOpenCatalogue && (
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "center",
+              marginTop: "40px",
+              padding: "20px",
+              borderTop: "1px solid rgba(255,255,255,0.05)",
+            }}
+          >
             <button
               className="category-btn active"
-              disabled={loading}
-              onClick={() => fetchResults(page + 1, true)}
+              onClick={onOpenCatalogue}
               style={{ padding: "12px 60px", fontSize: "1rem" }}
             >
-              {loading ? "Chargement..." : "Afficher plus"}
+              Voir tout le catalogue
             </button>
-          )}
-
-          <PaginationBar
-            page={page}
-            estimatedTotal={estimatedTotal}
-            hasMore={hasMore}
-            loading={loading}
-            onPageChange={(p) => fetchResults(p, false)}
-          />
-        </div>
-      )}
+          </div>
+        )}
 
       {/* ── Jeux à venir ── */}
       {searchType === "games" && !searchTerm && (

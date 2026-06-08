@@ -18,6 +18,7 @@ import Jeu from "./pages/Jeu";
 import Messagerie from "./pages/messagerie";
 import AdminDashboard from "./pages/AdminDashboard";
 import Forum from "./pages/Forum";
+import Catalogue from "./pages/Catalogue";
 import ThemeToggle from "./components/ThemeToggle";
 import "../Style/Styles.css";
 import "./Langue/i18n";
@@ -260,6 +261,7 @@ const AppInner = () => {
   const handleForumClick = (payload) =>
     navigate("/forum", { state: { forumThread: payload } });
   const handleOpenForum = () => navigate("/forum");
+  const handleOpenCatalogue = () => navigate("/catalogue");
 
   const handleNotificationClick = async (notif) => {
     if (!notif.isRead) {
@@ -825,6 +827,7 @@ const AppInner = () => {
                 searchTerm={searchTerm}
                 user={user}
                 onAdminClick={handleAdminClick}
+                onOpenCatalogue={handleOpenCatalogue}
               />
             }
           />
@@ -895,6 +898,10 @@ const AppInner = () => {
           <Route
             path="/forum"
             element={<ForumPage user={user} handleShowGame={handleShowGame} />}
+          />
+          <Route
+            path="/catalogue"
+            element={<Catalogue onGameClick={handleShowGame} user={user} />}
           />
           <Route
             path="/admin"
