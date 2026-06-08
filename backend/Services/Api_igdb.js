@@ -33,11 +33,14 @@ class IGDBService {
   }
 
   async searchGames(title, limit = 15, offset = 0, includeAdultThemes = false) {
-    const adultFilter = includeAdultThemes ? "" : "where themes != (42);";
+    let whereClauses = [];
+    if (title) whereClauses.push(`name ~ *"${title}"*`);
+    if (!includeAdultThemes) whereClauses.push("themes != (42)");
+    
+    const whereString = whereClauses.length > 0 ? `where ${whereClauses.join(" & ")};` : "";
     const query = `
       fields name, cover.image_id, total_rating, summary, first_release_date, genres.name, age_ratings.category, age_ratings.rating;
-      search "${title}";
-      ${adultFilter}
+      ${whereString}
       limit ${limit};
       offset ${offset};
     `;
@@ -75,8 +78,12 @@ class IGDBService {
     let query = `fields name, cover.image_id, first_release_date, total_rating, genres.name, age_ratings.category, age_ratings.rating; limit ${limit}; offset ${offset};`;
     let whereClauses = [];
 
-    if (q) query += ` search "${q}";`;
-    else if (genre || year) query += ` sort total_rating desc;`;
+    if (q) {
+      // Recherche partielle (insensible à la casse) au lieu de l'opérateur "search" d'IGDB
+      whereClauses.push(`name ~ *"${q}"*`);
+    } else if (genre || year) {
+      query += ` sort total_rating desc;`;
+    }
 
     if (genre) whereClauses.push(`genres = (${genre})`);
     if (year) {
