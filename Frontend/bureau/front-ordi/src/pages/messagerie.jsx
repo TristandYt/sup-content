@@ -15,7 +15,7 @@ const authAxios = async () => {
 };
 
 /* ═══════════════════════════════════════════════════════════
-   MODALE RECHERCHE UTILISATEUR (bouton +)
+   MODALE RECHERCHE UTILISATEUR
 ═══════════════════════════════════════════════════════════ */
 const UserSearchModal = ({ onClose, onSelectConversation }) => {
   const [query, setQuery] = useState("");
@@ -42,7 +42,6 @@ const UserSearchModal = ({ onClose, onSelectConversation }) => {
       ]);
       const following = ingRes.data?.following || [];
       const followers = ersRes.data?.followers || [];
-
       const mutuals = following
         .filter((f) =>
           followers.some(
@@ -78,7 +77,6 @@ const UserSearchModal = ({ onClose, onSelectConversation }) => {
         const res = await api.get(`/search`, { params: { q: query.trim() } });
         setResults(res.data.results?.users || []);
       } catch (err) {
-        console.error("Erreur recherche:", err);
         setError("Erreur lors de la recherche.");
       } finally {
         setLoading(false);
@@ -164,7 +162,6 @@ const UserSearchModal = ({ onClose, onSelectConversation }) => {
             ×
           </button>
         </div>
-
         <input
           ref={inputRef}
           type="text"
@@ -178,7 +175,6 @@ const UserSearchModal = ({ onClose, onSelectConversation }) => {
             boxSizing: "border-box",
           }}
         />
-
         {error && (
           <p
             style={{
@@ -194,7 +190,6 @@ const UserSearchModal = ({ onClose, onSelectConversation }) => {
             {error}
           </p>
         )}
-
         <div style={{ maxHeight: "320px", overflowY: "auto" }}>
           {loading && (
             <div style={{ textAlign: "center", padding: "24px" }}>
@@ -281,16 +276,18 @@ const Messagerie = ({
   const [showSearchModal, setShowSearchModal] = useState(false);
   const [activeMenu, setActiveMenu] = useState(null);
   const messagesEndRef = useRef(null);
+  const selectedConvRef = useRef(null);
 
   const myId = String(user?.uid || user?.id || "");
 
+  // Garde selectedConv en ref pour les intervalles
+  useEffect(() => {
+    selectedConvRef.current = selectedConv;
+  }, [selectedConv]);
+
   useEffect(() => {
     fetchConversations();
-
-    const interval = setInterval(() => {
-      fetchConversations(null, true);
-    }, 5000);
-
+    const interval = setInterval(() => fetchConversations(null, true), 5000);
     return () => clearInterval(interval);
   }, []);
 
@@ -314,30 +311,33 @@ const Messagerie = ({
 
   useEffect(() => {
     if (!selectedConv) return;
-
     const interval = setInterval(async () => {
       try {
         const api = await authAxios();
         const res = await api.get(`/conversations/${selectedConv.id}/messages`);
         const newMsgs = res.data.messages || [];
-
         setMessages((prev) => {
           if (prev.some((m) => m._pending) || activeMenu !== null) return prev;
           return newMsgs;
         });
-      } catch (err) {
-        // Échec silencieux
-      }
+        // Marquer automatiquement comme lus les nouveaux messages reçus
+        markMessagesAsRead(selectedConv.id, newMsgs);
+      } catch (err) {}
     }, 4000);
-
     return () => clearInterval(interval);
   }, [selectedConv, activeMenu]);
 
+  /* ── Marquer comme lus + mise à jour locale immédiate ── */
   const markMessagesAsRead = async (convId, msgs) => {
     const unread = msgs.filter(
       (m) => String(m.senderId) !== myId && !m.readBy?.includes(myId),
     );
     if (unread.length === 0) return;
+
+    // 1. Reset local immédiat du badge de la conversation
+    setConversations((prev) =>
+      prev.map((c) => (c.id === convId ? { ...c, unreadCount: 0 } : c)),
+    );
 
     try {
       const api = await authAxios();
@@ -346,7 +346,7 @@ const Messagerie = ({
           api.patch(`/conversations/${convId}/messages/${m.id}/read`),
         ),
       );
-      // Notifier App.js pour rafraîchir le compteur de messages non lus
+      // 2. Notifier App.js pour recalculer le compteur global
       if (onMessagesRead) onMessagesRead();
     } catch (err) {
       console.error("Erreur lecture:", err);
@@ -360,7 +360,15 @@ const Messagerie = ({
       if (!api) return;
       const res = await api.get("/conversations");
       const convs = res.data.conversations || [];
-      setConversations(convs);
+
+      setConversations((prev) => {
+        // Si une conv est actuellement ouverte, on garde son unreadCount à 0
+        const currentId = selectedConvRef.current?.id;
+        return convs.map((c) =>
+          c.id === currentId ? { ...c, unreadCount: 0 } : c,
+        );
+      });
+
       if (silent) return;
 
       const targetId = autoSelectId || preselectedConversation?.id;
@@ -383,12 +391,18 @@ const Messagerie = ({
     setMessages([]);
     setActiveMenu(null);
     setLoadingMsgs(true);
+
+    // Reset immédiat du badge dans la liste
+    setConversations((prev) =>
+      prev.map((c) => (c.id === conv.id ? { ...c, unreadCount: 0 } : c)),
+    );
+
     try {
       const api = await authAxios();
       const res = await api.get(`/conversations/${conv.id}/messages`);
       const msgs = res.data.messages || [];
       setMessages(msgs);
-      markMessagesAsRead(conv.id, msgs);
+      await markMessagesAsRead(conv.id, msgs);
     } catch (err) {
       console.error("Erreur fetchMessages:", err);
     } finally {
@@ -415,6 +429,7 @@ const Messagerie = ({
 
     try {
       const api = await authAxios();
+      if (!api) throw new Error("Utilisateur non authentifié");
       await api.post(`/conversations/${selectedConv.id}/messages`, { text });
       const res = await api.get(`/conversations/${selectedConv.id}/messages`);
       setMessages(res.data.messages || []);
@@ -426,7 +441,7 @@ const Messagerie = ({
         ),
       );
     } catch (err) {
-      console.error("Erreur sendMessage:", err);
+      console.error("Erreur envoi:", err);
       setMessages((prev) => prev.filter((m) => m.id !== tempMsg.id));
       setNewMessage(text);
     } finally {
@@ -446,7 +461,6 @@ const Messagerie = ({
       await api.delete(
         `/conversations/${selectedConv.id}/messages/${messageId}`,
       );
-
       setMessages((prev) => {
         const updated = prev.filter((m) => m.id !== messageId);
         setConversations((convs) =>
@@ -469,7 +483,6 @@ const Messagerie = ({
         return updated;
       });
     } catch (err) {
-      console.error("Erreur suppression:", err);
       alert("Erreur lors de la suppression.");
     } finally {
       setActiveMenu(null);
@@ -480,13 +493,11 @@ const Messagerie = ({
     if (!selectedConv?.id) return;
     const msgToEdit = messages.find((m) => m.id === messageId);
     if (!msgToEdit) return;
-
     const newText = prompt("Modifier votre message :", msgToEdit?.text);
     if (!newText || !newText.trim() || newText === msgToEdit.text) {
       setActiveMenu(null);
       return;
     }
-
     try {
       const api = await authAxios();
       await api.patch(
@@ -497,7 +508,6 @@ const Messagerie = ({
         const updated = prev.map((m) =>
           m.id === messageId ? { ...m, text: newText.trim() } : m,
         );
-
         const isLast =
           prev.length > 0 && prev[prev.length - 1].id === messageId;
         if (isLast) {
@@ -512,7 +522,6 @@ const Messagerie = ({
         return updated;
       });
     } catch (err) {
-      console.error("Erreur modification:", err);
       alert("Erreur lors de la modification.");
     } finally {
       setActiveMenu(null);
@@ -521,7 +530,6 @@ const Messagerie = ({
 
   const getOtherUser = (conv) => {
     if (!conv) return { pseudo: "Inconnu", avatar: null };
-
     const name =
       conv.otherUserPseudo ||
       conv.otherUserUsername ||
@@ -529,7 +537,6 @@ const Messagerie = ({
       conv.pseudo ||
       conv.username ||
       "Utilisateur";
-
     return {
       pseudo: name,
       avatar:
@@ -544,26 +551,28 @@ const Messagerie = ({
   const formatTime = (createdAt) => {
     if (!createdAt) return "";
     let date;
-    if (createdAt?.seconds) {
-      date = new Date(createdAt.seconds * 1000);
-    } else if (createdAt?._seconds) {
-      date = new Date(createdAt._seconds * 1000);
-    } else if (typeof createdAt === "number" || typeof createdAt === "string") {
+    if (createdAt?.seconds) date = new Date(createdAt.seconds * 1000);
+    else if (createdAt?._seconds) date = new Date(createdAt._seconds * 1000);
+    else if (typeof createdAt === "number" || typeof createdAt === "string")
       date = new Date(createdAt);
-    } else {
-      return "";
-    }
+    else return "";
     if (isNaN(date.getTime())) return "";
     return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
   };
 
   const otherUser = getOtherUser(selectedConv);
 
+  // Calcul du total de messages non lus (toutes convs sauf celle ouverte)
+  const totalUnread = conversations.reduce((acc, c) => {
+    if (c.id === selectedConv?.id) return acc;
+    return acc + (c.unreadCount || 0);
+  }, 0);
+
   return (
     <div className="messaging-container">
       <div className="messaging-gradient"></div>
       <div className="messaging-layout">
-        {/* ── SIDEBAR CONTACTS ── */}
+        {/* ── SIDEBAR ── */}
         <aside className="messaging-sidebar">
           <div className="messaging-sidebar-header">
             <div className="messaging-header-content">
@@ -624,10 +633,14 @@ const Messagerie = ({
             ) : (
               conversations.map((conv) => {
                 const other = getOtherUser(conv);
+                const isActive = selectedConv?.id === conv.id;
+                // Badge : 0 si la conv est ouverte, sinon unreadCount réel
+                const badge = isActive ? 0 : conv.unreadCount || 0;
+
                 return (
                   <div
                     key={conv.id}
-                    className={`messaging-contact-item ${selectedConv?.id === conv.id ? "active" : ""}`}
+                    className={`messaging-contact-item ${isActive ? "active" : ""}`}
                     onClick={() => selectConversation(conv)}
                   >
                     <div className="messaging-contact-avatar-wrapper">
@@ -636,15 +649,35 @@ const Messagerie = ({
                         alt={other.pseudo}
                         className="messaging-contact-avatar"
                       />
-                      {conv.unreadCount > 0 && (
+                      {badge > 0 && (
                         <span
-                          className="messaging-status-dot online"
-                          style={{ background: "#9333ea" }}
-                        />
+                          style={{
+                            position: "absolute",
+                            top: "-2px",
+                            right: "-2px",
+                            background: "#9333ea",
+                            color: "#fff",
+                            borderRadius: "50%",
+                            minWidth: "18px",
+                            height: "18px",
+                            fontSize: "0.7rem",
+                            fontWeight: "700",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            padding: "0 3px",
+                            lineHeight: 1,
+                          }}
+                        >
+                          {badge > 9 ? "9+" : badge}
+                        </span>
                       )}
                     </div>
                     <div className="messaging-contact-info">
-                      <span className="messaging-contact-name">
+                      <span
+                        className="messaging-contact-name"
+                        style={{ fontWeight: badge > 0 ? "700" : "normal" }}
+                      >
                         {other.pseudo}
                       </span>
                       <span
@@ -655,6 +688,8 @@ const Messagerie = ({
                           textOverflow: "ellipsis",
                           whiteSpace: "nowrap",
                           display: "block",
+                          fontWeight: badge > 0 ? "600" : "normal",
+                          color: badge > 0 ? "#c4b5fd" : undefined,
                         }}
                       >
                         {conv.lastMessage || "Démarrer la conversation"}
@@ -667,7 +702,7 @@ const Messagerie = ({
           </div>
         </aside>
 
-        {/* ── ZONE DE CHAT ── */}
+        {/* ── ZONE CHAT ── */}
         <main className="messaging-main">
           {selectedConv ? (
             <>
@@ -714,7 +749,6 @@ const Messagerie = ({
                     {messages.map((m, index) => {
                       const isMine = String(m.senderId) === myId;
                       const isLastMessage = index === messages.length - 1;
-
                       return (
                         <div
                           key={m.id}
@@ -840,9 +874,7 @@ const Messagerie = ({
                   value={newMessage}
                   onChange={(e) => setNewMessage(e.target.value)}
                   onKeyDown={(e) => {
-                    if (e.key === "Enter") {
-                      handleSendMessage(e);
-                    }
+                    if (e.key === "Enter") handleSendMessage(e);
                   }}
                   placeholder="Écrivez votre message…"
                 />
@@ -907,13 +939,11 @@ const Messagerie = ({
           onClose={() => setShowSearchModal(false)}
           onSelectConversation={(conv, userInfo) => {
             setShowSearchModal(false);
-
             const enrichedConv = {
               ...conv,
               otherUserPseudo: userInfo?.username || userInfo?.pseudo,
               otherUserAvatar: userInfo?.avatar || userInfo?.photoURL,
             };
-
             setConversations((prev) => {
               const exists = prev.find((c) => c.id === enrichedConv.id);
               if (exists) return prev;
