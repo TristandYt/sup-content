@@ -13,11 +13,6 @@ const authAxios = async () => {
   });
 };
 
-// ─── Traduction via MyMemory (gratuit, sans clé) ───────────────────────────
-// GET https://api.mymemory.translated.net/get?q=TEXTE&langpair=en|fr
-// Limite : 5000 mots/jour en anonyme.
-// La réponse JSON a la forme :
-//   { responseData: { translatedText: "..." }, responseStatus: 200 }
 const translateToFr = async (text) => {
   if (!text) return "";
   try {
@@ -27,9 +22,9 @@ const translateToFr = async (text) => {
     if (data.responseStatus === 200 && data.responseData?.translatedText) {
       return data.responseData.translatedText;
     }
-    return text; // fallback : texte original
+    return text;
   } catch (_) {
-    return text; // fallback silencieux
+    return text;
   }
 };
 
@@ -94,11 +89,9 @@ const Jeu = ({
   const [isFavorite, setIsFavorite] = useState(false);
   const [favLoading, setFavLoading] = useState(false);
 
-  // Traduction du résumé
   const [translatedSummary, setTranslatedSummary] = useState("");
   const [translating, setTranslating] = useState(false);
 
-  // Reviews
   const [reviews, setReviews] = useState([]);
   const [averageRating, setAverageRating] = useState(null);
   const [myReview, setMyReview] = useState(null);
@@ -108,21 +101,17 @@ const Jeu = ({
   const [rating, setRating] = useState(0);
   const [hoverRating, setHoverRating] = useState(0);
 
-  // Comments
   const [commentingReviewId, setCommentingReviewId] = useState(null);
   const [reviewCommentText, setReviewCommentText] = useState("");
   const [commentLoading, setCommentLoading] = useState(false);
 
-  // Jeux similaires
   const [similarGames, setSimilarGames] = useState([]);
 
-  // DLC / Expansions
   const [dlcs, setDlcs] = useState([]);
   const [expansions, setExpansions] = useState([]);
   const [dlcLoading, setDlcLoading] = useState(false);
   const [dlcTab, setDlcTab] = useState("dlc");
 
-  // Forum
   const [gameThread, setGameThread] = useState(null);
 
   const scrollSimilar = (direction) => {
@@ -140,7 +129,6 @@ const Jeu = ({
     });
   };
 
-  /* ── Traduction automatique quand le jeu ou la langue change ── */
   useEffect(() => {
     if (!game?.summary) return;
     setTranslatedSummary("");
@@ -154,7 +142,6 @@ const Jeu = ({
     }
   }, [game, i18n.language]);
 
-  /* ── Chargement initial ── */
   useEffect(() => {
     if (!gameId) return;
     setReviews([]);
@@ -180,7 +167,6 @@ const Jeu = ({
           if (g.expansions?.length) setExpansions(g.expansions);
         }
 
-        // Jeux similaires
         try {
           const api = auth.currentUser
             ? await authAxios()
@@ -189,7 +175,6 @@ const Jeu = ({
           setSimilarGames(resSimilar.data || []);
         } catch (_) {}
 
-        // DLC/expansions via endpoint dédié
         try {
           setDlcLoading(true);
           const api = auth.currentUser
@@ -206,7 +191,6 @@ const Jeu = ({
           setDlcLoading(false);
         }
 
-        // Statut collection
         if (auth.currentUser) {
           try {
             const api = await authAxios();
@@ -215,7 +199,6 @@ const Jeu = ({
           } catch (_) {}
         }
 
-        // Forum
         try {
           const api = auth.currentUser
             ? await authAxios()
@@ -443,10 +426,9 @@ const Jeu = ({
     return defaultCover;
   };
 
-  // ── Résumé à afficher selon la langue ──
   const displaySummary = () => {
     if (i18n.language === "fr") {
-      if (translating) return game?.summary || ""; // affiche l'original pendant le chargement
+      if (translating) return game?.summary || "";
       return translatedSummary || game?.summary || "Aucun résumé disponible.";
     }
     return game?.summary || "No summary available.";
@@ -480,7 +462,9 @@ const Jeu = ({
           ← Retour à la navigation
         </button>
 
-        <div className="game-details-layout">
+        {/* FIX 1 : le layout grid/flex doit avoir overflow:hidden pour que
+            les colonnes enfants respectent leurs limites */}
+        <div className="game-details-layout" style={{ overflow: "hidden" }}>
           {/* ── COLONNE GAUCHE ── */}
           <div className="game-sidebar-modern">
             <div className="game-card-modern" style={{ cursor: "default" }}>
@@ -595,13 +579,18 @@ const Jeu = ({
             </div>
           </div>
 
-          {/* ── COLONNE DROITE ── */}
-          <div className="game-main-info">
+          {/* ── COLONNE DROITE ──
+              FIX 2 : min-width:0 est CRUCIAL sur une colonne flex/grid.
+              Sans lui, la colonne ignore sa contrainte et s'étend autant
+              que son contenu, causant le débordement. */}
+          <div
+            className="game-main-info"
+            style={{ minWidth: 0, overflow: "hidden" }}
+          >
             <h1 className="hero-title">{game.name}</h1>
 
             <div className="section-header">
               <h3 className="section-title">Résumé</h3>
-              {/* Indicateur de traduction en cours */}
               {translating && (
                 <span
                   style={{
@@ -684,11 +673,14 @@ const Jeu = ({
 
                     {(dlcTab === "dlc" || expansions.length === 0) &&
                       dlcs.length > 0 && (
+                        /* FIX 3 : width:100% + overflow:hidden sur le conteneur
+                           de la liste pour que chaque DlcCard soit bien bornée */
                         <div
                           style={{
                             display: "flex",
                             flexDirection: "column",
-                            width: "100%", // Ajouté pour contraindre la largeur
+                            width: "100%",
+                            overflow: "hidden",
                             gap: "10px",
                           }}
                         >
@@ -722,7 +714,8 @@ const Jeu = ({
                           style={{
                             display: "flex",
                             flexDirection: "column",
-                            width: "100%", // Ajouté pour contraindre la largeur
+                            width: "100%",
+                            overflow: "hidden",
                             gap: "10px",
                           }}
                         >
@@ -1243,8 +1236,15 @@ const DlcCard = ({ item, getThumbUrl, onGameClick, isExpansion = false }) => {
         background: "rgba(255,255,255,0.02)",
         border: `1px solid ${isExpansion ? "rgba(96,165,250,0.2)" : "rgba(147,51,234,0.2)"}`,
         transition: "all 0.15s",
-        overflow: "hidden", // Added to prevent content overflow
-        minWidth: 0, // Added to allow flex item to shrink
+        /* FIX 4 : overflow:hidden + min-width:0 sur la carte elle-même
+           pour que le contenu texte ne pousse pas la carte au-delà de
+           la largeur disponible */
+        overflow: "hidden",
+        minWidth: 0,
+        /* width:100% s'assure que la carte occupe toute la largeur du
+           conteneur flex colonne sans en déborder */
+        width: "100%",
+        boxSizing: "border-box",
       }}
       onMouseEnter={(e) => {
         e.currentTarget.style.background = isExpansion
@@ -1278,6 +1278,8 @@ const DlcCard = ({ item, getThumbUrl, onGameClick, isExpansion = false }) => {
         />
       </div>
 
+      {/* FIX 5 : min-width:0 sur le bloc texte central (élément flex)
+          pour qu'il puisse rétrécir et que le ellipsis fonctionne */}
       <div style={{ flex: 1, minWidth: 0 }}>
         <div
           style={{
@@ -1299,12 +1301,15 @@ const DlcCard = ({ item, getThumbUrl, onGameClick, isExpansion = false }) => {
               color: isExpansion ? "#60a5fa" : "#c084fc",
               textTransform: "uppercase",
               letterSpacing: "0.05em",
+              flexShrink: 0,
             }}
           >
             {isExpansion ? "Expansion" : "DLC"}
           </span>
           {releaseDate && (
-            <span style={{ fontSize: "0.72rem", color: "#64748b" }}>
+            <span
+              style={{ fontSize: "0.72rem", color: "#64748b", flexShrink: 0 }}
+            >
               {releaseDate}
             </span>
           )}
@@ -1315,11 +1320,9 @@ const DlcCard = ({ item, getThumbUrl, onGameClick, isExpansion = false }) => {
             fontSize: "0.9rem",
             color: "#e2e8f0",
             fontWeight: "500",
+            whiteSpace: "nowrap",
             overflow: "hidden",
             textOverflow: "ellipsis",
-            maxWidth: "100%", // Added to ensure text respects container width
-            minWidth: 0, // Added to allow text to shrink within flex container
-            whiteSpace: "nowrap",
           }}
         >
           {item.name}
@@ -1330,11 +1333,9 @@ const DlcCard = ({ item, getThumbUrl, onGameClick, isExpansion = false }) => {
               margin: "3px 0 0",
               fontSize: "0.75rem",
               color: "#64748b",
-              overflow: "hidden",
-              maxWidth: "100%", // Added to ensure text respects container width
-              minWidth: 0, // Added to allow text to shrink within flex container
-              textOverflow: "ellipsis",
               whiteSpace: "nowrap",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
             }}
           >
             {item.summary}
