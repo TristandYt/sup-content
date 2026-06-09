@@ -38,31 +38,29 @@ exports.getPublicProfile = async (req, res, next) => {
     const userDoc = await db.collection("users").doc(userId).get();
 
     if (!userDoc.exists) {
-      return res
-        .status(404)
-        .json({ success: false, msg: "Utilisateur introuvable" });
+      return res.status(404).json({ success: false, msg: "Utilisateur introuvable" });
     }
 
-    const {
-      username,
-      bio,
-      createdAt,
-      avatar,
-      followersCount,
-      followingCount,
-      profileData,
-    } = userDoc.data();
+    const followersSnap = await db.collection("follows").where("followingId", "==", userId).get();
+    const followingSnap = await db.collection("follows").where("followerId", "==", userId).get();
+
+    const actualFollowersCount = followersSnap.size;
+    const actualFollowingCount = followingSnap.size;
+
+    const data = userDoc.data();
+
     res.json({
       success: true,
       user: {
         userId,
-        username,
-        bio,
-        website: profileData?.website || "",
-        createdAt,
-        avatar,
-        followersCount,
-        followingCount,
+        username: data.username,
+        bio: data.bio,
+        website: data.profileData?.website || "",
+        createdAt: data.createdAt,
+        avatar: data.avatar || data.profileData?.avatarUrl || null,
+        followersCount: actualFollowersCount,
+        followingCount: actualFollowingCount,
+        isPrivate: data.preferences?.privateProfile || false,
       },
     });
   } catch (error) {
