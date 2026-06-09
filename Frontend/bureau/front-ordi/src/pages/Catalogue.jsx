@@ -151,7 +151,6 @@ const Catalogue = ({ onGameClick, user, searchTerm }) => {
   ];
   const [activeCategory, setActiveCategory] = useState("Tous");
 
-  // Refs stables pour éviter la boucle useCallback + useEffect
   const paramsRef = useRef(params);
   const searchTermRef = useRef(searchTerm);
 
@@ -168,7 +167,6 @@ const Catalogue = ({ onGameClick, user, searchTerm }) => {
     return defaultCover;
   };
 
-  // fetchGames avec dépendances vides → fonction stable, lit params via ref
   const fetchGames = useCallback(async (targetPage = 1) => {
     const currentParams = paramsRef.current;
     const currentSearchTerm = searchTermRef.current;
@@ -197,8 +195,6 @@ const Catalogue = ({ onGameClick, user, searchTerm }) => {
           limit: PAGE_SIZE,
           sortBy: currentParams.sortBy,
           order: currentParams.sortOrder,
-          sort: currentParams.sortBy,
-          sortOrder: currentParams.sortOrder,
           ...(hasSearchTerm && { q: currentSearchTerm.trim() }),
           ...(currentParams.genre && { genre: currentParams.genre }),
           ...(currentParams.platform && { platform: currentParams.platform }),
@@ -239,9 +235,8 @@ const Catalogue = ({ onGameClick, user, searchTerm }) => {
     } finally {
       setLoading(false);
     }
-  }, []); // ← dépendances vides : fonction stable
+  }, []);
 
-  // Déclenché uniquement quand params ou searchTerm changent (pas fetchGames)
   useEffect(() => {
     setEstimatedTotal(10);
     setPage(1);
@@ -249,7 +244,7 @@ const Catalogue = ({ onGameClick, user, searchTerm }) => {
       fetchGames(1);
     }, 400);
     return () => clearTimeout(delay);
-  }, [params, searchTerm]); // ← fetchGames retiré des dépendances
+  }, [params, searchTerm]);
 
   const handleCategoryChange = (value) => {
     setActiveCategory(

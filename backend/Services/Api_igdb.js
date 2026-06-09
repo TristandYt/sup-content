@@ -65,10 +65,16 @@ class IGDBService {
       direction = "asc";
 
     const adultFilter = includeAdultThemes ? "" : " & themes != (42)";
+
+    // Si on trie par note, on exige total_rating != null
+    // Sinon (nom, date) on retire cette contrainte pour ne pas perdre de résultats
+    const ratingFilter =
+      field === "total_rating" ? " & total_rating != null" : "";
+
     const query = `
       fields name, cover.image_id, total_rating, first_release_date, genres.name, age_ratings.category, age_ratings.rating;
       sort ${field} ${direction};
-      where total_rating != null & cover != null${adultFilter};
+      where cover != null${ratingFilter}${adultFilter};
       limit ${limit};
       offset ${offset};
     `;
@@ -106,10 +112,6 @@ class IGDBService {
       whereClauses.push("themes != (42)");
     }
 
-    // if (!includeAdultThemes) {
-    //   whereClauses.push("(themes != (42) & age_ratings.rating != (12))");
-    // }
-
     if (whereClauses.length > 0) query += ` where ${whereClauses.join(" & ")};`;
 
     return this.request("games", query);
@@ -129,11 +131,26 @@ class IGDBService {
   }
 
   async getGamesFiltered(
-    { style, genre, platform, limit = 15, offset = 0 },
+    { style, genre, platform, sortBy, order, limit = 15, offset = 0 },
     includeAdultThemes = false,
   ) {
-    let query = `fields name, cover.image_id, first_release_date, total_rating, genres.name, age_ratings.category, age_ratings.rating; limit ${limit}; offset ${offset};`;
+    // Résolution du champ de tri
+    let field = "total_rating";
+    if (sortBy === "name") field = "name";
+    if (sortBy === "first_release_date") field = "first_release_date";
+
+    // Résolution de la direction
+    let direction = "desc";
+    if (order === "asc") direction = "asc";
+
+    // Si on trie par note, on exige total_rating != null
+    const ratingFilter =
+      field === "total_rating" ? "total_rating != null & " : "";
+
+    let query = `fields name, cover.image_id, first_release_date, total_rating, genres.name, age_ratings.category, age_ratings.rating; sort ${field} ${direction}; limit ${limit}; offset ${offset};`;
+
     let whereClauses = [];
+    if (ratingFilter) whereClauses.push("total_rating != null");
     if (genre) whereClauses.push(`genres = (${genre})`);
     if (platform) whereClauses.push(`platforms = (${platform})`);
     if (style) whereClauses.push(`themes = (${style})`);
