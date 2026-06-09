@@ -4,6 +4,7 @@ import axios from "axios";
 import { auth } from "../Service/firebase";
 import "../../Style/Styles.css";
 import defaultCover from "../assets/fr-default-large_default.jpg";
+import { useNavigate } from "react-router-dom";
 
 const authAxios = async () => {
   const token = await auth.currentUser?.getIdToken(true);
@@ -83,9 +84,11 @@ const Jeu = ({
   onForumClick,
 }) => {
   const { i18n } = useTranslation();
+  const navigate = useNavigate();
 
   const [game, setGame] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [gameError, setGameError] = useState(null);
   const [isFavorite, setIsFavorite] = useState(false);
   const [favLoading, setFavLoading] = useState(false);
 
@@ -152,14 +155,18 @@ const Jeu = ({
     setDlcs([]);
     setExpansions([]);
     setTranslatedSummary("");
+    setGame(null);
+    setGameError(null);
     window.scrollTo(0, 0);
 
     const fetchDetails = async () => {
       try {
         setLoading(true);
-        const res = await axios.get(
-          `http://localhost:3000/api/games/details/${gameId}`,
-        );
+        setGameError(null);
+        const api = auth.currentUser
+          ? await authAxios()
+          : axios.create({ baseURL: "http://localhost:3000/api" });
+        const res = await api.get(`/games/details/${gameId}`);
         if (res.data) {
           const g = res.data;
           setGame(g);
@@ -214,6 +221,20 @@ const Jeu = ({
         }
       } catch (err) {
         console.error("Erreur de chargement:", err);
+        const status = err?.response?.status;
+        if (status === 401) {
+          setGameError({
+            code: 401,
+            msg: err.response.data?.msg || "Connectez-vous pour voir ce contenu.",
+          });
+        } else if (status === 403) {
+          setGameError({
+            code: 403,
+            msg: err.response.data?.msg || "Vous n'avez pas accès à ce contenu.",
+          });
+        } else {
+          setGameError({ code: 0, msg: "Impossible de charger ce jeu." });
+        }
       } finally {
         setLoading(false);
       }
@@ -443,6 +464,46 @@ const Jeu = ({
       </div>
     );
 
+  if (gameError || !game)
+    return (
+      <div className="app-container">
+        <div className="hero-gradient"></div>
+        <div className="main-content-wrapper">
+          <button
+            onClick={onBack}
+            className="category-btn"
+            style={{ marginBottom: "2rem", display: "flex", alignItems: "center", gap: "8px" }}
+          >
+            ← Retour
+          </button>
+          <div className="empty-state">
+            <div className="empty-icon">
+              {gameError?.code === 401 ? "🔒" : gameError?.code === 403 ? "🔞" : "⚠️"}
+            </div>
+            <h3 className="empty-title">
+              {gameError?.code === 401
+                ? "Connexion requise"
+                : gameError?.code === 403
+                ? "Accès restreint"
+                : "Jeu introuvable"}
+            </h3>
+            <p className="empty-text">
+              {gameError?.msg || "Ce jeu n'existe pas ou n'est plus disponible."}
+            </p>
+            {gameError?.code === 401 && (
+              <button
+                className="category-btn active"
+                style={{ marginTop: "1.5rem", padding: "10px 32px" }}
+                onClick={() => navigate("/login")}
+              >
+                Se connecter
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+
   const hasDlcContent = dlcs.length > 0 || expansions.length > 0;
 
   return (
@@ -462,8 +523,7 @@ const Jeu = ({
           ← Retour à la navigation
         </button>
 
-        {/* FIX 1 : le layout grid/flex doit avoir overflow:hidden pour que
-            les colonnes enfants respectent leurs limites */}
+        {}
         <div className="game-details-layout" style={{ overflow: "hidden" }}>
           {/* ── COLONNE GAUCHE ── */}
           <div className="game-sidebar-modern">
@@ -579,10 +639,7 @@ const Jeu = ({
             </div>
           </div>
 
-          {/* ── COLONNE DROITE ──
-              FIX 2 : min-width:0 est CRUCIAL sur une colonne flex/grid.
-              Sans lui, la colonne ignore sa contrainte et s'étend autant
-              que son contenu, causant le débordement. */}
+          {}
           <div
             className="game-main-info"
             style={{ minWidth: 0, overflow: "hidden" }}
@@ -616,7 +673,7 @@ const Jeu = ({
               {displaySummary()}
             </p>
 
-            {/* ══ DLC & EXPANSIONS ══════════════════════════════════════════ */}
+            {/* ══ DLC & EXPANSIONS ══*/}
             {(hasDlcContent || dlcLoading) && (
               <div style={{ marginBottom: "3rem" }}>
                 <div
@@ -673,8 +730,6 @@ const Jeu = ({
 
                     {(dlcTab === "dlc" || expansions.length === 0) &&
                       dlcs.length > 0 && (
-                        /* FIX 3 : width:100% + overflow:hidden sur le conteneur
-                           de la liste pour que chaque DlcCard soit bien bornée */
                         <div
                           style={{
                             display: "flex",
@@ -748,7 +803,7 @@ const Jeu = ({
               </div>
             )}
 
-            {/* ══ AVIS ══════════════════════════════════════════════════════ */}
+            {/* ══ AVIS ══*/}
             <div className="comments-section-modern">
               <div className="section-header">
                 <h3 className="section-title">Avis des joueurs</h3>
@@ -1097,7 +1152,7 @@ const Jeu = ({
               </div>
             </div>
 
-            {/* ══ JEUX SIMILAIRES ══════════════════════════════════════════ */}
+            {/* ══ JEUX SIMILAIRES === */}
             {similarGames.length > 0 && (
               <div style={{ marginTop: "3rem" }}>
                 <h3
@@ -1236,9 +1291,6 @@ const DlcCard = ({ item, getThumbUrl, onGameClick, isExpansion = false }) => {
         background: "rgba(255,255,255,0.02)",
         border: `1px solid ${isExpansion ? "rgba(96,165,250,0.2)" : "rgba(147,51,234,0.2)"}`,
         transition: "all 0.15s",
-        /* FIX 4 : overflow:hidden + min-width:0 sur la carte elle-même
-           pour que le contenu texte ne pousse pas la carte au-delà de
-           la largeur disponible */
         overflow: "hidden",
         minWidth: 0,
         /* width:100% s'assure que la carte occupe toute la largeur du
@@ -1278,8 +1330,7 @@ const DlcCard = ({ item, getThumbUrl, onGameClick, isExpansion = false }) => {
         />
       </div>
 
-      {/* FIX 5 : min-width:0 sur le bloc texte central (élément flex)
-          pour qu'il puisse rétrécir et que le ellipsis fonctionne */}
+      {}
       <div style={{ flex: 1, minWidth: 0 }}>
         <div
           style={{

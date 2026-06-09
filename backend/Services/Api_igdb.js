@@ -51,34 +51,32 @@ class IGDBService {
     offset = 0,
     includeAdultThemes = false,
   ) {
-    let field = "total_rating";
-    if (sortBy === "name" || sortBy === "nom") field = "name";
-    if (
-      sortBy === "first_release_date" ||
-      sortBy === "date" ||
-      sortBy === "release_date"
-    )
-      field = "first_release_date";
-
-    let direction = "desc";
-    if (order === "asc" || order === "ascendant" || order === "croissant")
-      direction = "asc";
-
     const adultFilter = includeAdultThemes ? "" : " & themes != (42)";
 
-    // Si on trie par note, on exige total_rating != null
-    // Sinon (nom, date) on retire cette contrainte pour ne pas perdre de résultats
-    const ratingFilter =
-      field === "total_rating" ? " & total_rating != null" : "";
-
-    const query = `
-      fields name, cover.image_id, total_rating, first_release_date, genres.name, age_ratings.category, age_ratings.rating;
-      sort ${field} ${direction};
-      where cover != null${ratingFilter}${adultFilter};
+    // récupérer les IDs des jeux tendance en ce moment via IGDB PopScore
+    const popQuery = `
+      fields game_id, value, popularity_type;
+      sort value desc;
+      where popularity_type = 1;
       limit ${limit};
       offset ${offset};
     `;
-    return this.request("games", query);
+    const popData = await this.request("popularity_primitives", popQuery);
+    const gameIds = popData.map((p) => p.game_id).filter(Boolean);
+
+    if (gameIds.length === 0) return [];
+
+    // récupérer les détails des jeux correspondants
+    const detailsQuery = `
+      fields name, cover.image_id, total_rating, first_release_date, genres.name, age_ratings.category, age_ratings.rating;
+      where id = (${gameIds.join(",")}) & cover != null${adultFilter};
+      limit ${limit};
+    `;
+    const games = await this.request("games", detailsQuery);
+
+    // Réordonner selon le rang de popularité IGDB
+    const rankMap = Object.fromEntries(gameIds.map((id, i) => [id, i]));
+    return games.sort((a, b) => (rankMap[a.id] ?? 99) - (rankMap[b.id] ?? 99));
   }
 
   async advancedSearch(
@@ -91,7 +89,6 @@ class IGDBService {
   ) {
     let query = `fields name, cover.image_id, first_release_date, total_rating, genres.name, age_ratings.category, age_ratings.rating; limit ${limit}; offset ${offset};`;
     let whereClauses = [];
-    // where au lieu de search
     if (q) whereClauses.push(`name ~ * "${q}" *`);
     else if (genre || year) query += ` sort total_rating desc;`;
 

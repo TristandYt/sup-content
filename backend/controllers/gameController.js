@@ -40,13 +40,13 @@ const getAdultPreference = async (req) => {
 
 exports.getPopularGames = async (req, res, next) => {
   try {
-    const { sortBy, order, page, limit } = req.query;
+    const { page, limit } = req.query;
     const { limit: lim, offset } = getOffset(page, limit);
 
-    // Tout le monde voit les jeux dans la liste (isAdult = true)
-    let games = await IGDBService.getPopularGames(
-      sortBy,
-      order,
+    // Jeux du moment via IGDB PopScore
+    const games = await IGDBService.getPopularGames(
+      null,
+      null,
       lim,
       offset,
       true,
@@ -133,6 +133,7 @@ exports.getGameDetails = async (req, res, next) => {
       if (requiredAge > 3) {
         return res.status(401).json({
           success: false,
+          code: "LOGIN_REQUIRED",
           msg: `Vous devez être connecté pour voir ce contenu (+${requiredAge}).`,
         });
       }
@@ -144,6 +145,7 @@ exports.getGameDetails = async (req, res, next) => {
         if (!birthDate) {
           return res.status(403).json({
             success: false,
+            code: "BIRTHDATE_REQUIRED",
             msg: "Veuillez renseigner votre âge dans votre profil pour voir ce jeu.",
           });
         }
@@ -151,6 +153,7 @@ exports.getGameDetails = async (req, res, next) => {
         if (age < requiredAge) {
           return res.status(403).json({
             success: false,
+            code: "AGE_NOT_ALLOWED",
             msg: `Vous n'avez pas l'âge requis pour voir ce contenu (+${requiredAge}).`,
           });
         }
