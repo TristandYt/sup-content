@@ -103,11 +103,14 @@ const AppInner = () => {
   const [user, setUser] = useState(null);
   const [authLoading, setAuthLoading] = useState(true);
 
+  // ── onAuthStateChanged : source unique de vérité pour le user ──────────
+  // On charge toujours le profil complet depuis le backend (avec role inclus).
+  // handleLoginSuccess ne fait plus que navigate("/") — pas de setUser manuel.
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
         try {
-          const token = await firebaseUser.getIdToken();
+          const token = await firebaseUser.getIdToken(true); // force refresh du token
           const res = await axios.get(
             "http://localhost:3000/api/users/profile",
             {
@@ -127,6 +130,7 @@ const AppInner = () => {
               role: u.role || "user",
               birthDate: u.birthDate || "",
               preferences: u.preferences || {},
+              isCertified: u.isCertified || false,
             });
           } else {
             setUser({
@@ -136,6 +140,7 @@ const AppInner = () => {
               username: firebaseUser.displayName,
               displayName: firebaseUser.displayName,
               avatar: firebaseUser.photoURL || null,
+              role: "user",
             });
           }
         } catch {
@@ -146,6 +151,7 @@ const AppInner = () => {
             username: firebaseUser.displayName,
             displayName: firebaseUser.displayName,
             avatar: firebaseUser.photoURL || null,
+            role: "user",
           });
         }
       } else {
@@ -239,8 +245,10 @@ const AppInner = () => {
   }, []);
 
   // ── Handlers de navigation ──────────────────────────────────────────────
-  const handleLoginSuccess = (userData) => {
-    setUser(userData);
+
+  // FIX : on ne fait plus setUser ici — onAuthStateChanged s'en charge
+  // avec le profil complet (role inclus) depuis le backend.
+  const handleLoginSuccess = () => {
     navigate("/");
   };
 
@@ -855,20 +863,28 @@ const AppInner = () => {
           <Route
             path="/profil"
             element={
-              <Utilisateur
-                key={profileRefresh}
-                user={user}
-                onLoginSuccess={(updatedUser) =>
-                  setUser((prev) => ({ ...prev, ...updatedUser }))
-                }
-                onLogout={() => {
-                  setUser(null);
-                  auth.signOut();
-                  navigate("/");
-                }}
-                onGameClick={handleShowGame}
-                onAdminClick={handleAdminClick}
-              />
+              user ? (
+                <Utilisateur
+                  key={profileRefresh}
+                  user={user}
+                  onLoginSuccess={(updatedUser) =>
+                    setUser((prev) => ({ ...prev, ...updatedUser }))
+                  }
+                  onLogout={() => {
+                    setUser(null);
+                    auth.signOut();
+                    navigate("/");
+                  }}
+                  onGameClick={handleShowGame}
+                  onAdminClick={handleAdminClick}
+                />
+              ) : (
+                // Pas connecté → redirection login
+                <Login
+                  onSwitch={() => navigate("/register")}
+                  onLoginSuccess={handleLoginSuccess}
+                />
+              )
             }
           />
           <Route
