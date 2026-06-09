@@ -188,25 +188,35 @@ exports.createList = async (req, res, next) => {
 
 exports.getMyLists = async (req, res, next) => {
   try {
-    // Si un userId est fourni dans la query (profil public), on l'utilise.
-    // Sinon, on prend l'utilisateur connecté (mon profil).
     const targetUserId = req.query.userId || req.user.id;
     const isOwner = String(targetUserId) === String(req.user.id);
 
     let query = db
-      .collection("custom_lists")
-      .where("userId", "==", targetUserId);
+        .collection("custom_lists")
+        .where("userId", "==", targetUserId);
 
-    // Si on regarde les listes de quelqu'un d'autre, on ne récupère que les listes publiques
     if (!isOwner) {
       query = query.where("isPrivate", "==", false);
     }
 
     const snap = await query.get();
-    res.json({
-      success: true,
-      lists: snap.docs.map((doc) => ({ id: doc.id, ...doc.data() })),
+
+    const lists = snap.docs.map((doc) => {
+      const data = doc.data();
+      const uniqueGames = [];
+      const seenIds = new Set();
+
+      (data.games || []).forEach(g => {
+        if (!seenIds.has(String(g.gameId))) {
+          seenIds.add(String(g.gameId));
+          uniqueGames.push(g);
+        }
+      });
+
+      return { id: doc.id, ...data, games: uniqueGames };
     });
+
+    res.json({ success: true, lists });
   } catch (error) {
     next(error);
   }
@@ -241,10 +251,19 @@ exports.addGameToList = async (req, res, next) => {
 
     const listRef = db.collection("custom_lists").doc(listId);
     const doc = await listRef.get();
+
     if (!doc.exists)
       return res.status(404).json({ success: false, msg: "Liste introuvable" });
     if (doc.data().userId !== userId)
       return res.status(403).json({ success: false, msg: "Accès refusé" });
+
+    // jeu unique sinon bloque
+    const games = doc.data().games || [];
+    const alreadyExists = games.some(g => String(g.gameId) === String(gameId));
+
+    if (alreadyExists) {
+      return res.status(400).json({ success: false, msg: "Ce jeu est déjà dans la liste" });
+    }
 
     await listRef.update({
       games: admin.firestore.FieldValue.arrayUnion({
@@ -255,12 +274,12 @@ exports.addGameToList = async (req, res, next) => {
       }),
       updatedAt: admin.firestore.FieldValue.serverTimestamp(),
     });
+
     res.json({ success: true, msg: "Jeu ajouté à la liste" });
   } catch (error) {
     next(error);
   }
 };
-
 // Mettre à jour les infos d'une liste
 exports.updateList = async (req, res, next) => {
   try {

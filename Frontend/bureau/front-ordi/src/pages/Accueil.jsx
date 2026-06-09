@@ -19,6 +19,7 @@ const Accueil = ({
   searchTerm,
   user,
   onAdminClick,
+  onOpenCatalogue,
 }) => {
   const { t } = useTranslation();
   const [games, setGames] = useState([]);
@@ -35,8 +36,6 @@ const Accueil = ({
   const UPCOMING_PAGE_SIZE = 20;
 
   const [activeCategory, setActiveCategory] = useState("Tous");
-  const [page, setPage] = useState(1);
-  const [hasMore, setHasMore] = useState(true);
   const PAGE_SIZE = 12;
   const [params, setParams] = useState({
     sortBy: "total_rating",
@@ -47,6 +46,19 @@ const Accueil = ({
   });
 
   const upcomingRef = useRef(null);
+  const paramsRef = useRef(params);
+  const searchTermRef = useRef(searchTerm);
+  const searchTypeRef = useRef(searchType);
+
+  useEffect(() => {
+    paramsRef.current = params;
+  }, [params]);
+  useEffect(() => {
+    searchTermRef.current = searchTerm;
+  }, [searchTerm]);
+  useEffect(() => {
+    searchTypeRef.current = searchType;
+  }, [searchType]);
 
   const CATEGORIES = [
     { label: "Tous", value: "" },
@@ -72,92 +84,134 @@ const Accueil = ({
     }
   };
 
-  const fetchResults = useCallback(
-    async (targetPage = 1, append = false) => {
-      setError(null);
-      setLoading(true);
+  const sortGamesLocally = (gamesList, sortBy, sortOrder) => {
+    if (!gamesList || gamesList.length === 0) return gamesList;
 
-      try {
-        const hasSearchTerm = searchTerm && searchTerm.trim() !== "";
-        const api = auth.currentUser
-          ? await authAxios()
-          : axios.create({ baseURL: "http://localhost:3000/api" });
+    const sorted = [...gamesList].sort((a, b) => {
+      let valA, valB;
 
-        if (searchType === "users") {
-          const res = await api
-            .get(`/search`, {
-              params: {
-                q: hasSearchTerm ? searchTerm.trim() : "",
-                type: "users",
-                page: targetPage,
-                limit: PAGE_SIZE,
-              },
-            })
-            .catch(() => ({ data: { results: { users: [] } } }));
+      switch (sortBy) {
+        case "name":
+          valA = (a.name || "").toLowerCase();
+          valB = (b.name || "").toLowerCase();
+          return sortOrder === "asc"
+            ? valA.localeCompare(valB)
+            : valB.localeCompare(valA);
 
-          const newUsers = res.data.results?.users || [];
-          setUsers((prev) => (append ? [...prev, ...newUsers] : newUsers));
-          setHasMore(newUsers.length === PAGE_SIZE);
-        } else {
-          // Détermination dynamique de l'endpoint
-          const endpoint = hasSearchTerm
-            ? "search"
-            : params.genre || params.platform || params.style
-              ? "filtered"
-              : "popular";
+        case "first_release_date":
+          valA = a.first_release_date || 0;
+          valB = b.first_release_date || 0;
+          break;
 
-          const res = await api.get(`/games/${endpoint}`, {
+        case "total_rating":
+        default:
+          valA = a.total_rating || 0;
+          valB = b.total_rating || 0;
+          break;
+      }
+
+      return sortOrder === "asc" ? valA - valB : valB - valA;
+    });
+
+    return sorted;
+  };
+
+  const fetchResults = useCallback(async () => {
+    const currentParams = paramsRef.current;
+    const currentSearchTerm = searchTermRef.current;
+    const currentSearchType = searchTypeRef.current;
+
+    setError(null);
+    setLoading(true);
+
+    try {
+      const hasSearchTerm =
+        currentSearchTerm && currentSearchTerm.trim() !== "";
+      const api = auth.currentUser
+        ? await authAxios()
+        : axios.create({ baseURL: "http://localhost:3000/api" });
+
+      if (currentSearchType === "users") {
+        const res = await api
+          .get(`/search`, {
             params: {
-              page: targetPage,
+              q: hasSearchTerm ? currentSearchTerm.trim() : "",
+              type: "users",
+              page: 1,
               limit: PAGE_SIZE,
-              sortBy: params.sortBy || "total_rating",
-              order: params.sortOrder || "desc",
-              q: hasSearchTerm ? searchTerm.trim() : undefined,
-              genre: params.genre || undefined,
-              platform: params.platform || undefined,
-              style: params.style || undefined,
             },
-          });
+          })
+          .catch(() => ({ data: { results: { users: [] } } }));
 
-          // Extraction des données : gère les formats [Array], {games: []}, et {results: {games: []}}
-          const rawData = res.data;
-          let newGames = [];
-          if (Array.isArray(rawData)) newGames = rawData;
-          else if (rawData.games) newGames = rawData.games;
-          else if (rawData.results?.games) newGames = rawData.results.games;
-          else if (rawData.results && Array.isArray(rawData.results))
-            newGames = rawData.results;
-
-          setGames((prev) => (append ? [...prev, ...newGames] : newGames));
-          setHasMore(newGames.length === PAGE_SIZE);
+        const newUsers = res.data.results?.users || [];
+        setUsers(newUsers);
+      } else {
+        let endpoint;
+        if (hasSearchTerm) {
+          endpoint = "search";
+        } else if (
+          currentParams.genre ||
+          currentParams.platform ||
+          currentParams.style
+        ) {
+          endpoint = "filtered";
+        } else {
+          endpoint = "popular";
         }
 
-        setPage(targetPage);
-      } catch (err) {
-        console.error("Erreur API:", err);
-        setError(
-          "Impossible de contacter le service de recherche. Vérifiez votre connexion.",
-        );
-      } finally {
-        setLoading(false);
-      }
-    },
-    [searchTerm, params, searchType, PAGE_SIZE],
-  );
+        const queryParams = {
+          page: 1,
+          limit: PAGE_SIZE,
+          sortBy: currentParams.sortBy || "total_rating",
+          order: currentParams.sortOrder || "desc",
+          sort: currentParams.sortBy || "total_rating",
+          sortOrder: currentParams.sortOrder || "desc",
+        };
 
-  // Réinitialise les listes uniquement lors du changement de catégorie principale
+        if (hasSearchTerm) queryParams.q = currentSearchTerm.trim();
+        if (currentParams.genre) queryParams.genre = currentParams.genre;
+        if (currentParams.platform)
+          queryParams.platform = currentParams.platform;
+        if (currentParams.style) queryParams.style = currentParams.style;
+
+        const res = await api.get(`/games/${endpoint}`, {
+          params: queryParams,
+        });
+
+        const rawData = res.data;
+        let newGames = [];
+        if (Array.isArray(rawData)) newGames = rawData;
+        else if (rawData.games) newGames = rawData.games;
+        else if (rawData.results?.games) newGames = rawData.results.games;
+        else if (rawData.results && Array.isArray(rawData.results))
+          newGames = rawData.results;
+
+        newGames = sortGamesLocally(
+          newGames,
+          currentParams.sortBy,
+          currentParams.sortOrder,
+        );
+        setGames(newGames);
+      }
+    } catch (err) {
+      console.error("Erreur API:", err);
+      setError(
+        "Impossible de contacter le service de recherche. Vérifiez votre connexion.",
+      );
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
     setGames([]);
     setUsers([]);
-    setPage(1);
-    setHasMore(true);
   }, [searchType]);
 
   useEffect(() => {
     const delay = setTimeout(() => {
-      // On s'assure de repartir de la page 1 quand on change un filtre ou un tri
-      fetchResults(1, false).then(() => setPage(1));
-    }, 500);
+      fetchResults();
+    }, 400);
     return () => clearTimeout(delay);
   }, [searchTerm, params, searchType]);
 
@@ -330,11 +384,6 @@ const Accueil = ({
               ? "Tendances mondiales"
               : "Membres de la communauté"}
         </h3>
-        <div className="section-count">
-          {searchType === "games"
-            ? `${games.length} jeux`
-            : `${users.length} membres`}
-        </div>
       </div>
 
       {loading && games.length === 0 && users.length === 0 ? (
@@ -443,72 +492,36 @@ const Accueil = ({
         </div>
       )}
 
-      {(games.length > 0 || users.length > 0) && (
-        <div
-          style={{
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            gap: "16px",
-            marginTop: "40px",
-            padding: "20px",
-            borderTop: "1px solid rgba(255,255,255,0.05)",
-          }}
-        >
-          {hasMore && searchType === "games" && (
+      {/* ── Bouton catalogue ── */}
+      {searchType === "games" &&
+        !searchTerm &&
+        games.length > 0 &&
+        onOpenCatalogue && (
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "center",
+              marginTop: "40px",
+              padding: "20px",
+              borderTop: "1px solid rgba(255,255,255,0.05)",
+            }}
+          >
             <button
               className="category-btn active"
-              disabled={loading}
-              onClick={() => fetchResults(page + 1, true)}
+              onClick={onOpenCatalogue}
               style={{ padding: "12px 60px", fontSize: "1rem" }}
             >
-              {loading ? "Chargement..." : "Afficher plus"}
-            </button>
-          )}
-
-          <div style={{ display: "flex", gap: "12px", alignItems: "center" }}>
-            <button
-              className="category-btn"
-              disabled={page === 1 || loading}
-              onClick={() => fetchResults(page - 1, false)}
-              style={{
-                opacity: page === 1 || loading ? 0.4 : 1,
-                padding: "8px 20px",
-              }}
-            >
-              Précédent
-            </button>
-            <span
-              className="section-count"
-              style={{
-                padding: "8px 24px",
-                minWidth: "120px",
-                textAlign: "center",
-              }}
-            >
-              Page {page}
-            </span>
-            <button
-              className="category-btn"
-              disabled={!hasMore || loading}
-              onClick={() => fetchResults(page + 1, false)}
-              style={{
-                opacity: !hasMore || loading ? 0.4 : 1,
-                padding: "8px 20px",
-              }}
-            >
-              Suivant
+              Voir tout le catalogue
             </button>
           </div>
-        </div>
-      )}
+        )}
 
+      {/* ── Jeux à venir ── */}
       {searchType === "games" && !searchTerm && (
         <div style={{ marginTop: "3rem" }}>
           <div className="section-header">
             <div className="section-icon">🚀</div>
             <h3 className="section-title">Jeux à venir</h3>
-            <div className="section-count">{upcomingGames.length} jeux</div>
           </div>
 
           {upcomingLoading ? (

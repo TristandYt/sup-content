@@ -1,4 +1,12 @@
 import React, { useState, useEffect, useRef } from "react";
+import {
+  BrowserRouter,
+  Routes,
+  Route,
+  useNavigate,
+  useParams,
+  useLocation,
+} from "react-router-dom";
 import axios from "axios";
 import { auth } from "./Service/firebase";
 import { onAuthStateChanged } from "firebase/auth";
@@ -10,51 +18,99 @@ import Jeu from "./pages/Jeu";
 import Messagerie from "./pages/messagerie";
 import AdminDashboard from "./pages/AdminDashboard";
 import Forum from "./pages/Forum";
+import Catalogue from "./pages/Catalogue";
+import ThemeToggle from "./components/ThemeToggle";
 import "../Style/Styles.css";
 import "./Langue/i18n";
 
 const authAxios = async () => {
   const firebaseUser = auth.currentUser;
   if (!firebaseUser) return null;
-  const token = await firebaseUser.getIdToken(); // Removed 'true' to use cached token
+  const token = await firebaseUser.getIdToken();
   return axios.create({
     baseURL: "http://localhost:3000/api",
     headers: { Authorization: `Bearer ${token}` },
   });
 };
 
-const App = () => {
-  // ── Navigation stack ──────────────────────────────────────────────────────
-  const [navStack, setNavStack] = useState([{ page: "accueil" }]);
-  const current = navStack[navStack.length - 1];
-  const currentPage = current.page;
+// ── Wrappers de pages pour extraire les params d'URL ──────────────────────────
 
-  const navigate = (entry) => {
-    setNavStack((prev) => [...prev, entry]);
-    window.scrollTo({ top: 0, behavior: "smooth" });
+const JeuPage = ({
+  user,
+  handleShowGame,
+  handleForumClick,
+  setProfileRefresh,
+}) => {
+  const { gameId } = useParams();
+  const navigate = useNavigate();
+  return (
+    <Jeu
+      gameId={Number(gameId)}
+      onBack={() => navigate(-1)}
+      user={user}
+      onFavoriteChange={() => setProfileRefresh((n) => n + 1)}
+      onGameClick={handleShowGame}
+      onForumClick={handleForumClick}
+    />
+  );
+};
+
+const UtilisateurPublicPage = ({
+  user,
+  handleOpenMessaging,
+  handleShowGame,
+}) => {
+  const { userId } = useParams();
+  const navigate = useNavigate();
+  return (
+    <Utilisateur
+      key={userId}
+      targetUserId={userId}
+      user={user}
+      isPublic={true}
+      onBack={() => navigate(-1)}
+      onOpenMessaging={handleOpenMessaging}
+      onGameClick={handleShowGame}
+    />
+  );
+};
+
+// ── Composant interne avec accès au router ─────────────────────────────────────
+
+const AppInner = () => {
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  const [theme, setTheme] = useState("dark");
+  const toggleTheme = () => {
+    const newTheme = theme === "dark" ? "light" : "dark";
+    setTheme(newTheme);
+    document.documentElement.className = newTheme;
   };
 
-  const goBack = () => {
-    setNavStack((prev) => {
-      if (prev.length <= 1) return [{ page: "accueil" }];
-      return prev.slice(0, -1);
-    });
-    window.scrollTo({ top: 0, behavior: "smooth" });
-  };
+  const [isDropdownOpened, setDropdownOpened] = useState(false);
+  const dropdownRef = useRef(null);
 
-  const goHome = () => {
-    setNavStack([{ page: "accueil" }]);
-  };
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target))
+        setDropdownOpened(false);
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
-  // ── Auth persistante ──────────────────────────────────────────────────────
   const [user, setUser] = useState(null);
   const [authLoading, setAuthLoading] = useState(true);
 
+  // ── onAuthStateChanged : source unique de vérité pour le user ──────────
+  // On charge toujours le profil complet depuis le backend (avec role inclus).
+  // handleLoginSuccess ne fait plus que navigate("/") — pas de setUser manuel.
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
         try {
-          const token = await firebaseUser.getIdToken();
+          const token = await firebaseUser.getIdToken(true); // force refresh du token
           const res = await axios.get(
             "http://localhost:3000/api/users/profile",
             {
@@ -74,6 +130,7 @@ const App = () => {
               role: u.role || "user",
               birthDate: u.birthDate || "",
               preferences: u.preferences || {},
+              isCertified: u.isCertified || false,
             });
           } else {
             setUser({
@@ -83,10 +140,10 @@ const App = () => {
               username: firebaseUser.displayName,
               displayName: firebaseUser.displayName,
               avatar: firebaseUser.photoURL || null,
+              role: "user",
             });
           }
-        } catch (err) {
-          console.warn("Erreur récupération profil au démarrage:", err);
+        } catch {
           setUser({
             uid: firebaseUser.uid,
             email: firebaseUser.email,
@@ -94,6 +151,7 @@ const App = () => {
             username: firebaseUser.displayName,
             displayName: firebaseUser.displayName,
             avatar: firebaseUser.photoURL || null,
+            role: "user",
           });
         }
       } else {
@@ -101,19 +159,28 @@ const App = () => {
       }
       setAuthLoading(false);
     });
-
     return () => unsubscribe();
   }, []);
 
-  // ── State annexe ──────────────────────────────────────────────────────────
   const [profileRefresh, setProfileRefresh] = useState(0);
   const [preselectedConversation, setPreselectedConversation] = useState(null);
-
-  // ── Search ────────────────────────────────────────────────────────────────
   const [showSearch, setShowSearch] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
 
-  // ── Notifications ─────────────────────────────────────────────────────────
+  // Reset search quand on change de page
+  useEffect(() => {
+    setShowSearch(false);
+    setSearchTerm("");
+  }, [location.pathname]);
+
+  // Reset badge messagerie quand on est sur /messagerie
+  useEffect(() => {
+    if (location.pathname === "/messagerie") {
+      setUnreadMessageCount(0);
+    }
+  }, [location.pathname]);
+
+  // ── Notifications ───────────────────────────────────────────────────────
   const [notifications, setNotifications] = useState([]);
   const [showNotifications, setShowNotifications] = useState(false);
   const notifRef = useRef(null);
@@ -125,9 +192,7 @@ const App = () => {
       if (!api) return;
       const res = await api.get("/notifications");
       if (res.data.success) setNotifications(res.data.notifications);
-    } catch (err) {
-      console.error("Erreur notifications:", err);
-    }
+    } catch {}
   };
 
   useEffect(() => {
@@ -140,9 +205,8 @@ const App = () => {
     }
   }, [user?.uid]);
 
-  // ── Unread messages count ─────────────────────────────────────────────────
+  // ── Unread messages ─────────────────────────────────────────────────────
   const [unreadMessageCount, setUnreadMessageCount] = useState(0);
-  const myId = user?.uid || user?.id || "";
 
   const fetchUnreadMessageCount = async () => {
     if (!auth.currentUser) return;
@@ -150,28 +214,15 @@ const App = () => {
       const api = await authAxios();
       if (!api) return;
       const res = await api.get("/conversations");
-      if (res.data.success) {
+      if (res.data.success !== false) {
         const convs = res.data.conversations || [];
-        // On compte les conversations dont le dernier message n'est pas de moi
-        // et dont unreadCount > 0 (si le backend le fournit), sinon on vérifie
-        // lastMessageSender
-        const unread = convs.filter((c) => {
-          if (c.unreadCount && c.unreadCount > 0) return true;
-          // Fallback : dernier message envoyé par quelqu'un d'autre
-          if (
-            c.lastMessage &&
-            c.lastMessageSender &&
-            String(c.lastMessageSender) !== String(myId)
-          ) {
-            return true;
-          }
-          return false;
-        });
-        setUnreadMessageCount(unread.length);
+        const total = convs.reduce(
+          (acc, c) => acc + (Number(c.unreadCount) || 0),
+          0,
+        );
+        setUnreadMessageCount(total);
       }
-    } catch (err) {
-      console.error("Erreur unread messages:", err);
-    }
+    } catch {}
   };
 
   useEffect(() => {
@@ -182,15 +233,7 @@ const App = () => {
     } else {
       setUnreadMessageCount(0);
     }
-  }, [user?.uid, myId]);
-
-  // Quand on ouvre la messagerie, on remet le compteur à 0 visuellement
-  // (il sera recalculé au prochain poll)
-  useEffect(() => {
-    if (currentPage === "messagerie") {
-      setUnreadMessageCount(0);
-    }
-  }, [currentPage]);
+  }, [user?.uid]);
 
   useEffect(() => {
     const handle = (e) => {
@@ -201,28 +244,32 @@ const App = () => {
     return () => document.removeEventListener("mousedown", handle);
   }, []);
 
-  useEffect(() => {
-    setShowSearch(false);
-    setSearchTerm("");
-  }, [currentPage]);
+  // ── Handlers de navigation ──────────────────────────────────────────────
 
-  // ── Handlers ──────────────────────────────────────────────────────────────
-  const handleLoginSuccess = (userData) => {
-    setUser(userData);
-    goHome();
+  // FIX : on ne fait plus setUser ici — onAuthStateChanged s'en charge
+  // avec le profil complet (role inclus) depuis le backend.
+  const handleLoginSuccess = () => {
+    navigate("/");
   };
 
-  const handleShowGame = (id) => navigate({ page: "jeu", gameId: id });
-  const handleUserClick = (userId) =>
-    navigate({ page: "utilisateur_public", userId });
+  const handleLogout = () => {
+    setUser(null);
+    setDropdownOpened(false);
+    auth.signOut();
+    navigate("/");
+  };
+
+  const handleShowGame = (id) => navigate(`/jeu/${id}`);
+  const handleUserClick = (userId) => navigate(`/profil/${userId}`);
   const handleOpenMessaging = (conversation) => {
     setPreselectedConversation(conversation);
-    navigate({ page: "messagerie" });
+    navigate("/messagerie");
   };
-  const handleAdminClick = () => navigate({ page: "admin" });
+  const handleAdminClick = () => navigate("/admin");
   const handleForumClick = (payload) =>
-    navigate({ page: "forum", forumThread: payload });
-  const handleOpenForum = () => navigate({ page: "forum", forumThread: null });
+    navigate("/forum", { state: { forumThread: payload } });
+  const handleOpenForum = () => navigate("/forum");
+  const handleOpenCatalogue = () => navigate("/catalogue");
 
   const handleNotificationClick = async (notif) => {
     if (!notif.isRead) {
@@ -232,9 +279,7 @@ const App = () => {
         setNotifications((prev) =>
           prev.map((n) => (n.id === notif.id ? { ...n, isRead: true } : n)),
         );
-      } catch (err) {
-        console.error("Erreur mark as read:", err);
-      }
+      } catch {}
     }
     if (notif.gameId) handleShowGame(notif.gameId);
     else if (notif.sourceUserId) handleUserClick(notif.sourceUserId);
@@ -257,7 +302,6 @@ const App = () => {
 
   const unreadCount = notifications.filter((n) => !n.isRead).length;
 
-  // ── Écran de chargement ───────────────────────────────────────────────────
   if (authLoading) {
     return (
       <div
@@ -277,7 +321,6 @@ const App = () => {
     );
   }
 
-  // ── Render ────────────────────────────────────────────────────────────────
   return (
     <div className="app-container">
       {/* ══ NAVBAR ══════════════════════════════════════════════════════════ */}
@@ -288,14 +331,14 @@ const App = () => {
               <div className="navbar-logo-section">
                 <div
                   className="logo-icon"
-                  onClick={goHome}
+                  onClick={() => navigate("/")}
                   style={{ cursor: "pointer" }}
                 >
                   <span className="logo-emoji">🎮</span>
                 </div>
                 <h1
                   className="logo-text"
-                  onClick={goHome}
+                  onClick={() => navigate("/")}
                   style={{ cursor: "pointer" }}
                 >
                   TGMF
@@ -303,10 +346,10 @@ const App = () => {
               </div>
 
               <div className="navbar-actions">
-                {navStack.length > 1 && (
+                {location.pathname !== "/" && (
                   <button
                     className="nav-icon-btn"
-                    onClick={goBack}
+                    onClick={() => navigate(-1)}
                     title="Retour"
                     style={{ color: "#c084fc" }}
                   >
@@ -327,10 +370,7 @@ const App = () => {
 
                 <button
                   className="nav-icon-btn"
-                  onClick={() => {
-                    setShowSearch(true);
-                    goHome();
-                  }}
+                  onClick={() => setShowSearch(true)}
                   title="Rechercher"
                 >
                   <svg
@@ -446,7 +486,7 @@ const App = () => {
                                   setNotifications((prev) =>
                                     prev.map((n) => ({ ...n, isRead: true })),
                                   );
-                                } catch (_) {}
+                                } catch {}
                               }}
                               style={{
                                 background: "none",
@@ -569,7 +609,7 @@ const App = () => {
                     className="nav-icon-btn"
                     onClick={() => {
                       setPreselectedConversation(null);
-                      navigate({ page: "messagerie" });
+                      navigate("/messagerie");
                     }}
                     title="Messagerie"
                     style={{ position: "relative" }}
@@ -625,52 +665,18 @@ const App = () => {
                   </svg>
                 </button>
 
-                <button
-                  className="nav-user-btn"
-                  onClick={() =>
-                    navigate({ page: user ? "utilisateur" : "login" })
-                  }
-                  style={{
-                    padding:
-                      user?.avatar || user?.photoURL
-                        ? "4px 12px 4px 4px"
-                        : "0.5rem 1rem",
-                    display: "flex",
-                    alignItems: "center",
-                  }}
-                >
-                  {user ? (
-                    <>
-                      {user.avatar || user.photoURL ? (
-                        <img
-                          src={user.avatar || user.photoURL}
-                          alt=""
-                          style={{
-                            width: "32px",
-                            height: "32px",
-                            borderRadius: "50%",
-                            objectFit: "cover",
-                          }}
-                        />
-                      ) : (
-                        <svg
-                          width="18"
-                          height="18"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth="2"
-                        >
-                          <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-                          <circle cx="12" cy="7" r="4"></circle>
-                        </svg>
-                      )}
-                      <span>
-                        {user.username || user.pseudo || user.displayName}
-                      </span>
-                    </>
-                  ) : (
-                    <>
+                <div className="profile-dropdown-container" ref={dropdownRef}>
+                  {!user ? (
+                    <button
+                      className="nav-user-btn"
+                      onClick={() => navigate("/login")}
+                      style={{
+                        padding: "0.5rem 1rem",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "8px",
+                      }}
+                    >
                       <svg
                         width="18"
                         height="18"
@@ -683,10 +689,91 @@ const App = () => {
                         <polyline points="10 17 15 12 10 7"></polyline>
                         <line x1="15" y1="12" x2="3" y2="12"></line>
                       </svg>
-                      <span>Connexion</span>
+                      <span>S'inscrire / Connexion</span>
+                    </button>
+                  ) : (
+                    <>
+                      <button
+                        className="nav-user-btn"
+                        onClick={() => setDropdownOpened(!isDropdownOpened)}
+                        style={{
+                          padding:
+                            user?.avatar || user?.photoURL
+                              ? "4px 12px 4px 4px"
+                              : "0.5rem 1rem",
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "8px",
+                        }}
+                      >
+                        {user.avatar || user.photoURL ? (
+                          <img
+                            src={user.avatar || user.photoURL}
+                            alt=""
+                            style={{
+                              width: "32px",
+                              height: "32px",
+                              borderRadius: "50%",
+                              objectFit: "cover",
+                            }}
+                          />
+                        ) : (
+                          <svg
+                            width="18"
+                            height="18"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                          >
+                            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                            <circle cx="12" cy="7" r="4"></circle>
+                          </svg>
+                        )}
+                        <span>
+                          {user.username || user.pseudo || user.displayName}
+                        </span>
+                      </button>
+
+                      {isDropdownOpened && (
+                        <div className="dropdown-menu">
+                          <button
+                            className="dropdown-item"
+                            onClick={() => {
+                              setDropdownOpened(false);
+                              navigate("/profil");
+                            }}
+                          >
+                            Profil
+                          </button>
+                          <button
+                            className="dropdown-item"
+                            onClick={() => {
+                              setDropdownOpened(false);
+                              navigate("/profil");
+                            }}
+                          >
+                            Paramètres
+                          </button>
+                          <div className="dropdown-item">
+                            <span>Thème</span>
+                            <ThemeToggle
+                              theme={theme}
+                              toggleTheme={toggleTheme}
+                            />
+                          </div>
+                          <div className="dropdown-divider"></div>
+                          <button
+                            className="dropdown-item logout-btn"
+                            onClick={handleLogout}
+                          >
+                            Se déconnecter
+                          </button>
+                        </div>
+                      )}
                     </>
                   )}
-                </button>
+                </div>
               </div>
             </>
           ) : (
@@ -720,100 +807,149 @@ const App = () => {
                   setShowSearch(false);
                   setSearchTerm("");
                 }}
+                style={{
+                  color: "#ffffff",
+                  fontSize: "1.3rem",
+                  fontWeight: "300",
+                }}
               >
-                <svg
-                  width="20"
-                  height="20"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                >
-                  <line x1="18" y1="6" x2="6" y2="18"></line>
-                  <line x1="6" y1="6" x2="18" y2="18"></line>
-                </svg>
+                ✕
               </button>
             </div>
           )}
         </div>
       </nav>
 
-      {/* ══ CONTENU ══════════════════════════════════════════════════════════ */}
+      {/* ══ ROUTES ══════════════════════════════════════════════════════════ */}
       <main className="main-content-wrapper">
-        {currentPage === "accueil" && (
-          <Accueil
-            onGameClick={handleShowGame}
-            onUserClick={handleUserClick}
-            searchTerm={searchTerm}
-            user={user}
-            onAdminClick={handleAdminClick}
-          />
-        )}
-        {currentPage === "jeu" && (
-          <Jeu
-            gameId={current.gameId}
-            onBack={goBack}
-            user={user}
-            onFavoriteChange={() => setProfileRefresh((n) => n + 1)}
-            onGameClick={handleShowGame}
-            onForumClick={handleForumClick}
-          />
-        )}
-        {currentPage === "login" && (
-          <Login
-            onSwitch={() => navigate({ page: "register" })}
-            onLoginSuccess={handleLoginSuccess}
-          />
-        )}
-        {currentPage === "register" && (
-          <Register onSwitch={() => navigate({ page: "login" })} />
-        )}
-        {currentPage === "utilisateur" && (
-          <Utilisateur
-            key={profileRefresh}
-            user={user}
-            onLoginSuccess={(updatedUser) =>
-              setUser((prev) => ({ ...prev, ...updatedUser }))
+        <Routes>
+          <Route
+            path="/"
+            element={
+              <Accueil
+                onGameClick={handleShowGame}
+                onUserClick={handleUserClick}
+                searchTerm={searchTerm}
+                user={user}
+                onAdminClick={handleAdminClick}
+                onOpenCatalogue={handleOpenCatalogue}
+              />
             }
-            onLogout={() => {
-              setUser(null);
-              auth.signOut();
-              goHome();
-            }}
-            onGameClick={handleShowGame}
-            onAdminClick={handleAdminClick}
           />
-        )}
-        {currentPage === "utilisateur_public" && (
-          <Utilisateur
-            key={current.userId}
-            targetUserId={current.userId}
-            user={user}
-            isPublic={true}
-            onBack={goBack}
-            onOpenMessaging={handleOpenMessaging}
-            onGameClick={handleShowGame}
+          <Route
+            path="/jeu/:gameId"
+            element={
+              <JeuPage
+                user={user}
+                handleShowGame={handleShowGame}
+                handleForumClick={handleForumClick}
+                setProfileRefresh={setProfileRefresh}
+              />
+            }
           />
-        )}
-        {currentPage === "messagerie" && (
-          <Messagerie
-            user={user}
-            preselectedConversation={preselectedConversation}
-            onConversationOpen={() => setPreselectedConversation(null)}
-            onMessagesRead={fetchUnreadMessageCount}
+          <Route
+            path="/login"
+            element={
+              <Login
+                onSwitch={() => navigate("/register")}
+                onLoginSuccess={handleLoginSuccess}
+              />
+            }
           />
-        )}
-        {currentPage === "forum" && (
-          <Forum
-            user={user}
-            onGameClick={handleShowGame}
-            initialThread={current.forumThread}
+          <Route
+            path="/register"
+            element={<Register onSwitch={() => navigate("/login")} />}
           />
-        )}
-        {currentPage === "admin" && <AdminDashboard onBack={goBack} />}
+          <Route
+            path="/profil"
+            element={
+              user ? (
+                <Utilisateur
+                  key={profileRefresh}
+                  user={user}
+                  onLoginSuccess={(updatedUser) =>
+                    setUser((prev) => ({ ...prev, ...updatedUser }))
+                  }
+                  onLogout={() => {
+                    setUser(null);
+                    auth.signOut();
+                    navigate("/");
+                  }}
+                  onGameClick={handleShowGame}
+                  onAdminClick={handleAdminClick}
+                />
+              ) : (
+                // Pas connecté → redirection login
+                <Login
+                  onSwitch={() => navigate("/register")}
+                  onLoginSuccess={handleLoginSuccess}
+                />
+              )
+            }
+          />
+          <Route
+            path="/profil/:userId"
+            element={
+              <UtilisateurPublicPage
+                user={user}
+                handleOpenMessaging={handleOpenMessaging}
+                handleShowGame={handleShowGame}
+              />
+            }
+          />
+          <Route
+            path="/messagerie"
+            element={
+              <Messagerie
+                user={user}
+                preselectedConversation={preselectedConversation}
+                onConversationOpen={() => setPreselectedConversation(null)}
+                onMessagesRead={fetchUnreadMessageCount}
+              />
+            }
+          />
+          <Route
+            path="/forum"
+            element={<ForumPage user={user} handleShowGame={handleShowGame} />}
+          />
+          <Route
+            path="/catalogue"
+            element={
+              <Catalogue
+                onGameClick={handleShowGame}
+                user={user}
+                searchTerm={searchTerm}
+              />
+            }
+          />
+          <Route
+            path="/admin"
+            element={<AdminDashboard onBack={() => navigate(-1)} />}
+          />
+        </Routes>
       </main>
     </div>
   );
 };
+
+// Wrapper Forum pour lire le state de location (forumThread)
+const ForumPage = ({ user, handleShowGame }) => {
+  const location = useLocation();
+  const navigate = useNavigate();
+  const forumThread = location.state?.forumThread || null;
+  return (
+    <Forum
+      user={user}
+      onGameClick={handleShowGame}
+      initialThread={forumThread}
+    />
+  );
+};
+
+const App = () => (
+  <BrowserRouter>
+    <AppInner />
+  </BrowserRouter>
+);
 
 export default App;

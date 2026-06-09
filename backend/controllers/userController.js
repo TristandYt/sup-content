@@ -38,31 +38,29 @@ exports.getPublicProfile = async (req, res, next) => {
     const userDoc = await db.collection("users").doc(userId).get();
 
     if (!userDoc.exists) {
-      return res
-        .status(404)
-        .json({ success: false, msg: "Utilisateur introuvable" });
+      return res.status(404).json({ success: false, msg: "Utilisateur introuvable" });
     }
 
-    const {
-      username,
-      bio,
-      createdAt,
-      avatar,
-      followersCount,
-      followingCount,
-      profileData,
-    } = userDoc.data();
+    const followersSnap = await db.collection("follows").where("followingId", "==", userId).get();
+    const followingSnap = await db.collection("follows").where("followerId", "==", userId).get();
+
+    const actualFollowersCount = followersSnap.size;
+    const actualFollowingCount = followingSnap.size;
+
+    const data = userDoc.data();
+
     res.json({
       success: true,
       user: {
         userId,
-        username,
-        bio,
-        website: profileData?.website || "",
-        createdAt,
-        avatar,
-        followersCount,
-        followingCount,
+        username: data.username,
+        bio: data.bio,
+        website: data.profileData?.website || "",
+        createdAt: data.createdAt,
+        avatar: data.avatar || data.profileData?.avatarUrl || null,
+        followersCount: actualFollowersCount,
+        followingCount: actualFollowingCount,
+        isPrivate: data.preferences?.privateProfile || false,
       },
     });
   } catch (error) {
@@ -363,7 +361,7 @@ exports.getPreferences = async (req, res, next) => {
 exports.updatePreferences = async (req, res, next) => {
   try {
     const userId = req.user.id;
-    const { theme, language, emailNotifications, pushNotifications } = req.body;
+    const { theme, language, emailNotifications, pushNotifications, showAdultGames } = req.body;
 
     // Validation
     const validThemes = ["light", "dark"];
@@ -385,6 +383,7 @@ exports.updatePreferences = async (req, res, next) => {
       preferences.emailNotifications = emailNotifications;
     if (pushNotifications !== undefined)
       preferences.pushNotifications = pushNotifications;
+    if (showAdultGames !== undefined) preferences.showAdultGames = !!showAdultGames;
 
     updates.preferences = preferences;
 

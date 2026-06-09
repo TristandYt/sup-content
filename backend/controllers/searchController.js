@@ -20,6 +20,16 @@ exports.searchAll = async (req, res, next) => {
   try {
     let { q = "", type = "all", genre, year, page = 1, limit = 10 } = req.query;
 
+    let showAdult = false;
+    const userId = await getOptionalUserId(req);
+
+    if (userId) {
+      const userDoc = await db.collection("users").doc(userId).get();
+      if (userDoc.exists) {
+        showAdult = userDoc.data().preferences?.showAdultGames || false;
+      }
+    }
+
     // Protection contre les requêtes trop longues (surcharge mémoire)
     q = q.substring(0, 100);
     
@@ -76,12 +86,13 @@ exports.searchAll = async (req, res, next) => {
     // Recherche jeux IGDB
     if (type === "all" || type === "games") {
       try {
-        // Affiche toujours les jeux pour adultes dans les résultats de recherche
-        games = await IGDBService.advancedSearch(q, genre, year, true, l, offset);
+        games = await IGDBService.advancedSearch(q, genre, year, showAdult, l, offset);
       } catch (igdbError) {
         console.error("Erreur IGDB recherche avancée", igdbError.message);
       }
     }
+
+
 
     res.json({ success: true, page: p, limit: l, results: { users, lists, games } });
   } catch (error) {

@@ -29,6 +29,13 @@ exports.followUser = async (req, res, next) => {
             createdAt: admin.firestore.FieldValue.serverTimestamp(),
         });
 
+        await db.collection('users').doc(followerId).update({
+            followingCount: admin.firestore.FieldValue.increment(1) // J'ai un abonnement en plus
+        });
+        await db.collection('users').doc(followingId).update({
+            followersCount: admin.firestore.FieldValue.increment(1) // Il a un abonné en plus
+        });
+
         await Logger.log('user_followed', followerId, { followingId });
 
         await db.collection('notifications').add({
@@ -59,6 +66,13 @@ exports.unfollowUser = async (req, res, next) => {
 
         await db.collection('follows').doc(followId).delete();
 
+        await db.collection('users').doc(followerId).update({
+            followingCount: admin.firestore.FieldValue.increment(-1) // J'ai un abonnement en moins
+        });
+        await db.collection('users').doc(followingId).update({
+            followersCount: admin.firestore.FieldValue.increment(-1) // Il a un abonné en moins
+        });
+
         await Logger.log('user_unfollowed', followerId, { followingId });
 
         res.json({ success: true, msg: 'Vous ne suivez plus cet utilisateur' });
@@ -67,7 +81,7 @@ exports.unfollowUser = async (req, res, next) => {
     }
 };
 
-// Liste des utilisateurs suivis (Following)
+// Liste des utilisateurs suivis
 exports.getMyFollowing = async (req, res, next) => {
     try {
         const userId = req.user.id;
@@ -88,7 +102,7 @@ exports.getMyFollowing = async (req, res, next) => {
     }
 };
 
-// Liste des abonnés (Followers)
+// Liste des abonnes
 exports.getMyFollowers = async (req, res, next) => {
     try {
         const userId = req.user.id;

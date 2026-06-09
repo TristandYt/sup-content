@@ -25,7 +25,7 @@ exports.register = async (req, res, next) => {
             birthDate: birthDate,
             role: 'user',
             favorites: [],
-            preferences: { theme: 'dark', language: 'fr', emailNotifications: true, pushNotifications: true },
+            preferences: { theme: 'dark', language: 'fr', emailNotifications: true, pushNotifications: true, showAdultGames: false},
             profileData: { avatarUrl: null, website: '' },
             createdAt: admin.firestore.FieldValue.serverTimestamp(),
             updatedAt: admin.firestore.FieldValue.serverTimestamp()
@@ -66,7 +66,7 @@ exports.oauthCallback = async (req, res, next) => {
     try {
         const userId = req.user.uid || req.user.id;
         const userDoc = await db.collection('users').doc(userId).get();
-        
+
         res.status(200).json({
             success: true,
             uid: userId,
