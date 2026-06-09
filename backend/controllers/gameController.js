@@ -27,19 +27,25 @@ const getOffset = (page, limit) => {
   return { limit: l, offset: (p - 1) * l };
 };
 
+const getAdultPreference = async (req) => {
+  const userId = await getOptionalUserId(req);
+  if (userId) {
+    const userDoc = await db.collection("users").doc(userId).get();
+    if (userDoc.exists) {
+      return userDoc.data().preferences?.showAdultGames || false;
+    }
+  }
+  return false;
+};
+
 exports.getPopularGames = async (req, res, next) => {
   try {
     const { sortBy, order, page, limit } = req.query;
     const { limit: lim, offset } = getOffset(page, limit);
-
+    
     // Tout le monde voit les jeux dans la liste (isAdult = true)
-    let games = await IGDBService.getPopularGames(
-      sortBy,
-      order,
-      lim,
-      offset,
-      true,
-    );
+    const showAdult = await getAdultPreference(req);
+    let games = await IGDBService.getPopularGames(sortBy, order, lim, offset, showAdult);
     res.json(games);
   } catch (error) {
     next(error);
@@ -48,18 +54,15 @@ exports.getPopularGames = async (req, res, next) => {
 
 exports.searchGames = async (req, res, next) => {
   try {
-    const { q, page, limit, genre, platform, style } = req.query;
+    const { q, page, limit } = req.query;
     if (!q)
       return res
         .status(400)
         .json({ success: false, msg: "Paramètre q manquant" });
     const { limit: lim, offset } = getOffset(page, limit);
 
-    let games = await IGDBService.searchGames(q, lim, offset, true, {
-      genre,
-      platform,
-      style,
-    });
+    const showAdult = await getAdultPreference(req);
+    let games = await IGDBService.searchGames(q, lim, offset, showAdult);
     res.json(games);
   } catch (error) {
     next(error);
@@ -75,14 +78,20 @@ exports.getGameDetails = async (req, res, next) => {
     let game;
     if (gameDoc.exists) {
       game = gameDoc.data();
-
-      // Rafraîchit le cache si total_rating ou dlcs/expansions sont absents
-      if (game.total_rating == null || (!game.dlcs && !game.expansions)) {
+      // Si le cache n'a pas les dlcs/expansions, on les récupère depuis IGDB
+      if (!game.dlcs && !game.expansions) {
         try {
           const fresh = await IGDBService.getGameDetails(id);
           if (fresh && fresh.length > 0) {
-            game = { ...game, ...fresh[0] };
-            await gameRef.update(game);
+            game = {
+              ...game,
+              dlcs: fresh[0].dlcs || [],
+              expansions: fresh[0].expansions || [],
+            };
+            await gameRef.update({
+              dlcs: game.dlcs,
+              expansions: game.expansions,
+            });
           }
         } catch (_) {}
       }
@@ -103,8 +112,7 @@ exports.getGameDetails = async (req, res, next) => {
     let requiredAge = 0;
     if (game.age_ratings && Array.isArray(game.age_ratings)) {
       for (const ratingObj of game.age_ratings) {
-        const ratingVal =
-          typeof ratingObj === "object" ? ratingObj.rating : ratingObj;
+        const ratingVal = typeof ratingObj === 'object' ? ratingObj.rating : ratingObj;
         const age = getMinAgeFromRating(ratingVal);
         if (age > requiredAge) requiredAge = age;
       }
@@ -113,7 +121,7 @@ exports.getGameDetails = async (req, res, next) => {
     // Détection des jeux érotiques/adultes via IGDB themes (ID 42 = Erotic)
     // Force un âge de 18 ans si le jeu a ce thème, même si le PEGI est absent.
     if (game.themes && Array.isArray(game.themes)) {
-      const isAdultTheme = game.themes.some((t) => t === 42 || t.id === 42);
+      const isAdultTheme = game.themes.some(t => t === 42 || t.id === 42);
       if (isAdultTheme && requiredAge < 18) requiredAge = 18;
     }
 
@@ -122,26 +130,20 @@ exports.getGameDetails = async (req, res, next) => {
       if (requiredAge > 3) {
         return res.status(401).json({
           success: false,
-          msg: `Vous devez être connecté pour voir ce contenu (+${requiredAge}).`,
+          msg: `Vous devez être connecté pour voir ce contenu (+${requiredAge}).`
         });
       }
     } else {
       const userDoc = await db.collection("users").doc(userId).get();
       const birthDate = userDoc.exists ? userDoc.data().birthDate : null;
-
+      
       if (requiredAge > 3) {
         if (!birthDate) {
-          return res.status(403).json({
-            success: false,
-            msg: "Veuillez renseigner votre âge dans votre profil pour voir ce jeu.",
-          });
+          return res.status(403).json({ success: false, msg: "Veuillez renseigner votre âge dans votre profil pour voir ce jeu." });
         }
         const age = calculateAge(birthDate);
         if (age < requiredAge) {
-          return res.status(403).json({
-            success: false,
-            msg: `Vous n'avez pas l'âge requis pour voir ce contenu (+${requiredAge}).`,
-          });
+          return res.status(403).json({ success: false, msg: `Vous n'avez pas l'âge requis pour voir ce contenu (+${requiredAge}).` });
         }
       }
     }
@@ -157,7 +159,8 @@ exports.getUpcomingGames = async (req, res, next) => {
     const { page, limit } = req.query;
     const { limit: lim, offset } = getOffset(page, limit || 20);
 
-    let games = await IGDBService.getUpcomingGames(lim, offset, true);
+    const showAdult = await getAdultPreference(req);
+    let games = await IGDBService.getUpcomingGames(lim, offset, showAdult);
     res.json(games);
   } catch (error) {
     next(error);
@@ -166,20 +169,19 @@ exports.getUpcomingGames = async (req, res, next) => {
 
 exports.getGamesFiltered = async (req, res, next) => {
   try {
-    const { style, genre, platform, sortBy, order, page, limit } = req.query;
+    const { style, genre, platform, page, limit } = req.query;
     const { limit: lim, offset } = getOffset(page, limit);
 
+    const showAdult = await getAdultPreference(req);
     let games = await IGDBService.getGamesFiltered(
       {
         style,
         genre,
         platform,
-        sortBy,
-        order,
         limit: lim,
         offset,
       },
-      true,
+        showAdult
     );
     res.json(games);
   } catch (error) {
@@ -203,8 +205,11 @@ exports.getSimilarGames = async (req, res, next) => {
       const gameDoc = await db.collection("games").doc(id.toString()).get();
       if (gameDoc.exists && gameDoc.data().genres?.length > 0) {
         const targetGenre = gameDoc.data().genres[0];
-        const snapshot = await db.collection("games").limit(12).get();
-
+        const snapshot = await db
+          .collection("games")
+          .limit(12)
+          .get();
+          
         similarGames = snapshot.docs
           .map((doc) => doc.data())
           .filter((g) => g.id !== Number(id));

@@ -1,6 +1,5 @@
 /* default theme sombre */
-:root,
-.dark {
+:root, .dark {
   --bg-color: #0a0a0f;
   --text-color: white;
   --card-bg: rgba(255, 255, 255, 0.08);
@@ -20,8 +19,7 @@
   transition: all 0.3s ease;
 }
 
-.card,
-.auth-card {
+.card, .auth-card {
   background: var(--card-bg) !important;
 }
 
@@ -53,37 +51,33 @@ body {
   position: relative;
   overflow: hidden;
   margin-bottom: 2rem;
-  border-radius: 1.5rem;
-  background: linear-gradient(
-    135deg,
-    rgba(109, 40, 217, 0.35) 0%,
-    rgba(37, 99, 235, 0.2) 50%,
-    rgba(15, 15, 25, 0.6) 100%
-  );
-  border: 1px solid rgba(147, 51, 234, 0.25);
+  padding: 0 0.5rem;
 }
 
 .hero-gradient {
   position: absolute;
   inset: 0;
-  background:
-    radial-gradient(
-      ellipse at top left,
-      rgba(147, 51, 234, 0.25) 0%,
-      transparent 60%
-    ),
-    radial-gradient(
-      ellipse at bottom right,
-      rgba(59, 130, 246, 0.15) 0%,
-      transparent 60%
-    );
+  background: linear-gradient(
+    135deg,
+    rgba(147, 51, 234, 0.2) 0%,
+    rgba(59, 130, 246, 0.1) 50%,
+    transparent 100%
+  );
   pointer-events: none;
 }
 
 .hero-content {
   position: relative;
-  padding: 2.5rem 2.5rem;
+  padding: 3rem 2rem;
   max-width: 800px;
+  background: linear-gradient(
+    135deg,
+    rgba(147, 51, 234, 0.08),
+    rgba(59, 130, 246, 0.05)
+  );
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 1.25rem;
+  backdrop-filter: blur(8px);
 }
 
 .hero-title {
@@ -741,7 +735,7 @@ body {
   border-radius: 50%;
   border: 1px solid rgba(255, 255, 255, 0.1);
   background: transparent;
-  color: #ffffff;
+  color: #9ca3af;
   cursor: pointer;
   transition: all 0.2s ease;
 }
@@ -2294,7 +2288,7 @@ select {
 }
 
 /* ============================================
-   THEME CLAIR (OVERRIDES)
+   THEME CLAIR (OVERRIDES --> notamment avec le !important)
    ============================================ */
 
 /*  variable globale theme clair */
@@ -2406,18 +2400,13 @@ select {
 
 /* texte en dessous des jeux */
 .light .game-overlay {
-  background: linear-gradient(
-    to top,
-    var(--card-bg) 0%,
-    rgba(255, 255, 255, 0.5) 50%,
-    transparent 100%
-  );
+  background: linear-gradient(to top, var(--card-bg) 0%, rgba(255,255,255, 0.5) 50%, transparent 100%);
 }
 
 .light .rating-badge {
   background: rgba(255, 255, 255, 0.9);
   color: #111827;
-  border: 1px solid rgba(0, 0, 0, 0.1);
+  border: 1px solid rgba(0,0,0,0.1);
 }
 
 .light .rating-badge .rating-value {
@@ -2527,6 +2516,7 @@ select {
   color: var(--text-color) !important;
 }
 
+
 /* forum clair */
 .light [style*="color: white"],
 .light [style*="color: #fff"],
@@ -2557,4 +2547,62 @@ select {
 light .main-content-wrapper button *,
 .light .main-content-wrapper button {
   color: inherit;
+}
+
+.light .messaging-sidebar .messaging-contacts-list {
+  color: var(--text-muted) !important;
+}
+
+.light .messaging-sidebar .messaging-contacts-list p,
+.light .messaging-sidebar .messaging-contacts-list span,
+.light .messaging-sidebar .messaging-contacts-list div {
+  color: var(--text-muted) !important;
+}
+
+.light .game-card-modern h4 {
+  color: #111827 !important;
+}
+
+/* desc gris foncé */
+.light .game-card-modern p {
+  color: #374151 !important;
+}
+
+/* nom auteur */
+.light .game-card-modern strong {
+  color: #7c3aed !important;
+}
+
+/* nom jeu lié */
+.light .game-card-modern div[style*="color: #c084fc"] {
+  color: #7c3aed !important;
+  background: rgba(147, 51, 234, 0.1) !important;
+}
+
+.post-item {
+  padding: 15px;
+  margin-bottom: 10px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.02);
+  transition: background 0.3s ease;
+}
+
+/* bordure message forum clair */
+.light .post-item {
+  background: rgba(0, 0, 0, 0.06) !important; /* Un gris très léger qui fait ressortir le bloc */
+  border: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+/* bouton navigation clair */
+.light .slider-nav-btn {
+  background: rgba(255, 255, 255, 0.85) !important; /* Fond blanc translucide */
+  color: #111827 !important; /* Texte sombre pour la flèche */
+  border: 1px solid rgba(0, 0, 0, 0.1) !important;
+}
+
+/* hover effet clair */
+.light .slider-nav-btn:hover {
+  background: #ffffff !important;
+  color: #9333ea !important; /* La flèche devient violette au survol */
+  border-color: #9333ea !important;
 }
