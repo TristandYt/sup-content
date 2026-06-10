@@ -1,5 +1,6 @@
 /* default theme sombre */
-:root, .dark {
+:root,
+.dark {
   --bg-color: #0a0a0f;
   --text-color: white;
   --card-bg: rgba(255, 255, 255, 0.08);
@@ -19,7 +20,8 @@
   transition: all 0.3s ease;
 }
 
-.card, .auth-card {
+.card,
+.auth-card {
   background: var(--card-bg) !important;
 }
 
@@ -770,9 +772,7 @@ body {
   }
 }
 
-/* ============================================
-   AUTHENTICATION PAGES (LOGIN & REGISTER)
-   ============================================ */
+/*AUTHENTICATION PAGES (LOGIN & REGISTER)*/
 
 .auth-page-container {
   position: relative;
@@ -1581,7 +1581,7 @@ body {
   padding: 0.25rem;
   min-width: 150px;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
-  z-index: 10;
+  z-index: 100;
   animation: menuSlide 0.15s ease-out;
 }
 
@@ -2347,10 +2347,27 @@ select {
   box-shadow: 0 16px 40px rgba(0, 0, 0, 0.08);
 }
 
+.light .messaging-options-menu {
+  background: var(--dropdown-bg);
+  border: 1px solid var(--card-border);
+}
+
 .light .dropdown-item,
 .light .notification-item p,
 .light .notifications-header h3 {
   color: var(--text-color);
+}
+
+.light .messaging-option-item {
+  color: var(--text-color);
+}
+
+.light .messaging-option-item:hover {
+  background: var(--hover-bg);
+}
+
+.light .messaging-options-btn {
+  color: var(--text-muted) !important;
 }
 
 .light .dropdown-item:hover,
@@ -2400,13 +2417,18 @@ select {
 
 /* texte en dessous des jeux */
 .light .game-overlay {
-  background: linear-gradient(to top, var(--card-bg) 0%, rgba(255,255,255, 0.5) 50%, transparent 100%);
+  background: linear-gradient(
+    to top,
+    var(--card-bg) 0%,
+    rgba(255, 255, 255, 0.5) 50%,
+    transparent 100%
+  );
 }
 
 .light .rating-badge {
   background: rgba(255, 255, 255, 0.9);
   color: #111827;
-  border: 1px solid rgba(0,0,0,0.1);
+  border: 1px solid rgba(0, 0, 0, 0.1);
 }
 
 .light .rating-badge .rating-value {
@@ -2516,7 +2538,6 @@ select {
   color: var(--text-color) !important;
 }
 
-
 /* forum clair */
 .light [style*="color: white"],
 .light [style*="color: #fff"],
@@ -2589,44 +2610,25 @@ light .main-content-wrapper button *,
 
 /* bordure message forum clair */
 .light .post-item {
-  background: rgba(0, 0, 0, 0.06) !important;
+  background: rgba(
+    0,
+    0,
+    0,
+    0.06
+  ) !important; /* Un gris très léger qui fait ressortir le bloc */
   border: 1px solid rgba(0, 0, 0, 0.05);
 }
 
 /* bouton navigation clair */
 .light .slider-nav-btn {
-  background: rgba(255, 255, 255, 0.85) !important;
-  color: #111827 !important;
+  background: rgba(255, 255, 255, 0.85) !important; /* Fond blanc translucide */
+  color: #111827 !important; /* Texte sombre pour la flèche */
   border: 1px solid rgba(0, 0, 0, 0.1) !important;
 }
 
 /* hover effet clair */
 .light .slider-nav-btn:hover {
   background: #ffffff !important;
-  color: #9333ea !important;
+  color: #9333ea !important; /* La flèche devient violette au survol */
   border-color: #9333ea !important;
-}
-
-.fa-icon-primary {
-  color: rgb(30, 48, 80);
-  margin-right: 6px;
-}
-
-.fa-icon-primary { color: rgb(30, 48, 80); }
-
-.dark .fa-icon-primary { color: #e2e8f0; }
-
-.game-card-modern {
-  transition: background-color 0.3s ease, box-shadow 0.3s ease;
-}
-
-html.dark .game-card-modern,
-.game-card-modern {
-  background-color: #16162a !important;
-  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.7), 0 0 1px rgba(255, 255, 255, 0.1);
-}
-
-html.light .game-card-modern {
-  background-color: #ffffff !important;
-  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.15);
 }

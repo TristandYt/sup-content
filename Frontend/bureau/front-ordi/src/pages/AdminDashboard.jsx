@@ -15,7 +15,7 @@ const API = "http://localhost:3000/api";
 // Axios instance avec token Firebase
 // FIX #3 : getIdToken() sans `true` — pas de rafraîchissement forcé à chaque appel
 const authAxios = async () => {
-  const token = await auth.currentUser?.getIdToken();
+  const token = await auth.currentUser?.getIdToken(true); // Force le rafraîchissement du token
   return axios.create({
     baseURL: API,
     headers: { Authorization: `Bearer ${token}` },
