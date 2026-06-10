@@ -5,17 +5,9 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="a8685add-eeaf-455b-94e3-8956ab38b435" name="Changes" comment="">
-      <change afterPath="$PROJECT_DIR$/Frontend/bureau/front-ordi/src/Utils/icons.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/Frontend/bureau/front-ordi/Style/Styles.css" beforeDir="false" afterPath="$PROJECT_DIR$/Frontend/bureau/front-ordi/Style/Styles.css" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Frontend/bureau/front-ordi/index.html" beforeDir="false" afterPath="$PROJECT_DIR$/Frontend/bureau/front-ordi/index.html" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Frontend/bureau/front-ordi/src/App.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/Frontend/bureau/front-ordi/src/App.jsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Frontend/bureau/front-ordi/src/pages/Accueil.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/Frontend/bureau/front-ordi/src/pages/Accueil.jsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Frontend/bureau/front-ordi/src/pages/Catalogue.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/Frontend/bureau/front-ordi/src/pages/Catalogue.jsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Frontend/bureau/front-ordi/src/pages/Forum.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/Frontend/bureau/front-ordi/src/pages/Forum.jsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Frontend/bureau/front-ordi/src/pages/Jeu.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/Frontend/bureau/front-ordi/src/pages/Jeu.jsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Frontend/bureau/front-ordi/src/pages/messagerie.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/Frontend/bureau/front-ordi/src/pages/messagerie.jsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Frontend/bureau/front-ordi/src/pages/utilisateur.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/Frontend/bureau/front-ordi/src/pages/utilisateur.jsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Frontend/bureau/front-ordi/src/pages/Parametres.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/Frontend/bureau/front-ordi/src/pages/Parametres.jsx" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -26,6 +18,13 @@
     <persistenceIdMap>
       <entry key="_C:/Users/Mateo/SUPCONTENT/supcontent-mateo" value="3EhpqdWHv8wM7XqQIYwRy7xmcCH" />
     </persistenceIdMap>
+  </component>
+  <component name="FileTemplateManagerImpl">
+    <option name="RECENT_TEMPLATES">
+      <list>
+        <option value="JavaScript File" />
+      </list>
+    </option>
   </component>
   <component name="Git.Settings">
     <option name="RECENT_BRANCH_BY_REPOSITORY">
@@ -96,7 +95,7 @@
       <workItem from="1780904692077" duration="12684000" />
       <workItem from="1780922650410" duration="5289000" />
       <workItem from="1780989074451" duration="15368000" />
-      <workItem from="1781071320614" duration="8803000" />
+      <workItem from="1781071320614" duration="15662000" />
     </task>
     <servers />
   </component>
