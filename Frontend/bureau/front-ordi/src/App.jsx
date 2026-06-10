@@ -22,6 +22,7 @@ import Catalogue from "./pages/Catalogue";
 import ThemeToggle from "./components/ThemeToggle";
 import "../Style/Styles.css";
 import "./Langue/i18n";
+import Parametres from "./pages/Parametres.jsx";
 
 const authAxios = async () => {
   const firebaseUser = auth.currentUser;
@@ -82,6 +83,8 @@ const AppInner = () => {
   const location = useLocation();
 
   const [theme, setTheme] = useState("dark");
+
+  // 🚨 CORRECTION ICI : Retrait de la balise <Route> qui était bloquée dans la fonction
   const toggleTheme = () => {
     const newTheme = theme === "dark" ? "light" : "dark";
     setTheme(newTheme);
@@ -686,7 +689,7 @@ const AppInner = () => {
                                       className="dropdown-item"
                                       onClick={() => {
                                         setDropdownOpened(false);
-                                        navigate("/profil");
+                                        navigate("/parametres");
                                       }}
                                   >
                                     <i className="fa-solid fa-gear" style={{marginRight: "8px"}}></i> Paramètres
@@ -845,6 +848,16 @@ const AppInner = () => {
             <Route
                 path="/admin"
                 element={<AdminDashboard onBack={() => navigate(-1)} />}
+            />
+            <Route
+                path="/parametres"
+                element={
+                  user ? (
+                      <Parametres user={user} />
+                  ) : (
+                      <Login onLoginSuccess={handleLoginSuccess} />
+                  )
+                }
             />
           </Routes>
         </main>
