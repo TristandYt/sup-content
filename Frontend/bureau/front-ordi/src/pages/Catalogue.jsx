@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import axios from "axios";
 import { auth } from "../Service/firebase";
 import "../../Style/Styles.css";
@@ -15,7 +15,7 @@ const authAxios = async () => {
 
 const PAGE_SIZE = 35;
 
-const PaginationBar = ({ page, estimatedTotal, hasMore, loading, onPageChange }) => {
+const PaginationBar = ({ page, hasMore, loading, onPageChange }) => {
   const btnBase = {
     padding: "8px 14px",
     minWidth: "40px",
@@ -27,102 +27,176 @@ const PaginationBar = ({ page, estimatedTotal, hasMore, loading, onPageChange })
     fontSize: "0.9rem",
     transition: "all 0.15s",
   };
-  const btnActive = { ...btnBase, background: "#9333ea", borderColor: "#9333ea", color: "#fff" };
+  const btnActive = {
+    ...btnBase,
+    background: "#9333ea",
+    borderColor: "#9333ea",
+    color: "#fff",
+  };
   const btnDisabled = { ...btnBase, opacity: 0.3, cursor: "default" };
 
   return (
-      <div style={{ display: "flex", gap: "6px", alignItems: "center", flexWrap: "wrap", justifyContent: "center" }}>
-        <button style={page === 1 || loading ? btnDisabled : btnBase} disabled={page === 1 || loading} onClick={() => onPageChange(page - 1)}>
-          <i className="fa-solid fa-chevron-left"></i>
-        </button>
-        <button style={btnActive}>{page}</button>
-        <button style={!hasMore || loading ? btnDisabled : btnBase} disabled={!hasMore || loading} onClick={() => onPageChange(page + 1)}>
-          <i className="fa-solid fa-chevron-right"></i>
-        </button>
-      </div>
+    <div
+      style={{
+        display: "flex",
+        gap: "6px",
+        alignItems: "center",
+        flexWrap: "wrap",
+        justifyContent: "center",
+      }}
+    >
+      <button
+        style={page === 1 || loading ? btnDisabled : btnBase}
+        disabled={page === 1 || loading}
+        onClick={() => onPageChange(page - 1)}
+      >
+        <i className="fa-solid fa-chevron-left"></i>
+      </button>
+      <button style={btnActive}>{page}</button>
+      <button
+        style={!hasMore || loading ? btnDisabled : btnBase}
+        disabled={!hasMore || loading}
+        onClick={() => onPageChange(page + 1)}
+      >
+        <i className="fa-solid fa-chevron-right"></i>
+      </button>
+    </div>
   );
 };
 
+const CATEGORIES = [
+  { label: "Tous", value: "", icon: "fa-solid fa-layer-group" },
+  { label: "Combat", value: "4", icon: "fa-solid fa-hand-fist" },
+  { label: "Shooter", value: "5", icon: "fa-solid fa-crosshairs" },
+  { label: "RPG", value: "12", icon: "fa-solid fa-dragon" },
+  { label: "Aventure", value: "31", icon: "fa-solid fa-compass" },
+];
+
 const Catalogue = ({ onGameClick, user, searchTerm }) => {
   const navigate = useNavigate();
+
+  // --- Persistance de la page dans l'URL (?page=2) ---
+  const [searchParams, setSearchParams] = useSearchParams();
+  const urlPage = parseInt(searchParams.get("page") || "1", 10);
+
   const [games, setGames] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [page, setPage] = useState(1);
+  const [page, setPage] = useState(urlPage);
   const [hasMore, setHasMore] = useState(true);
-  const [params, setParams] = useState({ sortBy: "total_rating", sortOrder: "desc", genre: "", platform: "", style: "" });
-
-  const CATEGORIES = [
-    { label: "Tous", value: "", icon: "fa-solid fa-layer-group" },
-    { label: "Combat", value: "4", icon: "fa-solid fa-hand-fist" },
-    { label: "Shooter", value: "5", icon: "fa-solid fa-crosshairs" },
-    { label: "RPG", value: "12", icon: "fa-solid fa-dragon" },
-    { label: "Aventure", value: "31", icon: "fa-solid fa-compass" },
-  ];
+  const [params, setParams] = useState({
+    sortBy: "total_rating",
+    sortOrder: "desc",
+    genre: "",
+    platform: "",
+    style: "",
+  });
   const [activeCategory, setActiveCategory] = useState("Tous");
 
   const paramsRef = useRef(params);
   const searchTermRef = useRef(searchTerm);
 
-  useEffect(() => { paramsRef.current = params; }, [params]);
-  useEffect(() => { searchTermRef.current = searchTerm; }, [searchTerm]);
+  useEffect(() => {
+    paramsRef.current = params;
+  }, [params]);
+  useEffect(() => {
+    searchTermRef.current = searchTerm;
+  }, [searchTerm]);
 
   const getImageUrl = (game) => {
-    if (game.cover?.image_id) return `https://images.igdb.com/igdb/image/upload/t_cover_big/${game.cover.image_id}.jpg`;
+    if (game.cover?.image_id)
+      return `https://images.igdb.com/igdb/image/upload/t_cover_big/${game.cover.image_id}.jpg`;
     return defaultCover;
   };
 
-  const fetchGames = useCallback(async (targetPage = 1) => {
-    setError(null);
-    setLoading(true);
-    window.scrollTo({ top: 0, behavior: "smooth" });
-    try {
-      const api = auth.currentUser ? await authAxios() : axios.create({ baseURL: "http://localhost:3000/api" });
-      const hasSearchTerm = searchTermRef.current?.trim() !== "";
-      const endpoint = hasSearchTerm ? "search" : (paramsRef.current.genre || paramsRef.current.platform || paramsRef.current.style ? "filtered" : "popular");
+  const fetchGames = useCallback(
+    async (targetPage = 1) => {
+      setError(null);
+      setLoading(true);
 
-      const res = await api.get(`/games/${endpoint}`, {
-        params: {
-          page: targetPage,
-          limit: PAGE_SIZE,
-          sortBy: currentParams.sortBy,
-          order: currentParams.sortOrder,
-          ...(hasSearchTerm && { q: currentSearchTerm.trim() }),
-          ...(currentParams.genre && { genre: currentParams.genre }),
-          ...(currentParams.platform && { platform: currentParams.platform }),
-          ...(currentParams.style && { style: currentParams.style }),
-        },
+      // Mettre à jour l'URL avec la nouvelle page
+      setSearchParams((prev) => {
+        const next = new URLSearchParams(prev);
+        next.set("page", String(targetPage));
+        return next;
       });
 
-      const raw = res.data;
-      let newGames = [];
-      if (Array.isArray(raw)) newGames = raw;
-      else if (raw.games) newGames = raw.games;
-      else if (raw.results?.games) newGames = raw.results.games;
-      else if (raw.results && Array.isArray(raw.results))
-        newGames = raw.results;
+      try {
+        const api = auth.currentUser
+          ? await authAxios()
+          : axios.create({ baseURL: "http://localhost:3000/api" });
 
-      const backendTotal = raw.total || raw.totalPages || null;
-      const more = newGames.length === PAGE_SIZE;
+        const currentParams = paramsRef.current;
+        const currentSearchTerm = searchTermRef.current;
+        const hasSearchTerm = currentSearchTerm?.trim() !== "";
+        const endpoint = hasSearchTerm
+          ? "search"
+          : currentParams.genre || currentParams.platform || currentParams.style
+            ? "filtered"
+            : "popular";
 
-      setGames(newGames);
-      setHasMore(more);
-      setPage(targetPage);
-    } catch (err) {
-      setError("Impossible de charger les jeux.");
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+        const res = await api.get(`/games/${endpoint}`, {
+          params: {
+            page: targetPage,
+            limit: PAGE_SIZE,
+            sortBy: currentParams.sortBy,
+            order: currentParams.sortOrder,
+            ...(hasSearchTerm && { q: currentSearchTerm.trim() }),
+            ...(currentParams.genre && { genre: currentParams.genre }),
+            ...(currentParams.platform && { platform: currentParams.platform }),
+            ...(currentParams.style && { style: currentParams.style }),
+          },
+        });
 
+        const raw = res.data;
+        let newGames = [];
+        if (Array.isArray(raw)) newGames = raw;
+        else if (raw.games) newGames = raw.games;
+        else if (raw.results?.games) newGames = raw.results.games;
+        else if (raw.results && Array.isArray(raw.results))
+          newGames = raw.results;
+
+        const more = newGames.length === PAGE_SIZE;
+
+        setGames(newGames);
+        setHasMore(more);
+        setPage(targetPage);
+      } catch (err) {
+        setError("Impossible de charger les jeux.");
+      } finally {
+        setLoading(false);
+        // Scroll en haut APRÈS le rendu des jeux
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      }
+    },
+    [setSearchParams],
+  );
+
+  // Quand les filtres ou le searchTerm changent → retour page 1
   useEffect(() => {
-    setEstimatedTotal(10);
     setPage(1);
     const delay = setTimeout(() => {
       fetchGames(1);
     }, 400);
     return () => clearTimeout(delay);
   }, [params, searchTerm]);
+
+  // Remonter en haut de page automatiquement lors du changement de pagination
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }, [page]);
+
+  // Au montage : si l'URL contient ?page=X (retour depuis une fiche jeu), on restaure la page
+  const hasMounted = useRef(false);
+  useEffect(() => {
+    if (!hasMounted.current) {
+      hasMounted.current = true;
+      if (urlPage > 1) {
+        fetchGames(urlPage);
+      }
+      // sinon le useEffect params/searchTerm s'en charge
+    }
+  }, []); // eslint-disable-line
 
   const handleCategoryChange = (value) => {
     setActiveCategory(
@@ -132,72 +206,123 @@ const Catalogue = ({ onGameClick, user, searchTerm }) => {
   };
 
   return (
-      <div className="accueil-container">
-        <div className="hero-section" style={{ minHeight: "160px" }}>
-          <div className="hero-gradient" />
-          <div className="hero-content">
-            <h2 className="hero-title">{searchTerm ? `Résultats pour "${searchTerm}"` : "Catalogue"}</h2>
-          </div>
-        </div>
-
-        <div style={{ padding: "20px" }}>
-          <button className="category-btn" onClick={() => navigate("/")}>
-            <i className="fa-solid fa-arrow-left"></i> Retour
-          </button>
-        </div>
-
-        <div className="categories-nav">
-          {CATEGORIES.map((c) => (
-              <button key={c.value} onClick={() => { setActiveCategory(c.label); setParams(p => ({...p, genre: c.value})) }} className={`category-btn ${activeCategory === c.label ? "active" : ""}`}>
-                <i className={c.icon} style={{ marginRight: "6px" }}></i> {c.label}
-              </button>
-          ))}
-        </div>
-
-        <div className="filters-section">
-          <div className="filters-container">
-            <select value={params.platform} onChange={(e) => setParams(p => ({...p, platform: e.target.value}))} className="filter-select">
-              <option value="">🎮 Toutes les Plateformes</option>
-              <option value="6">💻 PC (Windows)</option>
-              <option value="167">🎮 PlayStation 5</option>
-              <option value="169">🎮 Xbox Series</option>
-            </select>
-            <select value={params.sortBy} onChange={(e) => setParams(p => ({...p, sortBy: e.target.value}))} className="filter-select">
-              <option value="total_rating">⭐ Note</option>
-              <option value="name">📝 Nom</option>
-              <option value="first_release_date">📅 Date de sortie</option>
-            </select>
-            <button onClick={() => setParams(p => ({...p, sortOrder: p.sortOrder === "asc" ? "desc" : "asc"}))} className="filter-select" style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-              <i className={params.sortOrder === "asc" ? "fa-solid fa-arrow-up-wide-short" : "fa-solid fa-arrow-down-wide-short"}></i>
-              {params.sortOrder === "asc" ? "Croissant" : "Décroissant"}
-            </button>
-          </div>
-        </div>
-
-        {loading ? (
-            <div className="loading-container"><div className="loading-spinner" /></div>
-        ) : (
-            <div className="games-grid">
-              {games.map((game) => (
-                  <div key={game.id} onClick={() => onGameClick(game.id)} className="game-card-modern">
-                    <div className="game-image-container">
-                      <img src={getImageUrl(game)} alt={game.name} className="game-image" />
-                      {game.total_rating && (
-                          <div className="rating-badge"><i className="fa-solid fa-star"></i> {(game.total_rating / 20).toFixed(1)}</div>
-                      )}
-                    </div>
-                    <div className="game-content">
-                      <h3 className="game-title">{game.name}</h3>
-                    </div>
-                  </div>
-              ))}
-            </div>
-        )}
-
-        <div style={{ padding: "40px" }}>
-          <PaginationBar page={page} hasMore={hasMore} loading={loading} onPageChange={fetchGames} />
+    <div className="accueil-container">
+      <div className="hero-section" style={{ minHeight: "160px" }}>
+        <div className="hero-gradient" />
+        <div className="hero-content">
+          <h2 className="hero-title">
+            {searchTerm ? `Résultats pour "${searchTerm}"` : "Catalogue"}
+          </h2>
         </div>
       </div>
+
+      <div style={{ padding: "20px" }}>
+        <button className="category-btn" onClick={() => navigate("/")}>
+          <i className="fa-solid fa-arrow-left"></i> Retour
+        </button>
+      </div>
+
+      <div className="categories-nav">
+        {CATEGORIES.map((c) => (
+          <button
+            key={c.value}
+            onClick={() => handleCategoryChange(c.value)}
+            className={`category-btn ${activeCategory === c.label ? "active" : ""}`}
+          >
+            <i className={c.icon} style={{ marginRight: "6px" }}></i> {c.label}
+          </button>
+        ))}
+      </div>
+
+      <div className="filters-section">
+        <div className="filters-container">
+          <select
+            value={params.platform}
+            onChange={(e) =>
+              setParams((p) => ({ ...p, platform: e.target.value }))
+            }
+            className="filter-select"
+          >
+            <option value="">🎮 Toutes les Plateformes</option>
+            <option value="6">💻 PC (Windows)</option>
+            <option value="167">🎮 PlayStation 5</option>
+            <option value="169">🎮 Xbox Series</option>
+          </select>
+          <select
+            value={params.sortBy}
+            onChange={(e) =>
+              setParams((p) => ({ ...p, sortBy: e.target.value }))
+            }
+            className="filter-select"
+          >
+            <option value="total_rating">⭐ Note</option>
+            <option value="name">📝 Nom</option>
+            <option value="first_release_date">📅 Date de sortie</option>
+          </select>
+          <button
+            onClick={() =>
+              setParams((p) => ({
+                ...p,
+                sortOrder: p.sortOrder === "asc" ? "desc" : "asc",
+              }))
+            }
+            className="filter-select"
+            style={{ display: "flex", alignItems: "center", gap: "6px" }}
+          >
+            <i
+              className={
+                params.sortOrder === "asc"
+                  ? "fa-solid fa-arrow-up-wide-short"
+                  : "fa-solid fa-arrow-down-wide-short"
+              }
+            ></i>
+            {params.sortOrder === "asc" ? "Croissant" : "Décroissant"}
+          </button>
+        </div>
+      </div>
+
+      {loading ? (
+        <div className="loading-container">
+          <div className="loading-spinner" />
+        </div>
+      ) : (
+        <div className="games-grid">
+          {games.map((game) => (
+            <div
+              key={game.id}
+              onClick={() => onGameClick(game.id)}
+              className="game-card-modern"
+            >
+              <div className="game-image-container">
+                <img
+                  src={getImageUrl(game)}
+                  alt={game.name}
+                  className="game-image"
+                />
+                {game.total_rating && (
+                  <div className="rating-badge">
+                    <i className="fa-solid fa-star"></i>{" "}
+                    {(game.total_rating / 20).toFixed(1)}
+                  </div>
+                )}
+              </div>
+              <div className="game-content">
+                <h3 className="game-title">{game.name}</h3>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <div style={{ padding: "40px" }}>
+        <PaginationBar
+          page={page}
+          hasMore={hasMore}
+          loading={loading}
+          onPageChange={fetchGames}
+        />
+      </div>
+    </div>
   );
 };
 
