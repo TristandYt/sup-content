@@ -36,42 +36,42 @@ const authAxios = async () => {
 // ── Wrappers de pages pour extraire les params d'URL ──────────────────────────
 
 const JeuPage = ({
-  user,
-  handleShowGame,
-  handleForumClick,
-  setProfileRefresh,
-}) => {
+                   user,
+                   handleShowGame,
+                   handleForumClick,
+                   setProfileRefresh,
+                 }) => {
   const { gameId } = useParams();
   const navigate = useNavigate();
   return (
-    <Jeu
-      gameId={Number(gameId)}
-      onBack={() => navigate(-1)}
-      user={user}
-      onFavoriteChange={() => setProfileRefresh((n) => n + 1)}
-      onGameClick={handleShowGame}
-      onForumClick={handleForumClick}
-    />
+      <Jeu
+          gameId={Number(gameId)}
+          onBack={() => navigate(-1)}
+          user={user}
+          onFavoriteChange={() => setProfileRefresh((n) => n + 1)}
+          onGameClick={handleShowGame}
+          onForumClick={handleForumClick}
+      />
   );
 };
 
 const UtilisateurPublicPage = ({
-  user,
-  handleOpenMessaging,
-  handleShowGame,
-}) => {
+                                 user,
+                                 handleOpenMessaging,
+                                 handleShowGame,
+                               }) => {
   const { userId } = useParams();
   const navigate = useNavigate();
   return (
-    <Utilisateur
-      key={userId}
-      targetUserId={userId}
-      user={user}
-      isPublic={true}
-      onBack={() => navigate(-1)}
-      onOpenMessaging={handleOpenMessaging}
-      onGameClick={handleShowGame}
-    />
+      <Utilisateur
+          key={userId}
+          targetUserId={userId}
+          user={user}
+          isPublic={true}
+          onBack={() => navigate(-1)}
+          onOpenMessaging={handleOpenMessaging}
+          onGameClick={handleShowGame}
+      />
   );
 };
 
@@ -103,19 +103,16 @@ const AppInner = () => {
   const [user, setUser] = useState(null);
   const [authLoading, setAuthLoading] = useState(true);
 
-  // ── onAuthStateChanged : source unique de vérité pour le user ──────────
-  // On charge toujours le profil complet depuis le backend (avec role inclus).
-  // handleLoginSuccess ne fait plus que navigate("/") — pas de setUser manuel.
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
         try {
-          const token = await firebaseUser.getIdToken(true); // force refresh du token
+          const token = await firebaseUser.getIdToken(true);
           const res = await axios.get(
-            "http://localhost:3000/api/users/profile",
-            {
-              headers: { Authorization: `Bearer ${token}` },
-            },
+              "http://localhost:3000/api/users/profile",
+              {
+                headers: { Authorization: `Bearer ${token}` },
+              },
           );
           if (res.data.success && res.data.user) {
             const u = res.data.user;
@@ -167,13 +164,11 @@ const AppInner = () => {
   const [showSearch, setShowSearch] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
 
-  // Reset search quand on change de page
   useEffect(() => {
     setShowSearch(false);
     setSearchTerm("");
   }, [location.pathname]);
 
-  // Reset badge messagerie quand on est sur /messagerie
   useEffect(() => {
     if (location.pathname === "/messagerie") {
       setUnreadMessageCount(0);
@@ -217,8 +212,8 @@ const AppInner = () => {
       if (res.data.success !== false) {
         const convs = res.data.conversations || [];
         const total = convs.reduce(
-          (acc, c) => acc + (Number(c.unreadCount) || 0),
-          0,
+            (acc, c) => acc + (Number(c.unreadCount) || 0),
+            0,
         );
         setUnreadMessageCount(total);
       }
@@ -244,10 +239,6 @@ const AppInner = () => {
     return () => document.removeEventListener("mousedown", handle);
   }, []);
 
-  // ── Handlers de navigation ──────────────────────────────────────────────
-
-  // FIX : on ne fait plus setUser ici — onAuthStateChanged s'en charge
-  // avec le profil complet (role inclus) depuis le backend.
   const handleLoginSuccess = () => {
     navigate("/");
   };
@@ -267,7 +258,7 @@ const AppInner = () => {
   };
   const handleAdminClick = () => navigate("/admin");
   const handleForumClick = (payload) =>
-    navigate("/forum", { state: { forumThread: payload } });
+      navigate("/forum", { state: { forumThread: payload } });
   const handleOpenForum = () => navigate("/forum");
   const handleOpenCatalogue = () => navigate("/catalogue");
 
@@ -277,7 +268,7 @@ const AppInner = () => {
         const api = await authAxios();
         await api.patch(`/notifications/${notif.id}/read`);
         setNotifications((prev) =>
-          prev.map((n) => (n.id === notif.id ? { ...n, isRead: true } : n)),
+            prev.map((n) => (n.id === notif.id ? { ...n, isRead: true } : n)),
         );
       } catch {}
     }
@@ -304,652 +295,580 @@ const AppInner = () => {
 
   if (authLoading) {
     return (
-      <div
-        className="app-container"
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          minHeight: "100vh",
-        }}
-      >
-        <div style={{ textAlign: "center" }}>
-          <div className="loading-spinner" style={{ margin: "0 auto 16px" }} />
-          <p style={{ color: "#64748b", fontSize: "0.9rem" }}>Chargement…</p>
+        <div
+            className="app-container"
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              minHeight: "100vh",
+            }}
+        >
+          <div style={{ textAlign: "center" }}>
+            <div className="loading-spinner" style={{ margin: "0 auto 16px" }} />
+            <p style={{ color: "#64748b", fontSize: "0.9rem" }}>Chargement…</p>
+          </div>
         </div>
-      </div>
     );
   }
 
   return (
-    <div className="app-container">
-      {/* ══ NAVBAR ══════════════════════════════════════════════════════════ */}
-      <nav className="modern-navbar">
-        <div className="navbar-container">
-          {!showSearch ? (
-            <>
-              <div className="navbar-logo-section">
-                <div
-                  className="logo-icon"
-                  onClick={() => navigate("/")}
-                  style={{ cursor: "pointer" }}
-                >
-                  <span className="logo-emoji">🎮</span>
-                </div>
-                <h1
-                  className="logo-text"
-                  onClick={() => navigate("/")}
-                  style={{ cursor: "pointer" }}
-                >
-                  TGMF
-                </h1>
-              </div>
-
-              <div className="navbar-actions">
-                {location.pathname !== "/" && (
-                  <button
-                    className="nav-icon-btn"
-                    onClick={() => navigate(-1)}
-                    title="Retour"
-                    style={{ color: "#c084fc" }}
-                  >
-                    <svg
-                      width="20"
-                      height="20"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2.5"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
+      <div className="app-container">
+        {/* ══ NAVBAR ══════════════════════════════════════════════════════════ */}
+        <nav className="modern-navbar">
+          <div className="navbar-container">
+            {!showSearch ? (
+                <>
+                  <div className="navbar-logo-section">
+                    <div
+                        className="logo-icon"
+                        onClick={() => navigate("/")}
+                        style={{ cursor: "pointer" }}
                     >
-                      <polyline points="15 18 9 12 15 6" />
-                    </svg>
-                  </button>
-                )}
-
-                <button
-                  className="nav-icon-btn"
-                  onClick={() => setShowSearch(true)}
-                  title="Rechercher"
-                >
-                  <svg
-                    width="20"
-                    height="20"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                  >
-                    <circle cx="11" cy="11" r="8"></circle>
-                    <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-                  </svg>
-                </button>
-
-                {user && (
-                  <div ref={notifRef} style={{ position: "relative" }}>
-                    <button
-                      className="nav-icon-btn"
-                      onClick={() => setShowNotifications((v) => !v)}
-                      title="Notifications"
-                      style={{ position: "relative" }}
+                      <i className="fa-solid fa-gamepad" style={{color: "white"}}></i>
+                    </div>
+                    <h1
+                        className="logo-text"
+                        onClick={() => navigate("/")}
+                        style={{ cursor: "pointer" }}
                     >
-                      <svg
-                        width="20"
-                        height="20"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                      >
-                        <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
-                        <path d="M13.73 21a2 2 0 0 1-3.46 0" />
-                      </svg>
-                      {unreadCount > 0 && (
-                        <span
-                          style={{
-                            position: "absolute",
-                            top: "-4px",
-                            right: "-4px",
-                            background: "#9333ea",
-                            color: "#fff",
-                            borderRadius: "99px",
-                            fontSize: "0.62rem",
-                            fontWeight: "700",
-                            padding: "1px 5px",
-                            minWidth: "16px",
-                            textAlign: "center",
-                            boxShadow: "0 0 0 2px #0f0f1a",
-                          }}
+                      TGMF
+                    </h1>
+                  </div>
+
+                  <div className="navbar-actions">
+                    {location.pathname !== "/" && (
+                        <button
+                            className="nav-icon-btn"
+                            onClick={() => navigate(-1)}
+                            title="Retour"
+                            style={{ color: "#c084fc", fontSize: "1.2rem" }}
                         >
-                          {unreadCount > 9 ? "9+" : unreadCount}
-                        </span>
+                          <i className="fa-solid fa-arrow-left"></i>
+                        </button>
+                    )}
+
+                    {/* BOUTON THÈME */}
+                    <button
+                        className="nav-icon-btn"
+                        onClick={toggleTheme}
+                        title="Changer de thème"
+                        style={{ fontSize: "1.2rem", color: theme === "light" ? "rgb(30, 48, 80)" : "#fff" }}
+                    >
+                      {theme === "dark" ? (
+                          <i className="fa-regular fa-sun" style={{ color: "rgb(255, 212, 59)" }}></i>
+                      ) : (
+                          <i className="fa-regular fa-moon" style={{ color: "rgb(30, 48, 80)" }}></i>
                       )}
                     </button>
 
-                    {showNotifications && (
-                      <div
-                        style={{
-                          position: "absolute",
-                          top: "calc(100% + 10px)",
-                          right: 0,
-                          width: "320px",
-                          maxHeight: "420px",
-                          background: "#1a1a2e",
-                          border: "1px solid rgba(147,51,234,0.3)",
-                          borderRadius: "16px",
-                          boxShadow: "0 20px 60px rgba(0,0,0,0.5)",
-                          zIndex: 9999,
-                          overflow: "hidden",
-                          display: "flex",
-                          flexDirection: "column",
-                        }}
-                      >
-                        <div
-                          style={{
-                            display: "flex",
-                            justifyContent: "space-between",
-                            alignItems: "center",
-                            padding: "12px 16px",
-                            borderBottom: "1px solid rgba(255,255,255,0.07)",
-                          }}
-                        >
+                    <button
+                        className="nav-icon-btn"
+                        onClick={() => setShowSearch(true)}
+                        title="Rechercher"
+                        style={{ fontSize: "1.2rem", color: theme === "light" ? "rgb(30, 48, 80)" : "#fff" }}
+                    >
+                      <i className="fa-solid fa-magnifying-glass"></i>
+                    </button>
+
+                    {user && (
+                        <div ref={notifRef} style={{ position: "relative" }}>
+                          <button
+                              className="nav-icon-btn"
+                              onClick={() => setShowNotifications((v) => !v)}
+                              title="Notifications"
+                              style={{ position: "relative", fontSize: "1.2rem", color: theme === "light" ? "rgb(30, 48, 80)" : "#fff" }}
+                          >
+                            <i className="fa-solid fa-bell"></i>
+                            {unreadCount > 0 && (
+                                <span
+                                    style={{
+                                      position: "absolute",
+                                      top: "-4px",
+                                      right: "-4px",
+                                      background: "#9333ea",
+                                      color: "#fff",
+                                      borderRadius: "99px",
+                                      fontSize: "0.62rem",
+                                      fontWeight: "700",
+                                      padding: "1px 5px",
+                                      minWidth: "16px",
+                                      textAlign: "center",
+                                      boxShadow: "0 0 0 2px #0f0f1a",
+                                    }}
+                                >
+                          {unreadCount > 9 ? "9+" : unreadCount}
+                        </span>
+                            )}
+                          </button>
+
+                          {showNotifications && (
+                              <div
+                                  style={{
+                                    position: "absolute",
+                                    top: "calc(100% + 10px)",
+                                    right: 0,
+                                    width: "320px",
+                                    maxHeight: "420px",
+                                    background: "#1a1a2e",
+                                    border: "1px solid rgba(147,51,234,0.3)",
+                                    borderRadius: "16px",
+                                    boxShadow: "0 20px 60px rgba(0,0,0,0.5)",
+                                    zIndex: 9999,
+                                    overflow: "hidden",
+                                    display: "flex",
+                                    flexDirection: "column",
+                                  }}
+                              >
+                                <div
+                                    style={{
+                                      display: "flex",
+                                      justifyContent: "space-between",
+                                      alignItems: "center",
+                                      padding: "12px 16px",
+                                      borderBottom: "1px solid rgba(255,255,255,0.07)",
+                                    }}
+                                >
                           <span
-                            style={{
-                              fontWeight: "600",
-                              fontSize: "0.9rem",
-                              color: "#e2e8f0",
-                            }}
+                              style={{
+                                fontWeight: "600",
+                                fontSize: "0.9rem",
+                                color: "#e2e8f0",
+                              }}
                           >
                             Notifications
                             {unreadCount > 0 && (
-                              <span
-                                style={{
-                                  marginLeft: "8px",
-                                  background: "rgba(147,51,234,0.2)",
-                                  color: "#c084fc",
-                                  borderRadius: "99px",
-                                  fontSize: "0.68rem",
-                                  padding: "1px 7px",
-                                }}
-                              >
+                                <span
+                                    style={{
+                                      marginLeft: "8px",
+                                      background: "rgba(147,51,234,0.2)",
+                                      color: "#c084fc",
+                                      borderRadius: "99px",
+                                      fontSize: "0.68rem",
+                                      padding: "1px 7px",
+                                    }}
+                                >
                                 {unreadCount} nouvelles
                               </span>
                             )}
                           </span>
-                          {unreadCount > 0 && (
-                            <button
-                              onClick={async () => {
-                                try {
-                                  const api = await authAxios();
-                                  await api.patch("/notifications/read-all");
-                                  setNotifications((prev) =>
-                                    prev.map((n) => ({ ...n, isRead: true })),
-                                  );
-                                } catch {}
-                              }}
-                              style={{
-                                background: "none",
-                                border: "none",
-                                cursor: "pointer",
-                                color: "#9333ea",
-                                fontSize: "0.72rem",
-                                fontWeight: "600",
-                              }}
-                            >
-                              Tout lire
-                            </button>
-                          )}
-                        </div>
-                        <div style={{ overflowY: "auto", flex: 1 }}>
-                          {notifications.length === 0 ? (
-                            <div
-                              style={{
-                                padding: "32px 20px",
-                                textAlign: "center",
-                              }}
-                            >
-                              <div
-                                style={{
-                                  fontSize: "1.8rem",
-                                  marginBottom: "8px",
-                                }}
-                              >
-                                🔕
-                              </div>
-                              <p
-                                style={{
-                                  color: "rgba(255,255,255,0.3)",
-                                  fontSize: "0.82rem",
-                                }}
-                              >
-                                Aucune notification
-                              </p>
-                            </div>
-                          ) : (
-                            notifications.map((n) => (
-                              <div
-                                key={n.id}
-                                onClick={() => handleNotificationClick(n)}
-                                style={{
-                                  display: "flex",
-                                  alignItems: "flex-start",
-                                  gap: "10px",
-                                  padding: "11px 16px",
-                                  background: n.isRead
-                                    ? "transparent"
-                                    : "rgba(147,51,234,0.07)",
-                                  borderBottom:
-                                    "1px solid rgba(255,255,255,0.04)",
-                                  cursor: "pointer",
-                                }}
-                                onMouseEnter={(e) =>
-                                  (e.currentTarget.style.background =
-                                    "rgba(255,255,255,0.04)")
-                                }
-                                onMouseLeave={(e) =>
-                                  (e.currentTarget.style.background = n.isRead
-                                    ? "transparent"
-                                    : "rgba(147,51,234,0.07)")
-                                }
-                              >
-                                <div style={{ flex: 1, minWidth: 0 }}>
-                                  <p
-                                    style={{
-                                      margin: 0,
-                                      fontSize: "0.8rem",
-                                      color: "#cbd5e1",
-                                      lineHeight: "1.4",
-                                    }}
-                                  >
-                                    {notifLabel(n)}
-                                  </p>
-                                  <span
-                                    style={{
-                                      fontSize: "0.68rem",
-                                      color: "rgba(255,255,255,0.25)",
-                                      marginTop: "3px",
-                                      display: "block",
-                                    }}
-                                  >
-                                    {n.createdAt?.seconds
-                                      ? new Date(
-                                          n.createdAt.seconds * 1000,
-                                        ).toLocaleDateString()
-                                      : n.createdAt?._seconds
-                                        ? new Date(
-                                            n.createdAt._seconds * 1000,
-                                          ).toLocaleDateString()
-                                        : "Récemment"}
-                                  </span>
+                                  {unreadCount > 0 && (
+                                      <button
+                                          onClick={async () => {
+                                            try {
+                                              const api = await authAxios();
+                                              await api.patch("/notifications/read-all");
+                                              setNotifications((prev) =>
+                                                  prev.map((n) => ({ ...n, isRead: true })),
+                                              );
+                                            } catch {}
+                                          }}
+                                          style={{
+                                            background: "none",
+                                            border: "none",
+                                            cursor: "pointer",
+                                            color: "#9333ea",
+                                            fontSize: "0.72rem",
+                                            fontWeight: "600",
+                                          }}
+                                      >
+                                        Tout lire
+                                      </button>
+                                  )}
                                 </div>
-                                {!n.isRead && (
-                                  <div
-                                    style={{
-                                      width: "7px",
-                                      height: "7px",
-                                      borderRadius: "50%",
-                                      background: "#9333ea",
-                                      flexShrink: 0,
-                                      marginTop: "4px",
-                                    }}
-                                  />
-                                )}
+                                <div style={{ overflowY: "auto", flex: 1 }}>
+                                  {notifications.length === 0 ? (
+                                      <div
+                                          style={{
+                                            padding: "32px 20px",
+                                            textAlign: "center",
+                                          }}
+                                      >
+                                        <div
+                                            style={{
+                                              fontSize: "1.8rem",
+                                              marginBottom: "8px",
+                                            }}
+                                        >
+                                          <i className="fa-solid fa-bell-slash" style={{color: "rgb(30, 48, 80)"}}></i>
+                                        </div>
+                                        <p
+                                            style={{
+                                              color: "rgba(255,255,255,0.3)",
+                                              fontSize: "0.82rem",
+                                            }}
+                                        >
+                                          Aucune notification
+                                        </p>
+                                      </div>
+                                  ) : (
+                                      notifications.map((n) => (
+                                          <div
+                                              key={n.id}
+                                              onClick={() => handleNotificationClick(n)}
+                                              style={{
+                                                display: "flex",
+                                                alignItems: "flex-start",
+                                                gap: "10px",
+                                                padding: "11px 16px",
+                                                background: n.isRead
+                                                    ? "transparent"
+                                                    : "rgba(147,51,234,0.07)",
+                                                borderBottom:
+                                                    "1px solid rgba(255,255,255,0.04)",
+                                                cursor: "pointer",
+                                              }}
+                                              onMouseEnter={(e) =>
+                                                  (e.currentTarget.style.background =
+                                                      "rgba(255,255,255,0.04)")
+                                              }
+                                              onMouseLeave={(e) =>
+                                                  (e.currentTarget.style.background = n.isRead
+                                                      ? "transparent"
+                                                      : "rgba(147,51,234,0.07)")
+                                              }
+                                          >
+                                            <div style={{ flex: 1, minWidth: 0 }}>
+                                              <p
+                                                  style={{
+                                                    margin: 0,
+                                                    fontSize: "0.8rem",
+                                                    color: "#cbd5e1",
+                                                    lineHeight: "1.4",
+                                                  }}
+                                              >
+                                                {notifLabel(n)}
+                                              </p>
+                                              <span
+                                                  style={{
+                                                    fontSize: "0.68rem",
+                                                    color: "rgba(255,255,255,0.25)",
+                                                    marginTop: "3px",
+                                                    display: "block",
+                                                  }}
+                                              >
+                                    {n.createdAt?.seconds
+                                        ? new Date(
+                                            n.createdAt.seconds * 1000,
+                                        ).toLocaleDateString()
+                                        : n.createdAt?._seconds
+                                            ? new Date(
+                                                n.createdAt._seconds * 1000,
+                                            ).toLocaleDateString()
+                                            : "Récemment"}
+                                  </span>
+                                            </div>
+                                            {!n.isRead && (
+                                                <div
+                                                    style={{
+                                                      width: "7px",
+                                                      height: "7px",
+                                                      borderRadius: "50%",
+                                                      background: "#9333ea",
+                                                      flexShrink: 0,
+                                                      marginTop: "4px",
+                                                    }}
+                                                />
+                                            )}
+                                          </div>
+                                      ))
+                                  )}
+                                </div>
                               </div>
-                            ))
                           )}
                         </div>
-                      </div>
                     )}
-                  </div>
-                )}
 
-                {user && (
-                  <button
-                    className="nav-icon-btn"
-                    onClick={() => {
-                      setPreselectedConversation(null);
-                      navigate("/messagerie");
-                    }}
-                    title="Messagerie"
-                    style={{ position: "relative" }}
-                  >
-                    <svg
-                      width="20"
-                      height="20"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                    >
-                      <line x1="22" y1="2" x2="11" y2="13"></line>
-                      <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
-                    </svg>
-                    {unreadMessageCount > 0 && (
-                      <span
-                        style={{
-                          position: "absolute",
-                          top: "-4px",
-                          right: "-4px",
-                          background: "#9333ea",
-                          color: "#fff",
-                          borderRadius: "99px",
-                          fontSize: "0.62rem",
-                          fontWeight: "700",
-                          padding: "1px 5px",
-                          minWidth: "16px",
-                          textAlign: "center",
-                          boxShadow: "0 0 0 2px #0f0f1a",
-                        }}
-                      >
+                    {user && (
+                        <button
+                            className="nav-icon-btn"
+                            onClick={() => {
+                              setPreselectedConversation(null);
+                              navigate("/messagerie");
+                            }}
+                            title="Messagerie"
+                            style={{ position: "relative", fontSize: "1.2rem", color: theme === "light" ? "rgb(30, 48, 80)" : "#fff" }}
+                        >
+                          <i className="fa-solid fa-message"></i>
+                          {unreadMessageCount > 0 && (
+                              <span
+                                  style={{
+                                    position: "absolute",
+                                    top: "-4px",
+                                    right: "-4px",
+                                    background: "#9333ea",
+                                    color: "#fff",
+                                    borderRadius: "99px",
+                                    fontSize: "0.62rem",
+                                    fontWeight: "700",
+                                    padding: "1px 5px",
+                                    minWidth: "16px",
+                                    textAlign: "center",
+                                    boxShadow: "0 0 0 2px #0f0f1a",
+                                  }}
+                              >
                         {unreadMessageCount > 9 ? "9+" : unreadMessageCount}
                       </span>
+                          )}
+                        </button>
                     )}
-                  </button>
-                )}
 
-                <button
-                  className="nav-icon-btn"
-                  onClick={handleOpenForum}
-                  title="Forum"
-                >
-                  <svg
-                    width="20"
-                    height="20"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                  >
-                    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
-                  </svg>
-                </button>
-
-                <div className="profile-dropdown-container" ref={dropdownRef}>
-                  {!user ? (
                     <button
-                      className="nav-user-btn"
-                      onClick={() => navigate("/login")}
-                      style={{
-                        padding: "0.5rem 1rem",
-                        display: "flex",
-                        alignItems: "center",
-                        gap: "8px",
-                      }}
+                        className="nav-icon-btn"
+                        onClick={handleOpenForum}
+                        title="Forum"
+                        style={{ fontSize: "1.2rem", color: theme === "light" ? "rgb(30, 48, 80)" : "#fff" }}
                     >
-                      <svg
-                        width="18"
-                        height="18"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                      >
-                        <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"></path>
-                        <polyline points="10 17 15 12 10 7"></polyline>
-                        <line x1="15" y1="12" x2="3" y2="12"></line>
-                      </svg>
-                      <span>S'inscrire / Connexion</span>
+                      <i className="fa-solid fa-people-line"></i>
                     </button>
-                  ) : (
-                    <>
-                      <button
-                        className="nav-user-btn"
-                        onClick={() => setDropdownOpened(!isDropdownOpened)}
-                        style={{
-                          padding:
-                            user?.avatar || user?.photoURL
-                              ? "4px 12px 4px 4px"
-                              : "0.5rem 1rem",
-                          display: "flex",
-                          alignItems: "center",
-                          gap: "8px",
-                        }}
-                      >
-                        {user.avatar || user.photoURL ? (
-                          <img
-                            src={user.avatar || user.photoURL}
-                            alt=""
-                            style={{
-                              width: "32px",
-                              height: "32px",
-                              borderRadius: "50%",
-                              objectFit: "cover",
-                            }}
-                          />
-                        ) : (
-                          <svg
-                            width="18"
-                            height="18"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="2"
+
+                    <div className="profile-dropdown-container" ref={dropdownRef}>
+                      {!user ? (
+                          <button
+                              className="nav-user-btn"
+                              onClick={() => navigate("/login")}
+                              style={{
+                                padding: "0.5rem 1rem",
+                                display: "flex",
+                                alignItems: "center",
+                                gap: "8px",
+                              }}
                           >
-                            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-                            <circle cx="12" cy="7" r="4"></circle>
-                          </svg>
-                        )}
-                        <span>
+                            <i className="fa-solid fa-arrow-right-to-bracket"></i>
+                            <span>S'inscrire / Connexion</span>
+                          </button>
+                      ) : (
+                          <>
+                            <button
+                                className="nav-user-btn"
+                                onClick={() => setDropdownOpened(!isDropdownOpened)}
+                                style={{
+                                  padding:
+                                      user?.avatar || user?.photoURL
+                                          ? "4px 12px 4px 4px"
+                                          : "0.5rem 1rem",
+                                  display: "flex",
+                                  alignItems: "center",
+                                  gap: "8px",
+                                }}
+                            >
+                              {user.avatar || user.photoURL ? (
+                                  <img
+                                      src={user.avatar || user.photoURL}
+                                      alt=""
+                                      style={{
+                                        width: "32px",
+                                        height: "32px",
+                                        borderRadius: "50%",
+                                        objectFit: "cover",
+                                      }}
+                                  />
+                              ) : (
+                                  <i className="fa-solid fa-user"></i>
+                              )}
+                              <span>
                           {user.username || user.pseudo || user.displayName}
                         </span>
-                      </button>
+                            </button>
 
-                      {isDropdownOpened && (
-                        <div className="dropdown-menu">
-                          <button
-                            className="dropdown-item"
-                            onClick={() => {
-                              setDropdownOpened(false);
-                              navigate("/profil");
-                            }}
-                          >
-                            Profil
-                          </button>
-                          <button
-                            className="dropdown-item"
-                            onClick={() => {
-                              setDropdownOpened(false);
-                              navigate("/profil");
-                            }}
-                          >
-                            Paramètres
-                          </button>
-                          <div className="dropdown-item">
-                            <span>Thème</span>
-                            <ThemeToggle
-                              theme={theme}
-                              toggleTheme={toggleTheme}
-                            />
-                          </div>
-                          <div className="dropdown-divider"></div>
-                          <button
-                            className="dropdown-item logout-btn"
-                            onClick={handleLogout}
-                          >
-                            Se déconnecter
-                          </button>
-                        </div>
+                            {isDropdownOpened && (
+                                <div className="dropdown-menu">
+                                  <button
+                                      className="dropdown-item"
+                                      onClick={() => {
+                                        setDropdownOpened(false);
+                                        navigate("/profil");
+                                      }}
+                                  >
+                                    <i className="fa-solid fa-user" style={{marginRight: "8px"}}></i> Profil
+                                  </button>
+                                  <button
+                                      className="dropdown-item"
+                                      onClick={() => {
+                                        setDropdownOpened(false);
+                                        navigate("/profil");
+                                      }}
+                                  >
+                                    <i className="fa-solid fa-gear" style={{marginRight: "8px"}}></i> Paramètres
+                                  </button>
+                                  <div className="dropdown-divider"></div>
+                                  <button
+                                      className="dropdown-item logout-btn"
+                                      onClick={handleLogout}
+                                  >
+                                    <i className="fa-solid fa-arrow-right-from-bracket" style={{marginRight: "8px"}}></i> Se déconnecter
+                                  </button>
+                                </div>
+                            )}
+                          </>
                       )}
-                    </>
-                  )}
-                </div>
-              </div>
-            </>
-          ) : (
-            <div className="navbar-search-mode">
-              <div className="search-bar-wrapper">
-                <input
-                  autoFocus
-                  type="text"
-                  placeholder="Rechercher des jeux, discussions, utilisateurs..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="search-input-modern"
-                />
-                <div className="search-icon-wrapper">
-                  <svg
-                    width="20"
-                    height="20"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2.5"
+                    </div>
+                  </div>
+                </>
+            ) : (
+                <div className="navbar-search-mode">
+                  <div className="search-bar-wrapper">
+                    <input
+                        autoFocus
+                        type="text"
+                        placeholder="Rechercher des jeux, discussions, utilisateurs..."
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        className="search-input-modern"
+                    />
+                    <div className="search-icon-wrapper">
+                      <i className="fa-solid fa-magnifying-glass"></i>
+                    </div>
+                  </div>
+                  <button
+                      className="search-close-btn"
+                      onClick={() => {
+                        setShowSearch(false);
+                        setSearchTerm("");
+                      }}
+                      style={{
+                        color: "#ffffff",
+                        fontSize: "1.3rem",
+                        fontWeight: "300",
+                      }}
                   >
-                    <circle cx="11" cy="11" r="8"></circle>
-                    <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-                  </svg>
+                    <i className="fa-solid fa-xmark"></i>
+                  </button>
                 </div>
-              </div>
-              <button
-                className="search-close-btn"
-                onClick={() => {
-                  setShowSearch(false);
-                  setSearchTerm("");
-                }}
-                style={{
-                  color: "#ffffff",
-                  fontSize: "1.3rem",
-                  fontWeight: "300",
-                }}
-              >
-                ✕
-              </button>
-            </div>
-          )}
-        </div>
-      </nav>
+            )}
+          </div>
+        </nav>
 
-      {/* ══ ROUTES ══════════════════════════════════════════════════════════ */}
-      <main className="main-content-wrapper">
-        <Routes>
-          <Route
-            path="/"
-            element={
-              <Accueil
-                onGameClick={handleShowGame}
-                onUserClick={handleUserClick}
-                searchTerm={searchTerm}
-                user={user}
-                onAdminClick={handleAdminClick}
-                onOpenCatalogue={handleOpenCatalogue}
-              />
-            }
-          />
-          <Route
-            path="/jeu/:gameId"
-            element={
-              <JeuPage
-                user={user}
-                handleShowGame={handleShowGame}
-                handleForumClick={handleForumClick}
-                setProfileRefresh={setProfileRefresh}
-              />
-            }
-          />
-          <Route
-            path="/login"
-            element={
-              <Login
-                onSwitch={() => navigate("/register")}
-                onLoginSuccess={handleLoginSuccess}
-              />
-            }
-          />
-          <Route
-            path="/register"
-            element={<Register onSwitch={() => navigate("/login")} />}
-          />
-          <Route
-            path="/profil"
-            element={
-              user ? (
-                <Utilisateur
-                  key={profileRefresh}
-                  user={user}
-                  onLoginSuccess={(updatedUser) =>
-                    setUser((prev) => ({ ...prev, ...updatedUser }))
-                  }
-                  onLogout={() => {
-                    setUser(null);
-                    auth.signOut();
-                    navigate("/");
-                  }}
-                  onGameClick={handleShowGame}
-                  onAdminClick={handleAdminClick}
-                />
-              ) : (
-                // Pas connecté → redirection login
-                <Login
-                  onSwitch={() => navigate("/register")}
-                  onLoginSuccess={handleLoginSuccess}
-                />
-              )
-            }
-          />
-          <Route
-            path="/profil/:userId"
-            element={
-              <UtilisateurPublicPage
-                user={user}
-                handleOpenMessaging={handleOpenMessaging}
-                handleShowGame={handleShowGame}
-              />
-            }
-          />
-          <Route
-            path="/messagerie"
-            element={
-              <Messagerie
-                user={user}
-                preselectedConversation={preselectedConversation}
-                onConversationOpen={() => setPreselectedConversation(null)}
-                onMessagesRead={fetchUnreadMessageCount}
-              />
-            }
-          />
-          <Route
-            path="/forum"
-            element={<ForumPage user={user} handleShowGame={handleShowGame} />}
-          />
-          <Route
-            path="/catalogue"
-            element={
-              <Catalogue
-                onGameClick={handleShowGame}
-                user={user}
-                searchTerm={searchTerm}
-              />
-            }
-          />
-          <Route
-            path="/admin"
-            element={<AdminDashboard onBack={() => navigate(-1)} />}
-          />
-        </Routes>
-      </main>
-    </div>
+        {/* ══ ROUTES ══════════════════════════════════════════════════════════ */}
+        <main className="main-content-wrapper">
+          <Routes>
+            <Route
+                path="/"
+                element={
+                  <Accueil
+                      onGameClick={handleShowGame}
+                      onUserClick={handleUserClick}
+                      searchTerm={searchTerm}
+                      user={user}
+                      onAdminClick={handleAdminClick}
+                      onOpenCatalogue={handleOpenCatalogue}
+                      theme={theme}
+                      toggleTheme={toggleTheme}
+                  />
+                }
+            />
+            <Route
+                path="/jeu/:gameId"
+                element={
+                  <JeuPage
+                      user={user}
+                      handleShowGame={handleShowGame}
+                      handleForumClick={handleForumClick}
+                      setProfileRefresh={setProfileRefresh}
+                  />
+                }
+            />
+            <Route
+                path="/login"
+                element={
+                  <Login
+                      onSwitch={() => navigate("/register")}
+                      onLoginSuccess={handleLoginSuccess}
+                  />
+                }
+            />
+            <Route
+                path="/register"
+                element={<Register onSwitch={() => navigate("/login")} />}
+            />
+            <Route
+                path="/profil"
+                element={
+                  user ? (
+                      <Utilisateur
+                          key={profileRefresh}
+                          user={user}
+                          onLoginSuccess={(updatedUser) =>
+                              setUser((prev) => ({ ...prev, ...updatedUser }))
+                          }
+                          onLogout={() => {
+                            setUser(null);
+                            auth.signOut();
+                            navigate("/");
+                          }}
+                          onGameClick={handleShowGame}
+                          onAdminClick={handleAdminClick}
+                      />
+                  ) : (
+                      <Login
+                          onSwitch={() => navigate("/register")}
+                          onLoginSuccess={handleLoginSuccess}
+                      />
+                  )
+                }
+            />
+            <Route
+                path="/profil/:userId"
+                element={
+                  <UtilisateurPublicPage
+                      user={user}
+                      handleOpenMessaging={handleOpenMessaging}
+                      handleShowGame={handleShowGame}
+                  />
+                }
+            />
+            <Route
+                path="/messagerie"
+                element={
+                  <Messagerie
+                      user={user}
+                      preselectedConversation={preselectedConversation}
+                      onConversationOpen={() => setPreselectedConversation(null)}
+                      onMessagesRead={fetchUnreadMessageCount}
+                  />
+                }
+            />
+            <Route
+                path="/forum"
+                element={<ForumPage user={user} handleShowGame={handleShowGame} />}
+            />
+            <Route
+                path="/catalogue"
+                element={
+                  <Catalogue
+                      onGameClick={handleShowGame}
+                      user={user}
+                      searchTerm={searchTerm}
+                  />
+                }
+            />
+            <Route
+                path="/admin"
+                element={<AdminDashboard onBack={() => navigate(-1)} />}
+            />
+          </Routes>
+        </main>
+      </div>
   );
 };
 
-// Wrapper Forum pour lire le state de location (forumThread)
 const ForumPage = ({ user, handleShowGame }) => {
   const location = useLocation();
   const navigate = useNavigate();
   const forumThread = location.state?.forumThread || null;
   return (
-    <Forum
-      user={user}
-      onGameClick={handleShowGame}
-      initialThread={forumThread}
-    />
+      <Forum
+          user={user}
+          onGameClick={handleShowGame}
+          initialThread={forumThread}
+      />
   );
 };
 
 const App = () => (
-  <BrowserRouter>
-    <AppInner />
-  </BrowserRouter>
+    <BrowserRouter>
+      <AppInner />
+    </BrowserRouter>
 );
 
 export default App;
