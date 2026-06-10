@@ -4,6 +4,7 @@ import axios from "axios";
 import { auth } from "../Service/firebase";
 import "../../Style/Styles.css";
 import defaultCover from "../assets/fr-default-large_default.jpg";
+import { useNavigate } from "react-router-dom";
 
 const authAxios = async () => {
   const token = await auth.currentUser?.getIdToken(true);
@@ -83,9 +84,11 @@ const Jeu = ({
                onForumClick,
              }) => {
   const { i18n } = useTranslation();
+  const navigate = useNavigate();
 
   const [game, setGame] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [gameError, setGameError] = useState(null);
   const [isFavorite, setIsFavorite] = useState(false);
   const [favLoading, setFavLoading] = useState(false);
 
@@ -152,14 +155,18 @@ const Jeu = ({
     setDlcs([]);
     setExpansions([]);
     setTranslatedSummary("");
+    setGame(null);
+    setGameError(null);
     window.scrollTo(0, 0);
 
     const fetchDetails = async () => {
       try {
         setLoading(true);
-        const res = await axios.get(
-            `http://localhost:3000/api/games/details/${gameId}`,
-        );
+        setGameError(null);
+        const api = auth.currentUser
+          ? await authAxios()
+          : axios.create({ baseURL: "http://localhost:3000/api" });
+        const res = await api.get(`/games/details/${gameId}`);
         if (res.data) {
           const g = res.data;
           setGame(g);
@@ -214,6 +221,20 @@ const Jeu = ({
         }
       } catch (err) {
         console.error("Erreur de chargement:", err);
+        const status = err?.response?.status;
+        if (status === 401) {
+          setGameError({
+            code: 401,
+            msg: err.response.data?.msg || "Connectez-vous pour voir ce contenu.",
+          });
+        } else if (status === 403) {
+          setGameError({
+            code: 403,
+            msg: err.response.data?.msg || "Vous n'avez pas accès à ce contenu.",
+          });
+        } else {
+          setGameError({ code: 0, msg: "Impossible de charger ce jeu." });
+        }
       } finally {
         setLoading(false);
       }
@@ -426,6 +447,24 @@ const Jeu = ({
     return defaultCover;
   };
 
+  const getPegiBadgeUrls = (g) => {
+    if (!g?.age_ratings || !Array.isArray(g.age_ratings)) return [];
+    const urls = [];
+    for (const r of g.age_ratings) {
+      const ratingObj = typeof r === "object" ? r : { rating: r };
+      let url =
+        ratingObj.rating_cover_url ||
+        ratingObj.rating_cover ||
+        ratingObj.rating_cover?.url ||
+        null;
+      if (!url && ratingObj.rating_cover?.image_id) {
+        url = `https://images.igdb.com/igdb/image/upload/t_cover_big/${ratingObj.rating_cover.image_id}.jpg`;
+      }
+      if (url && !urls.includes(url)) urls.push(url);
+    }
+    return urls;
+  };
+
   const displaySummary = () => {
     if (i18n.language === "fr") {
       if (translating) return game?.summary || "";
@@ -441,6 +480,46 @@ const Jeu = ({
             <div className="loading-spinner"></div>
           </div>
         </div>
+    );
+
+  if (gameError || !game)
+    return (
+      <div className="app-container">
+        <div className="hero-gradient"></div>
+        <div className="main-content-wrapper">
+          <button
+            onClick={onBack}
+            className="category-btn"
+            style={{ marginBottom: "2rem", display: "flex", alignItems: "center", gap: "8px" }}
+          >
+            ← Retour
+          </button>
+          <div className="empty-state">
+            <div className="empty-icon">
+              {gameError?.code === 401 ? "🔒" : gameError?.code === 403 ? "🔞" : "⚠️"}
+            </div>
+            <h3 className="empty-title">
+              {gameError?.code === 401
+                ? "Connexion requise"
+                : gameError?.code === 403
+                ? "Accès restreint"
+                : "Jeu introuvable"}
+            </h3>
+            <p className="empty-text">
+              {gameError?.msg || "Ce jeu n'existe pas ou n'est plus disponible."}
+            </p>
+            {gameError?.code === 401 && (
+              <button
+                className="category-btn active"
+                style={{ marginTop: "1.5rem", padding: "10px 32px" }}
+                onClick={() => navigate("/login")}
+              >
+                Se connecter
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
     );
 
   const hasDlcContent = dlcs.length > 0 || expansions.length > 0;
@@ -462,21 +541,36 @@ const Jeu = ({
             <i className="fa-solid fa-arrow-left"></i> Retour à la navigation
           </button>
 
-          <div className="game-details-layout" style={{ overflow: "hidden" }}>
-            {/* ── COLONNE GAUCHE ── */}
-            <div className="game-sidebar-modern">
-              <div className="game-card-modern" style={{ cursor: "default" }}>
-                <div className="game-image-container">
-                  <img
-                      src={getCoverUrl(game.cover)}
-                      alt={game.name}
-                      className="game-image"
-                  />
-                  <div className="rating-badge">
-                    <span className="rating-star">
-                    <i className="fa-solid fa-star" style={{ color: "rgb(255, 212, 59)" }}></i>
-                  </span>
-                    <span className="rating-value">
+        {}
+        <div className="game-details-layout" style={{ overflow: "hidden" }}>
+          {/* ── COLONNE GAUCHE ── */}
+          <div className="game-sidebar-modern">
+            <div className="game-card-modern" style={{ cursor: "default" }}>
+              <div className="game-image-container">
+                <img
+                  src={getCoverUrl(game.cover)}
+                  alt={game.name}
+                  className="game-image"
+                />
+                {/* PEGI / Age rating logos fournis par IGDB (rating_cover_url) */}
+                <div style={{ position: "absolute", left: 8, bottom: 8, display: "flex", gap: 8 }}>
+                  {getPegiBadgeUrls(game).map((u, i) => {
+                    let src = u || "";
+                    if (src.startsWith("//")) src = `https:${src}`;
+                    if (src && !src.startsWith("http")) src = `https:${src}`;
+                    return (
+                      <img
+                        key={i}
+                        src={src}
+                        alt={`PEGI ${i}`}
+                        style={{ width: 40, height: 40, objectFit: "contain", borderRadius: 6, background: "rgba(0,0,0,0.4)" }}
+                      />
+                    );
+                  })}
+                </div>
+                <div className="rating-badge">
+                  <span className="rating-star">⭐</span>
+                  <span className="rating-value">
                     {(game.total_rating / 20).toFixed(1)}
                   </span>
                   </div>
@@ -585,12 +679,12 @@ const Jeu = ({
               </div>
             </div>
 
-            {/* ── COLONNE DROITE ── */}
-            <div
-                className="game-main-info"
-                style={{ minWidth: 0, overflow: "hidden" }}
-            >
-              <h1 className="hero-title">{game.name}</h1>
+          {}
+          <div
+            className="game-main-info"
+            style={{ minWidth: 0, overflow: "hidden" }}
+          >
+            <h1 className="hero-title">{game.name}</h1>
 
               <div className="section-header">
                 <h3 className="section-title">Résumé</h3>
@@ -619,16 +713,16 @@ const Jeu = ({
                 {displaySummary()}
               </p>
 
-              {/* ══ DLC & EXPANSIONS ══════════════════════════════════════════ */}
-              {(hasDlcContent || dlcLoading) && (
-                  <div style={{ marginBottom: "3rem" }}>
-                    <div
-                        className="section-header"
-                        style={{ marginBottom: "16px" }}
-                    >
-                      <h3 className="section-title">DLC & Extensions</h3>
-                      {hasDlcContent && (
-                          <span className="section-count">
+            {/* ══ DLC & EXPANSIONS ══*/}
+            {(hasDlcContent || dlcLoading) && (
+              <div style={{ marginBottom: "3rem" }}>
+                <div
+                  className="section-header"
+                  style={{ marginBottom: "16px" }}
+                >
+                  <h3 className="section-title">DLC & Extensions</h3>
+                  {hasDlcContent && (
+                    <span className="section-count">
                       {dlcs.length + expansions.length} contenu
                             {dlcs.length + expansions.length > 1 ? "s" : ""}
                     </span>
@@ -674,40 +768,40 @@ const Jeu = ({
                               </div>
                           )}
 
-                          {(dlcTab === "dlc" || expansions.length === 0) &&
-                              dlcs.length > 0 && (
-                                  <div
-                                      style={{
-                                        display: "flex",
-                                        flexDirection: "column",
-                                        width: "100%",
-                                        overflow: "hidden",
-                                        gap: "10px",
-                                      }}
-                                  >
-                                    {dlcs.length > 0 && expansions.length === 0 && (
-                                        <p
-                                            style={{
-                                              fontSize: "0.78rem",
-                                              color: "#64748b",
-                                              marginBottom: "4px",
-                                              textTransform: "uppercase",
-                                              letterSpacing: "0.05em",
-                                            }}
-                                        >
-                                          DLC
-                                        </p>
-                                    )}
-                                    {dlcs.map((dlc) => (
-                                        <DlcCard
-                                            key={dlc.id}
-                                            item={dlc}
-                                            getThumbUrl={getThumbUrl}
-                                            onGameClick={onGameClick}
-                                        />
-                                    ))}
-                                  </div>
-                              )}
+                    {(dlcTab === "dlc" || expansions.length === 0) &&
+                      dlcs.length > 0 && (
+                        <div
+                          style={{
+                            display: "flex",
+                            flexDirection: "column",
+                            width: "100%",
+                            overflow: "hidden",
+                            gap: "10px",
+                          }}
+                        >
+                          {dlcs.length > 0 && expansions.length === 0 && (
+                            <p
+                              style={{
+                                fontSize: "0.78rem",
+                                color: "#64748b",
+                                marginBottom: "4px",
+                                textTransform: "uppercase",
+                                letterSpacing: "0.05em",
+                              }}
+                            >
+                              DLC
+                            </p>
+                          )}
+                          {dlcs.map((dlc) => (
+                            <DlcCard
+                              key={dlc.id}
+                              item={dlc}
+                              getThumbUrl={getThumbUrl}
+                              onGameClick={onGameClick}
+                            />
+                          ))}
+                        </div>
+                      )}
 
                           {(dlcTab === "expansion" || dlcs.length === 0) &&
                               expansions.length > 0 && (
@@ -749,21 +843,21 @@ const Jeu = ({
                   </div>
               )}
 
-              {/* ══ AVIS ══════════════════════════════════════════════════════ */}
-              <div className="comments-section-modern">
-                <div className="section-header">
-                  <h3 className="section-title">Avis des joueurs</h3>
-                  {averageRating && (
-                      <span
-                          className="section-count"
-                          style={{
-                            display: "flex",
-                            alignItems: "center",
-                            gap: "6px",
-                          }}
-                      >
-                        <i className="fa-solid fa-star" style={{ color: "rgb(255, 212, 59)" }}></i> {averageRating} / 5{" "}
-                        <span style={{ color: "#6b7280", fontSize: "0.8rem" }}>
+            {/* ══ AVIS ══*/}
+            <div className="comments-section-modern">
+              <div className="section-header">
+                <h3 className="section-title">Avis des joueurs</h3>
+                {averageRating && (
+                  <span
+                    className="section-count"
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "6px",
+                    }}
+                  >
+                    ⭐ {averageRating} / 5{" "}
+                    <span style={{ color: "#6b7280", fontSize: "0.8rem" }}>
                       ({reviews.length})
                     </span>
                   </span>
@@ -1100,120 +1194,119 @@ const Jeu = ({
                 </div>
               </div>
 
-              {/* ══ JEUX SIMILAIRES ══════════════════════════════════════════ */}
-              {similarGames.length > 0 && (
-                  <div style={{ marginTop: "3rem" }}>
-                    <h3
-                        className="section-title"
-                        style={{ marginBottom: "1.5rem" }}
+            {/* ══ JEUX SIMILAIRES === */}
+            {similarGames.length > 0 && (
+              <div style={{ marginTop: "3rem" }}>
+                <h3
+                  className="section-title"
+                  style={{ marginBottom: "1.5rem" }}
+                >
+                  Jeux similaires
+                </h3>
+                <div
+                  style={{
+                    position: "relative",
+                    display: "flex",
+                    alignItems: "center",
+                  }}
+                >
+                  <button
+                    onClick={() => scrollSimilar("left")}
+                    className="slider-nav-btn left"
+                    title="Précédent"
+                  >
+                    <svg
+                      width="24"
+                      height="24"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="3"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
                     >
-                      Jeux similaires
-                    </h3>
-                    <div
-                        style={{
-                          position: "relative",
-                          display: "flex",
-                          alignItems: "center",
-                        }}
-                    >
-                      <button
-                          onClick={() => scrollSimilar("left")}
-                          className="slider-nav-btn left"
-                          title="Précédent"
-                      >
-                        <svg
-                            width="24"
-                            height="24"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="3"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                        >
-                          <polyline points="15 18 9 12 15 6"></polyline>
-                        </svg>
-                      </button>
+                      <polyline points="15 18 9 12 15 6"></polyline>
+                    </svg>
+                  </button>
+                  <div
+                    style={{
+                      display: "flex",
+                      gap: "1rem",
+                      overflow: "hidden",
+                      width: "calc((160px * 5) + (1rem * 4))",
+                      margin: "0 auto",
+                      padding: "10px 0",
+                    }}
+                  >
+                    {similarGames.map((sg) => (
                       <div
-                          style={{
-                            display: "flex",
-                            gap: "1rem",
-                            overflow: "hidden",
-                            width: "calc((160px * 5) + (1rem * 4))",
-                            margin: "0 auto",
-                            padding: "10px 0",
-                          }}
+                        key={sg.id}
+                        className="game-card-modern"
+                        style={{ cursor: "pointer", flex: "0 0 160px" }}
+                        onClick={() => onGameClick?.(sg.id)}
                       >
-                        {similarGames.map((sg) => (
-                            <div
-                                key={sg.id}
-                                className="game-card-modern"
-                                style={{ cursor: "pointer", flex: "0 0 160px" }}
-                                onClick={() => onGameClick?.(sg.id)}
-                            >
-                              <div className="game-image-container">
-                                <img
-                                    src={getCoverUrl(sg.cover)}
-                                    alt={sg.name}
-                                    className="game-image"
-                                />
-                              </div>
-                              <div
-                                  className="game-content"
-                                  style={{ padding: "0.5rem" }}
-                              >
-                                <p
-                                    className="game-title"
-                                    style={{
-                                      fontSize: "0.8rem",
-                                      whiteSpace: "nowrap",
-                                      overflow: "hidden",
-                                      textOverflow: "ellipsis",
-                                    }}
-                                >
-                                  {sg.name}
-                                </p>
-                                {sg.total_rating && (
-                                    <p
-                                        style={{
-                                          fontSize: "0.75rem",
-                                          color: "#9ca3af",
-                                          margin: 0,
-                                        }}
-                                    >
-                                      <i className="fa-solid fa-star" style={{ color: "rgb(255, 212, 59)", marginRight: "4px" }}></i>
-                                      {(sg.total_rating / 20).toFixed(1)}
-                                    </p>
-                                )}
-                              </div>
-                            </div>
-                        ))}
-                      </div>
-                      <button
-                          onClick={() => scrollSimilar("right")}
-                          className="slider-nav-btn right"
-                          title="Suivant"
-                      >
-                        <svg
-                            width="24"
-                            height="24"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="3"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
+                        <div className="game-image-container">
+                          <img
+                            src={getCoverUrl(sg.cover)}
+                            alt={sg.name}
+                            className="game-image"
+                          />
+                        </div>
+                        <div
+                          className="game-content"
+                          style={{ padding: "0.5rem" }}
                         >
-                          <polyline points="9 18 15 12 9 6"></polyline>
-                        </svg>
-                      </button>
-                    </div>
+                          <p
+                            className="game-title"
+                            style={{
+                              fontSize: "0.8rem",
+                              whiteSpace: "nowrap",
+                              overflow: "hidden",
+                              textOverflow: "ellipsis",
+                            }}
+                          >
+                            {sg.name}
+                          </p>
+                          {sg.total_rating && (
+                            <p
+                              style={{
+                                fontSize: "0.75rem",
+                                color: "#9ca3af",
+                                margin: 0,
+                              }}
+                            >
+                              ⭐ {(sg.total_rating / 20).toFixed(1)}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    ))}
                   </div>
-              )}
-            </div>
+                  <button
+                    onClick={() => scrollSimilar("right")}
+                    className="slider-nav-btn right"
+                    title="Suivant"
+                  >
+                    <svg
+                      width="24"
+                      height="24"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="3"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <polyline points="9 18 15 12 9 6"></polyline>
+                    </svg>
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>
+    </div>
   );
 };
 

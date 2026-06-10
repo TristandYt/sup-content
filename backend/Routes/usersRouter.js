@@ -8,6 +8,8 @@ const { isAdmin } = require("../middlewares/roleMiddleware");
 const userController = require("../controllers/userController");
 const authMiddleware = require("../middlewares/auth");
 const ensureFirestoreProfile = require("../middlewares/ensureFirestoreProfile");
+const validateRequest = require("../middlewares/ValidateRequest");
+const { profileUpdateSchema, preferencesSchema } = require("../validators/userValidator");
 
 // Routes publiques
 router.get("/:userId/profile", userController.getPublicProfile);
@@ -16,12 +18,12 @@ router.get("/:userId/profile", userController.getPublicProfile);
 router.use(authMiddleware, ensureFirestoreProfile);
 
 router.get("/profile", userController.getProfile);
-router.put("/profile", userController.updateProfile);
+router.put("/profile", validateRequest(profileUpdateSchema), userController.updateProfile);
 router.put("/password", userController.updatePassword);
 router.put("/email", userController.updateEmail);
 router.delete("/account", userController.deleteAccount);
 router.get("/preferences", userController.getPreferences);
-router.put("/preferences", userController.updatePreferences);
+router.put("/preferences", validateRequest(preferencesSchema), userController.updatePreferences);
 router.get("/favorites", userController.getFavorites);
 router.post("/favorites", userController.addFavorite);
 router.delete("/favorites/:gameId", userController.removeFavorite);

@@ -46,6 +46,19 @@ const Accueil = ({
   });
 
   const upcomingRef = useRef(null);
+  const paramsRef = useRef(params);
+  const searchTermRef = useRef(searchTerm);
+  const searchTypeRef = useRef(searchType);
+
+  useEffect(() => {
+    paramsRef.current = params;
+  }, [params]);
+  useEffect(() => {
+    searchTermRef.current = searchTerm;
+  }, [searchTerm]);
+  useEffect(() => {
+    searchTypeRef.current = searchType;
+  }, [searchType]);
 
   const CATEGORIES = [
     { label: "Tous", value: "", icon: "fa-solid fa-layer-group" },
@@ -70,79 +83,6 @@ const Accueil = ({
       });
     }
   };
-
-  const fetchResults = useCallback(async () => {
-    setError(null);
-    setLoading(true);
-
-    try {
-      const hasSearchTerm = searchTerm && searchTerm.trim() !== "";
-      const api = auth.currentUser
-          ? await authAxios()
-          : axios.create({ baseURL: "http://localhost:3000/api" });
-
-      if (searchType === "users") {
-        const res = await api
-            .get(`/search`, {
-              params: {
-                q: hasSearchTerm ? searchTerm.trim() : "",
-                type: "users",
-                page: 1,
-                limit: PAGE_SIZE,
-              },
-            })
-            .catch(() => ({ data: { results: { users: [] } } }));
-
-        const newUsers = res.data.results?.users || [];
-        setUsers(newUsers);
-      } else {
-        let endpoint;
-        if (hasSearchTerm) {
-          endpoint = "search";
-        } else if (params.genre || params.platform || params.style) {
-          endpoint = "filtered";
-        } else {
-          endpoint = "popular";
-        }
-
-        const queryParams = {
-          page: 1,
-          limit: PAGE_SIZE,
-          sortBy: params.sortBy || "total_rating",
-          order: params.sortOrder || "desc",
-          sort: params.sortBy || "total_rating",
-          sortOrder: params.sortOrder || "desc",
-        };
-
-        if (hasSearchTerm) queryParams.q = searchTerm.trim();
-        if (params.genre) queryParams.genre = params.genre;
-        if (params.platform) queryParams.platform = params.platform;
-        if (params.style) queryParams.style = params.style;
-
-        const res = await api.get(`/games/${endpoint}`, {
-          params: queryParams,
-        });
-
-        const rawData = res.data;
-        let newGames = [];
-        if (Array.isArray(rawData)) newGames = rawData;
-        else if (rawData.games) newGames = rawData.games;
-        else if (rawData.results?.games) newGames = rawData.results.games;
-        else if (rawData.results && Array.isArray(rawData.results))
-          newGames = rawData.results;
-
-        newGames = sortGamesLocally(newGames, params.sortBy, params.sortOrder);
-        setGames(newGames);
-      }
-    } catch (err) {
-      console.error("Erreur API:", err);
-      setError(
-          "Impossible de contacter le service de recherche. Vérifiez votre connexion.",
-      );
-    } finally {
-      setLoading(false);
-    }
-  }, [searchTerm, params, searchType]);
 
   const sortGamesLocally = (gamesList, sortBy, sortOrder) => {
     if (!gamesList || gamesList.length === 0) return gamesList;
@@ -176,6 +116,93 @@ const Accueil = ({
     return sorted;
   };
 
+  const fetchResults = useCallback(async () => {
+    const currentParams = paramsRef.current;
+    const currentSearchTerm = searchTermRef.current;
+    const currentSearchType = searchTypeRef.current;
+
+    setError(null);
+    setLoading(true);
+
+    try {
+      const hasSearchTerm =
+        currentSearchTerm && currentSearchTerm.trim() !== "";
+      const api = auth.currentUser
+        ? await authAxios()
+        : axios.create({ baseURL: "http://localhost:3000/api" });
+
+      if (currentSearchType === "users") {
+        const res = await api
+          .get(`/search`, {
+            params: {
+              q: hasSearchTerm ? currentSearchTerm.trim() : "",
+              type: "users",
+              page: 1,
+              limit: PAGE_SIZE,
+            },
+          })
+          .catch(() => ({ data: { results: { users: [] } } }));
+
+        const newUsers = res.data.results?.users || [];
+        setUsers(newUsers);
+      } else {
+        let endpoint;
+        if (hasSearchTerm) {
+          endpoint = "search";
+        } else if (
+          currentParams.genre ||
+          currentParams.platform ||
+          currentParams.style
+        ) {
+          endpoint = "filtered";
+        } else {
+          endpoint = "popular";
+        }
+
+        const queryParams = {
+          page: 1,
+          limit: PAGE_SIZE,
+          sortBy: currentParams.sortBy || "total_rating",
+          order: currentParams.sortOrder || "desc",
+          sort: currentParams.sortBy || "total_rating",
+          sortOrder: currentParams.sortOrder || "desc",
+        };
+
+        if (hasSearchTerm) queryParams.q = currentSearchTerm.trim();
+        if (currentParams.genre) queryParams.genre = currentParams.genre;
+        if (currentParams.platform)
+          queryParams.platform = currentParams.platform;
+        if (currentParams.style) queryParams.style = currentParams.style;
+
+        const res = await api.get(`/games/${endpoint}`, {
+          params: queryParams,
+        });
+
+        const rawData = res.data;
+        let newGames = [];
+        if (Array.isArray(rawData)) newGames = rawData;
+        else if (rawData.games) newGames = rawData.games;
+        else if (rawData.results?.games) newGames = rawData.results.games;
+        else if (rawData.results && Array.isArray(rawData.results))
+          newGames = rawData.results;
+
+        newGames = sortGamesLocally(
+          newGames,
+          currentParams.sortBy,
+          currentParams.sortOrder,
+        );
+        setGames(newGames);
+      }
+    } catch (err) {
+      console.error("Erreur API:", err);
+      setError(
+        "Impossible de contacter le service de recherche. Vérifiez votre connexion.",
+      );
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
     setGames([]);
     setUsers([]);
@@ -184,7 +211,7 @@ const Accueil = ({
   useEffect(() => {
     const delay = setTimeout(() => {
       fetchResults();
-    }, 500);
+    }, 400);
     return () => clearTimeout(delay);
   }, [searchTerm, params, searchType]);
 

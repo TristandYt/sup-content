@@ -529,7 +529,7 @@ const CustomLists = ({ onGameClick }) => {
               <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "16px" }}>
                 <input type="checkbox" id="isPrivate" checked={formData.isPrivate} onChange={(e) => setFormData({ ...formData, isPrivate: e.target.checked })} style={{ accentColor: "#9333ea" }} />
                 <label htmlFor="isPrivate" className="game-genre" style={{ cursor: "pointer", margin: 0 }}>
-                  <i className="fa-solid fa-lock" style={{color: "inherit", opacity: 0.6, marginRight: "6px"}}></i> Liste privée (visible uniquement par moi)
+                  <i className="fa-solid fa-lock" style={{color: "rgb(148, 163, 184)", marginRight: "6px"}}></i> Liste privée (visible uniquement par moi)
                 </label>
               </div>
               <button className="nav-user-btn" style={{ width: "100%", justifyContent: "center", opacity: saving ? 0.6 : 1 }} onClick={handleSaveList} disabled={saving}>
@@ -542,8 +542,8 @@ const CustomLists = ({ onGameClick }) => {
             <div className="loading-container"><div className="loading-spinner" /></div>
         ) : lists.length === 0 ? (
             <div className="game-card-modern" style={{ padding: "40px", textAlign: "center", cursor: "default" }}>
-              <p style={{ fontSize: "2rem", marginBottom: "12px", opacity: 0.6 }}>
-                <i className="fa-solid fa-clipboard-list"></i>
+              <p style={{ fontSize: "2rem", marginBottom: "12px" }}>
+                <i className="fa-solid fa-clipboard-list" style={{color: "rgb(148, 163, 184)"}}></i>
               </p>
               <p className="hero-subtitle">Aucune liste pour l'instant.</p>
             </div>
@@ -580,7 +580,6 @@ const CustomLists = ({ onGameClick }) => {
                           </div>
                         </div>
                         <div style={{ display: "flex", gap: "6px", alignItems: "center", flexShrink: 0, marginLeft: "12px" }}>
-
                           <button className="category-btn" style={{ padding: "4px 10px", fontSize: "0.75rem", borderColor: "rgba(59, 130, 246, 0.5)", background: "rgba(59, 130, 246, 0.1)" }} onClick={(e) => { e.stopPropagation(); openEdit(list); }}>
                             <i className="fa-solid fa-pen-to-square" style={{color: "#3b82f6"}}></i>
                           </button>
@@ -593,7 +592,7 @@ const CustomLists = ({ onGameClick }) => {
                       </div>
 
                       {isOpen && (
-                          <div style={{ padding: "0 20px 20px", borderTop: "1px solid rgba(128,128,128,0.1)" }}>
+                          <div style={{ padding: "0 20px 20px", borderTop: "1px solid rgba(255,255,255,0.06)" }}>
                             {(list.games || []).length === 0 ? (
                                 <p style={{ fontSize: "0.85rem", color: "#64748b", padding: "16px 0 8px", textAlign: "center" }}>Aucun jeu dans cette liste. Recherche ci-dessous pour en ajouter.</p>
                             ) : (
@@ -616,11 +615,11 @@ const CustomLists = ({ onGameClick }) => {
                               <input className="filter-select" style={{ width: "100%" }} placeholder="Ajouter un jeu à cette liste…" value={gameSearch} onChange={(e) => setGameSearch(e.target.value)} onBlur={() => setTimeout(() => setGameResults([]), 200)} />
                               {searchingGames && <span style={{ position: "absolute", right: "12px", top: "50%", transform: "translateY(-50%)", color: "#64748b", fontSize: "0.75rem" }}>…</span>}
                               {gameResults.length > 0 && (
-                                  <div style={{ position: "absolute", top: "calc(100% + 6px)", left: 0, right: 0, background: "var(--bg-secondary, #1e293b)", border: "1px solid rgba(147,51,234,0.3)", borderRadius: "10px", zIndex: 99999, pointerEvents: "auto", overflow: "hidden", boxShadow: "0 15px 40px rgba(0,0,0,0.8)" }}>
+                                  <div style={{ position: "absolute", top: "calc(100% + 6px)", left: 0, right: 0, background: "#1e293b", border: "1px solid rgba(147,51,234,0.3)", borderRadius: "10px", zIndex: 99999, pointerEvents: "auto", overflow: "hidden", boxShadow: "0 15px 40px rgba(0,0,0,0.8)" }}>
                                     {gameResults.map((g) => (
                                         <div key={g.id} onMouseDown={() => handleAddGame(list, g)} style={{ padding: "10px 14px", cursor: "pointer", display: "flex", alignItems: "center", gap: "10px" }} onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(147,51,234,0.15)")} onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}>
                                           {g.cover?.image_id && <img src={`https://images.igdb.com/igdb/image/upload/t_thumb/${g.cover.image_id}.jpg`} alt="" style={{ width: "28px", height: "36px", borderRadius: "4px", objectFit: "cover" }} />}
-                                          <span style={{ color: "inherit", fontSize: "0.9rem" }}>{g.name}</span>
+                                          <span style={{ color: "#e2e8f0", fontSize: "0.9rem" }}>{g.name}</span>
                                           {(list.games || []).some((lg) => String(lg.gameId) === String(g.id)) && <span style={{ marginLeft: "auto", color: "#4ade80", fontSize: "0.75rem" }}><i className="fa-solid fa-check" style={{marginRight: "4px"}}></i> Ajouté</span>}
                                         </div>
                                     ))}
@@ -646,26 +645,34 @@ const MyProfile = ({
                      onLoginSuccess,
                      onLogout,
                      onGameClick,
+                     onAdminClick,
                    }) => {
   const { t, i18n } = useTranslation();
   const [isEditing, setIsEditing] = useState(false);
 
-  // Gère uniquement les informations publiques du profil (pas les préférences)
   const [profileData, setProfileData] = useState({
     uid: user?.uid || user?.id || "",
     pseudo: user?.username || user?.pseudo || user?.displayName || "Joueur",
     email: user?.email || "",
     bio: user?.bio || "",
     website: user?.profileData?.website || "",
+    role: user?.role || "",
     birthDate: user?.birthDate || "",
     followersCount: 0,
     followingCount: 0,
-    isPrivate: user?.isPrivate || false, // Affichage uniquement
+    preferences: user?.preferences || {
+      notifications: true,
+      privateProfile: false,
+      theme: "dark",
+      showAdultGames: false
+    },
     avatar:
         user?.avatar ||
         user?.photoURL ||
         `https://api.dicebear.com/7.x/bottts/svg?seed=${user?.username || user?.pseudo || user?.displayName || "Joueur"}`,
   });
+
+  const isLight = profileData.preferences?.theme === "light";
 
   const [favorites, setFavorites] = useState([]);
   const [filter, setFilter] = useState("Tous");
@@ -702,11 +709,12 @@ const MyProfile = ({
           bio: u.bio || profileData.bio,
           website: u.profileData?.website || "",
           avatar: u.avatar || u.photoURL || profileData.avatar,
+          role: u.role || "",
           birthDate: u.birthDate || "",
           isCertified: u.isCertified || false,
-          isPrivate: u.isPrivate || u.preferences?.privateProfile || false,
           followersCount: actualFollowersCount,
           followingCount: actualFollowingCount,
+          preferences: u.preferences || profileData.preferences,
         };
         setProfileData(fullProfile);
         if (onLoginSuccess) onLoginSuccess(fullProfile);
@@ -753,13 +761,16 @@ const MyProfile = ({
       const api = await authAxios();
       if (!api) throw new Error("Erreur authentification");
 
-      await api.put("/users/profile", {
+      const payload = {
         username: profileData.pseudo || profileData.username,
         bio: profileData.bio,
-        website: profileData.website,
-        avatarUrl: profileData.avatar,
-        birthDate: profileData.birthDate,
-      });
+        preferences: profileData.preferences,
+      };
+      if (profileData.avatar) payload.avatarUrl = profileData.avatar;
+      if (profileData.birthDate) payload.birthDate = profileData.birthDate;
+      if (profileData.website) payload.website = profileData.website;
+
+      await api.put("/users/profile", payload);
 
       if (onLoginSuccess) onLoginSuccess(profileData);
       setSaveStatus("saved");
@@ -778,6 +789,30 @@ const MyProfile = ({
     const { name, value } = e.target;
     if (name === "lang") i18n.changeLanguage(value);
     else setProfileData({ ...profileData, [name]: value });
+  };
+
+  const handlePreferenceChange = (key, value) => {
+    // Optimistic UI update
+    setProfileData((prev) => ({
+      ...prev,
+      preferences: { ...prev.preferences, [key]: value },
+    }));
+
+    (async () => {
+      try {
+        const api = await authAxios();
+        if (!api) return;
+        const updatedPreferences = { ...(profileData.preferences || {}), [key]: value };
+        await api.put('/users/profile', { preferences: updatedPreferences });
+        if (onLoginSuccess) onLoginSuccess({ ...profileData, preferences: updatedPreferences });
+      } catch (err) {
+        console.error('Erreur sauvegarde préférence', err);
+        setProfileData((prev) => ({
+          ...prev,
+          preferences: { ...prev.preferences, [key]: !value },
+        }));
+      }
+    })();
   };
 
   const handleAvatarChange = (e) => {
@@ -830,7 +865,7 @@ const MyProfile = ({
         <div style={{ maxWidth: "800px", margin: "-80px auto 0", padding: "0 20px 60px" }}>
           <div className="game-card-modern" style={{ padding: "0", cursor: "default", overflow: "visible", position: "relative" }}>
             <div style={{ display: "flex", justifyContent: "center", marginTop: "-50px" }}>
-              <img src={profileData.avatar} alt="Avatar" style={{ width: "110px", height: "110px", borderRadius: "50%", border: "4px solid rgba(139, 92, 246, 0.6)", boxShadow: "0 0 30px rgba(139, 92, 246, 0.25)", objectFit: "cover", background: "var(--bg-secondary, #1a1a2e)" }} />
+              <img src={profileData.avatar} alt="Avatar" style={{ width: "110px", height: "110px", borderRadius: "50%", border: "4px solid rgba(139, 92, 246, 0.6)", boxShadow: "0 0 30px rgba(139, 92, 246, 0.25)", objectFit: "cover", background: "#1a1a2e" }} />
             </div>
 
             <div style={{ padding: "16px 30px 30px", textAlign: "center" }}>
@@ -838,15 +873,6 @@ const MyProfile = ({
                 {profileData.pseudo}
                 {profileData.isCertified && <span title="Profil certifié" style={{ marginLeft: "10px", fontSize: "1.2rem" }}><i className="fa-solid fa-star" style={{color: "rgb(255, 212, 59)"}}></i></span>}
               </h2>
-
-              {/* Badge d'indication si le profil est privé (purement informatif) */}
-              {profileData.isPrivate && (
-                  <div style={{ marginBottom: "10px" }}>
-                  <span style={{ fontSize: "0.75rem", backgroundColor: "rgba(239, 68, 68, 0.15)", color: "#ef4444", padding: "3px 8px", borderRadius: "12px", border: "1px solid rgba(239, 68, 68, 0.3)", display: "inline-flex", alignItems: "center" }}>
-                    <i className="fa-solid fa-lock" style={{marginRight: "6px"}}></i> Votre compte est en mode privé
-                  </span>
-                  </div>
-              )}
 
               {userAge && <p style={{ color: "#a78bfa", fontSize: "0.95rem", margin: "0 0 10px 0", fontWeight: "600" }}>{userAge} ans</p>}
 
@@ -856,13 +882,13 @@ const MyProfile = ({
                   <p className="hero-subtitle" style={{ fontSize: "0.9rem", fontStyle: "italic", opacity: 0.5 }}>Aucune bio renseignée.</p>
               )}
 
-              <div style={{ display: "flex", justifyContent: "center", margin: "24px 0", borderTop: "1px solid rgba(128,128,128,0.1)", borderBottom: "1px solid rgba(128,128,128,0.1)" }}>
+              <div style={{ display: "flex", justifyContent: "center", margin: "24px 0", borderTop: "1px solid rgba(255,255,255,0.07)", borderBottom: "1px solid rgba(255,255,255,0.07)" }}>
                 {[
                   { label: "Abonnés", value: profileData.followersCount },
                   { label: "Abonnements", value: profileData.followingCount },
                   { label: "Jeux Favoris", value: favorites.length }
                 ].map((stat, i) => (
-                    <div key={stat.label} style={{ flex: 1, padding: "18px 8px", borderRight: i < 2 ? "1px solid rgba(128,128,128,0.1)" : "none" }}>
+                    <div key={stat.label} style={{ flex: 1, padding: "18px 8px", borderRight: i < 2 ? "1px solid rgba(255,255,255,0.07)" : "none" }}>
                       <p className="hero-title" style={{ fontSize: "1.4rem", margin: "0 0 4px", fontWeight: "700" }}>{stat.value}</p>
                       <p className="game-genre" style={{ margin: 0, fontSize: "0.75rem", opacity: 0.6 }}>{stat.label}</p>
                     </div>
@@ -882,17 +908,17 @@ const MyProfile = ({
                     border: "none",
                     transition: "all 0.3s ease",
                     background: isEditing
-                        ? "rgba(128,128,128,0.2)"
+                        ? (isLight ? "#e2e8f0" : "rgba(255,255,255,0.1)")
                         : "linear-gradient(135deg, #9333ea 0%, #3b82f6 100%)",
                     color: isEditing
-                        ? "currentColor"
+                        ? (isLight ? "#475569" : "#e2e8f0")
                         : "#ffffff",
                     boxShadow: isEditing
                         ? "none"
                         : "0 4px 15px rgba(147, 51, 234, 0.35)",
                   }}
               >
-                {isEditing ? <><i className="fa-solid fa-xmark" style={{marginRight: "5px"}}></i> Fermer l'édition</> : <><i className="fa-solid fa-pen-to-square" style={{marginRight: "5px"}}></i> Éditer le profil</>}
+                {isEditing ? <><i className="fa-solid fa-xmark" style={{marginRight: "5px", color: isEditing ? (isLight ? "#475569" : "#e2e8f0") : "#ffffff"}}></i> Fermer l'édition</> : <><i className="fa-solid fa-pen-to-square" style={{marginRight: "5px", color: isEditing ? (isLight ? "#475569" : "#e2e8f0") : "#ffffff"}}></i> Éditer le profil</>}
               </button>
             </div>
           </div>
@@ -923,11 +949,34 @@ const MyProfile = ({
                     <textarea name="bio" value={profileData.bio} onChange={handleChange} className="filter-select" style={{ width: "100%", minHeight: "80px", paddingTop: "10px" }} placeholder="Parle un peu de toi..." />
                   </div>
 
+                  <div style={{ background: "rgba(0,0,0,0.2)", padding: "16px", borderRadius: "10px" }}>
+                    <h4 style={{ margin: "0 0 12px 0", fontSize: "0.95rem", color: "#c4b5fd" }}>Paramètres</h4>
+
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 0", borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
+                      <div><p style={{ margin: 0, fontSize: "0.9rem", color: "#e2e8f0" }}>Afficher les jeux +18</p></div>
+                      <div onClick={() => handlePreferenceChange("showAdultGames", !profileData.preferences?.showAdultGames)} style={{ width: "42px", height: "24px", borderRadius: "99px", cursor: "pointer", background: profileData.preferences?.showAdultGames ? "#9333ea" : "rgba(255,255,255,0.1)", position: "relative", transition: "background 0.2s" }}>
+                        <div style={{ position: "absolute", top: "3px", width: "18px", height: "18px", borderRadius: "50%", background: "#fff", transition: "left 0.2s", left: profileData.preferences?.showAdultGames ? "21px" : "3px" }} />
+                      </div>
+                    </div>
+
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 0" }}>
+                      <div><p style={{ margin: 0, fontSize: "0.9rem", color: "#e2e8f0" }}>Profil Privé</p></div>
+                      <div onClick={() => handlePreferenceChange("privateProfile", !profileData.preferences?.privateProfile)} style={{ width: "42px", height: "24px", borderRadius: "99px", cursor: "pointer", background: profileData.preferences?.privateProfile ? "#9333ea" : "rgba(255,255,255,0.1)", position: "relative", transition: "background 0.2s" }}>
+                        <div style={{ position: "absolute", top: "3px", width: "18px", height: "18px", borderRadius: "50%", background: "#fff", transition: "left 0.2s", left: profileData.preferences?.privateProfile ? "21px" : "3px" }} />
+                      </div>
+                    </div>
+                  </div>
+
                   <div style={{ display: "flex", flexDirection: "column", gap: "10px", marginTop: "10px" }}>
                     <button className="nav-user-btn" onClick={handleUpdate} disabled={saveStatus === "saving"} style={{ justifyContent: "center", padding: "12px" }}>
                       {saveLabel}
                     </button>
-                    <button className="category-btn" onClick={onLogout} style={{ justifyContent: "center", borderColor: "rgba(239, 68, 68, 0.5)", color: "#ef4444", marginTop: "10px" }}>
+                    {profileData.role === "admin" && (
+                        <button className="nav-user-btn" onClick={onAdminClick} style={{ justifyContent: "center", background: "rgba(167,139,250,0.2)", borderColor: "#a78bfa" }}>
+                          <i className="fa-solid fa-lock" style={{marginRight: "6px"}}></i> Dashboard Admin
+                        </button>
+                    )}
+                    <button className="category-btn" onClick={onLogout} style={{ justifyContent: "center", borderColor: "#ef4444", color: "#ef4444", marginTop: "10px" }}>
                       <i className="fa-solid fa-arrow-right-from-bracket" style={{marginRight: "6px"}}></i> Déconnexion
                     </button>
                   </div>
@@ -1078,26 +1127,26 @@ export const Notificationsbell = ({ user, onUserClick, onGameClick }) => {
         </button>
 
         {open && (
-            <div style={{ position: "absolute", top: "calc(100% + 10px)", right: 0, width: "340px", maxHeight: "480px", background: "var(--bg-secondary, #1a1a2e)", border: "1px solid rgba(147,51,234,0.3)", borderRadius: "16px", boxShadow: "0 20px 60px rgba(0,0,0,0.5)", zIndex: 9999, overflow: "hidden", display: "flex", flexDirection: "column" }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "14px 16px", borderBottom: "1px solid rgba(128,128,128,0.2)" }}>
-                <span style={{ fontWeight: "600", fontSize: "0.95rem" }}>Notifications {unread > 0 && <span style={{ marginLeft: "8px", background: "rgba(147,51,234,0.2)", color: "#c084fc", borderRadius: "99px", fontSize: "0.7rem", padding: "1px 7px" }}>{unread} nouvelles</span>}</span>
+            <div style={{ position: "absolute", top: "calc(100% + 10px)", right: 0, width: "340px", maxHeight: "480px", background: "#1a1a2e", border: "1px solid rgba(147,51,234,0.3)", borderRadius: "16px", boxShadow: "0 20px 60px rgba(0,0,0,0.5)", zIndex: 9999, overflow: "hidden", display: "flex", flexDirection: "column" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "14px 16px", borderBottom: "1px solid rgba(255,255,255,0.07)" }}>
+                <span style={{ fontWeight: "600", fontSize: "0.95rem", color: "#e2e8f0" }}>Notifications {unread > 0 && <span style={{ marginLeft: "8px", background: "rgba(147,51,234,0.2)", color: "#c084fc", borderRadius: "99px", fontSize: "0.7rem", padding: "1px 7px" }}>{unread} nouvelles</span>}</span>
                 {unread > 0 && <button onClick={markAllRead} style={{ background: "none", border: "none", cursor: "pointer", color: "#9333ea", fontSize: "0.75rem", fontWeight: "600" }}>Tout marquer lu</button>}
               </div>
               <div style={{ overflowY: "auto", flex: 1 }}>
                 {loading && notifs.length === 0 ? (
                     <div style={{ padding: "30px", textAlign: "center" }}><div className="loading-spinner" style={{ margin: "0 auto" }} /></div>
                 ) : notifs.length === 0 ? (
-                    <div style={{ padding: "40px 20px", textAlign: "center" }}><div style={{ fontSize: "2rem", marginBottom: "8px", opacity: 0.5 }}><i className="fa-solid fa-bell-slash"></i></div><p style={{ opacity: 0.6, fontSize: "0.85rem" }}>Aucune notification pour le moment</p></div>
+                    <div style={{ padding: "40px 20px", textAlign: "center" }}><div style={{ fontSize: "2rem", marginBottom: "8px" }}><i className="fa-solid fa-bell-slash" style={{color: "rgb(148, 163, 184)"}}></i></div><p style={{ color: "rgba(255,255,255,0.35)", fontSize: "0.85rem" }}>Aucune notification pour le moment</p></div>
                 ) : (
                     notifs.map((n) => {
-                      const cfg = TYPE_CONFIG[n.type] || { icon: <i className="fa-solid fa-bell"></i>, label: n.type, color: "#888" };
+                      const cfg = TYPE_CONFIG[n.type] || { icon: <i className="fa-solid fa-bell" style={{color: "rgb(148, 163, 184)"}}></i>, label: n.type, color: "#888" };
                       return (
-                          <div key={n.id} onClick={() => handleClick(n)} style={{ display: "flex", alignItems: "flex-start", gap: "12px", padding: "12px 16px", background: n.isRead ? "transparent" : "rgba(147,51,234,0.07)", borderBottom: "1px solid rgba(128,128,128,0.1)", cursor: "pointer" }} onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(128,128,128,0.1)")} onMouseLeave={(e) => (e.currentTarget.style.background = n.isRead ? "transparent" : "rgba(147,51,234,0.07)")}>
+                          <div key={n.id} onClick={() => handleClick(n)} style={{ display: "flex", alignItems: "flex-start", gap: "12px", padding: "12px 16px", background: n.isRead ? "transparent" : "rgba(147,51,234,0.07)", borderBottom: "1px solid rgba(255,255,255,0.04)", cursor: "pointer" }} onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(255,255,255,0.04)")} onMouseLeave={(e) => (e.currentTarget.style.background = n.isRead ? "transparent" : "rgba(147,51,234,0.07)")}>
                             <div style={{ width: "36px", height: "36px", borderRadius: "50%", background: `${cfg.color}22`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1rem", flexShrink: 0 }}>{cfg.icon}</div>
                             <div style={{ flex: 1, minWidth: 0 }}>
-                              <p style={{ margin: 0, fontSize: "0.82rem", lineHeight: "1.4" }}><strong style={{ color: cfg.color }}>{n.senderPseudo || n.sourceUserId || "Quelqu'un"}</strong> {cfg.label}{n.gameName && <span style={{ color: "#c084fc" }}> · {n.gameName}</span>}</p>
-                              {n.message && <p style={{ margin: "3px 0 0", fontSize: "0.75rem", opacity: 0.6, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{n.message}</p>}
-                              <span style={{ fontSize: "0.7rem", opacity: 0.5, marginTop: "4px", display: "block" }}>{timeAgo(n.createdAt)}</span>
+                              <p style={{ margin: 0, fontSize: "0.82rem", color: "#cbd5e1", lineHeight: "1.4" }}><strong style={{ color: cfg.color }}>{n.senderPseudo || n.sourceUserId || "Quelqu'un"}</strong> {cfg.label}{n.gameName && <span style={{ color: "#c084fc" }}> · {n.gameName}</span>}</p>
+                              {n.message && <p style={{ margin: "3px 0 0", fontSize: "0.75rem", color: "rgba(255,255,255,0.35)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{n.message}</p>}
+                              <span style={{ fontSize: "0.7rem", color: "rgba(255,255,255,0.25)", marginTop: "4px", display: "block" }}>{timeAgo(n.createdAt)}</span>
                             </div>
                             {!n.isRead && <div style={{ width: "7px", height: "7px", borderRadius: "50%", background: "#9333ea", flexShrink: 0, marginTop: "5px" }} />}
                           </div>

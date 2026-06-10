@@ -82,12 +82,31 @@ const Catalogue = ({ onGameClick, user, searchTerm }) => {
       const endpoint = hasSearchTerm ? "search" : (paramsRef.current.genre || paramsRef.current.platform || paramsRef.current.style ? "filtered" : "popular");
 
       const res = await api.get(`/games/${endpoint}`, {
-        params: { page: targetPage, limit: PAGE_SIZE, sortBy: paramsRef.current.sortBy, sortOrder: paramsRef.current.sortOrder,
-          ...(hasSearchTerm && { q: searchTermRef.current.trim() }), ...paramsRef.current }
+        params: {
+          page: targetPage,
+          limit: PAGE_SIZE,
+          sortBy: currentParams.sortBy,
+          order: currentParams.sortOrder,
+          ...(hasSearchTerm && { q: currentSearchTerm.trim() }),
+          ...(currentParams.genre && { genre: currentParams.genre }),
+          ...(currentParams.platform && { platform: currentParams.platform }),
+          ...(currentParams.style && { style: currentParams.style }),
+        },
       });
-      const data = res.data.games || res.data.results || res.data;
-      setGames(Array.isArray(data) ? data : []);
-      setHasMore(data.length === PAGE_SIZE);
+
+      const raw = res.data;
+      let newGames = [];
+      if (Array.isArray(raw)) newGames = raw;
+      else if (raw.games) newGames = raw.games;
+      else if (raw.results?.games) newGames = raw.results.games;
+      else if (raw.results && Array.isArray(raw.results))
+        newGames = raw.results;
+
+      const backendTotal = raw.total || raw.totalPages || null;
+      const more = newGames.length === PAGE_SIZE;
+
+      setGames(newGames);
+      setHasMore(more);
       setPage(targetPage);
     } catch (err) {
       setError("Impossible de charger les jeux.");
@@ -96,7 +115,21 @@ const Catalogue = ({ onGameClick, user, searchTerm }) => {
     }
   }, []);
 
-  useEffect(() => { fetchGames(1); }, [params, searchTerm]);
+  useEffect(() => {
+    setEstimatedTotal(10);
+    setPage(1);
+    const delay = setTimeout(() => {
+      fetchGames(1);
+    }, 400);
+    return () => clearTimeout(delay);
+  }, [params, searchTerm]);
+
+  const handleCategoryChange = (value) => {
+    setActiveCategory(
+      CATEGORIES.find((c) => c.value === value)?.label || "Tous",
+    );
+    setParams((prev) => ({ ...prev, genre: value }));
+  };
 
   return (
       <div className="accueil-container">

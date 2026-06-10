@@ -76,14 +76,24 @@ exports.updateProfile = async (req, res, next) => {
   try {
     const userId = req.user.id;
     const { username, bio, avatarUrl, preferences, website, birthDate } = req.body;
+    const normalizedAvatarUrl = avatarUrl === "" ? undefined : avatarUrl;
+    const normalizedBirthDate = birthDate === "" ? undefined : birthDate;
+    const normalizedWebsite = website === "" ? undefined : website;
 
     const updates = { updatedAt: admin.firestore.FieldValue.serverTimestamp() };
-    if (username !== undefined) updates.username = username;
+    if (username !== undefined) {
+      const userSnap = await db.collection("users").where("username", "==", username).get();
+      const isTaken = !userSnap.empty && userSnap.docs.some(d => d.id !== userId); // Vérifier si le pseudo est déjà pris par un AUTRE utilisateur
+      if (isTaken) {
+        return res.status(409).json({ success: false, msg: "Ce pseudo est déjà pris" });
+      }
+      updates.username = username;
+    }
     if (bio !== undefined) updates.bio = bio;
     if (preferences !== undefined) updates.preferences = preferences;
-    if (avatarUrl !== undefined) updates["profileData.avatarUrl"] = avatarUrl;
-    if (website !== undefined) updates["profileData.website"] = website;
-    if (birthDate !== undefined) updates.birthDate = birthDate;
+    if (normalizedAvatarUrl !== undefined) updates["profileData.avatarUrl"] = normalizedAvatarUrl;
+    if (normalizedWebsite !== undefined) updates["profileData.website"] = normalizedWebsite;
+    if (normalizedBirthDate !== undefined) updates.birthDate = normalizedBirthDate;
 
     await db.collection("users").doc(userId).update(updates);
 
@@ -213,10 +223,16 @@ exports.deleteAccount = async (req, res, next) => {
     customListsSnap.forEach(doc => bulkWriter.delete(doc.ref));
 
     const followerSnap = await db.collection("follows").where("followerId", "==", userId).get();
-    followerSnap.forEach(doc => bulkWriter.delete(doc.ref));
+    followerSnap.forEach(doc => {
+      bulkWriter.delete(doc.ref);
+      bulkWriter.update(db.collection("users").doc(doc.data().followingId), { followersCount: admin.firestore.FieldValue.increment(-1) });
+    });
 
     const followingSnap = await db.collection("follows").where("followingId", "==", userId).get();
-    followingSnap.forEach(doc => bulkWriter.delete(doc.ref));
+    followingSnap.forEach(doc => {
+      bulkWriter.delete(doc.ref);
+      bulkWriter.update(db.collection("users").doc(doc.data().followerId), { followingCount: admin.firestore.FieldValue.increment(-1) });
+    });
 
     const notifSnap = await db.collection("notifications").where("userId", "==", userId).get();
     notifSnap.forEach(doc => bulkWriter.delete(doc.ref));
@@ -375,24 +391,19 @@ exports.updatePreferences = async (req, res, next) => {
     }
 
     const updates = { updatedAt: admin.firestore.FieldValue.serverTimestamp() };
-    const preferences = {};
 
-    if (theme !== undefined) preferences.theme = theme;
-    if (language !== undefined) preferences.language = language;
-    if (emailNotifications !== undefined)
-      preferences.emailNotifications = emailNotifications;
-    if (pushNotifications !== undefined)
-      preferences.pushNotifications = pushNotifications;
-    if (showAdultGames !== undefined) preferences.showAdultGames = !!showAdultGames;
-
-    updates.preferences = preferences;
+    if (theme !== undefined) updates['preferences.theme'] = theme;
+    if (language !== undefined) updates['preferences.language'] = language;
+    if (emailNotifications !== undefined) updates['preferences.emailNotifications'] = emailNotifications;
+    if (pushNotifications !== undefined) updates['preferences.pushNotifications'] = pushNotifications;
+    if (showAdultGames !== undefined) updates['preferences.showAdultGames'] = !!showAdultGames;
 
     await db.collection("users").doc(userId).update(updates);
 
     // Logger la mise à jour des préférences
-    await Logger.log("preferences_updated", userId, { preferences });
+    await Logger.log("preferences_updated", userId, { updates });
 
-    res.json({ success: true, msg: "Préférences mises à jour", preferences });
+    res.json({ success: true, msg: "Préférences mises à jour" });
   } catch (error) {
     next(error);
   }
