@@ -81,6 +81,21 @@ const AppInner = () => {
   const navigate = useNavigate();
   const location = useLocation();
 
+  // Intercepteur global Axios pour rediriger vers le form de connexion
+  // si un accès non autorisé est détecté (ex: jeu érotique / 18+)
+  useEffect(() => {
+    const interceptor = axios.interceptors.response.use(
+      (response) => response,
+      (error) => {
+        if (error.response?.data?.code === 'LOGIN_REQUIRED') {
+          navigate('/login');
+        }
+        return Promise.reject(error);
+      }
+    );
+    return () => axios.interceptors.response.eject(interceptor);
+  }, [navigate]);
+
   const [theme, setTheme] = useState("dark");
   const toggleTheme = () => {
     const newTheme = theme === "dark" ? "light" : "dark";
