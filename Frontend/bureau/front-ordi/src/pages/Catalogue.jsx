@@ -74,24 +74,32 @@ const CATEGORIES = [
 
 const Catalogue = ({ onGameClick, user, searchTerm }) => {
   const navigate = useNavigate();
-
-  // --- Persistance de la page dans l'URL (?page=2) ---
   const [searchParams, setSearchParams] = useSearchParams();
+
+  // --- 1. Persistance globale via l'URL (Page ET Filtres) ---
   const urlPage = parseInt(searchParams.get("page") || "1", 10);
+  const urlGenre = searchParams.get("genre") || "";
+  const urlPlatform = searchParams.get("platform") || "";
+  const urlSortBy = searchParams.get("sortBy") || "total_rating";
+  const urlSortOrder = searchParams.get("sortOrder") || "desc";
 
   const [games, setGames] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [page, setPage] = useState(urlPage);
   const [hasMore, setHasMore] = useState(true);
+
   const [params, setParams] = useState({
-    sortBy: "total_rating",
-    sortOrder: "desc",
-    genre: "",
-    platform: "",
+    sortBy: urlSortBy,
+    sortOrder: urlSortOrder,
+    genre: urlGenre,
+    platform: urlPlatform,
     style: "",
   });
-  const [activeCategory, setActiveCategory] = useState("Tous");
+
+  const [activeCategory, setActiveCategory] = useState(
+    CATEGORIES.find((c) => c.value === urlGenre)?.label || "Tous",
+  );
 
   const paramsRef = useRef(params);
   const searchTermRef = useRef(searchTerm);
@@ -99,6 +107,7 @@ const Catalogue = ({ onGameClick, user, searchTerm }) => {
   useEffect(() => {
     paramsRef.current = params;
   }, [params]);
+
   useEffect(() => {
     searchTermRef.current = searchTerm;
   }, [searchTerm]);
@@ -114,10 +123,20 @@ const Catalogue = ({ onGameClick, user, searchTerm }) => {
       setError(null);
       setLoading(true);
 
-      // Mettre à jour l'URL avec la nouvelle page
+      const currentParams = paramsRef.current;
+      const currentSearchTerm = searchTermRef.current;
+
+      // Mettre à jour l'ensemble des paramètres dans l'URL
       setSearchParams((prev) => {
         const next = new URLSearchParams(prev);
         next.set("page", String(targetPage));
+        if (currentParams.genre) next.set("genre", currentParams.genre);
+        else next.delete("genre");
+        if (currentParams.platform)
+          next.set("platform", currentParams.platform);
+        else next.delete("platform");
+        next.set("sortBy", currentParams.sortBy);
+        next.set("sortOrder", currentParams.sortOrder);
         return next;
       });
 
@@ -126,8 +145,6 @@ const Catalogue = ({ onGameClick, user, searchTerm }) => {
           ? await authAxios()
           : axios.create({ baseURL: "http://localhost:3000/api" });
 
-        const currentParams = paramsRef.current;
-        const currentSearchTerm = searchTermRef.current;
         const hasSearchTerm = currentSearchTerm?.trim() !== "";
         const endpoint = hasSearchTerm
           ? "search"
@@ -165,38 +182,35 @@ const Catalogue = ({ onGameClick, user, searchTerm }) => {
         setError("Impossible de charger les jeux.");
       } finally {
         setLoading(false);
-        // Scroll en haut APRÈS le rendu des jeux
         window.scrollTo({ top: 0, behavior: "smooth" });
       }
     },
     [setSearchParams],
   );
 
-  // Quand les filtres ou le searchTerm changent → retour page 1
+  // --- 2. Gestion unifiée du cycle de vie (Correction du Bug) ---
+  const isInitialMount = useRef(true);
+
   useEffect(() => {
+    if (isInitialMount.current) {
+      isInitialMount.current = false;
+      // Au premier montage, on charge directement la page et les filtres issus de l'URL
+      fetchGames(urlPage);
+      return;
+    }
+
+    // Quand l'utilisateur modifie un filtre ou recherche → retour page 1 avec debounce
     setPage(1);
     const delay = setTimeout(() => {
       fetchGames(1);
     }, 400);
     return () => clearTimeout(delay);
-  }, [params, searchTerm]);
+  }, [params, searchTerm]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Remonter en haut de page automatiquement lors du changement de pagination
+  // Remonter en haut automatiquement lors des changements de page manuels
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: "smooth" });
   }, [page]);
-
-  // Au montage : si l'URL contient ?page=X (retour depuis une fiche jeu), on restaure la page
-  const hasMounted = useRef(false);
-  useEffect(() => {
-    if (!hasMounted.current) {
-      hasMounted.current = true;
-      if (urlPage > 1) {
-        fetchGames(urlPage);
-      }
-      // sinon le useEffect params/searchTerm s'en charge
-    }
-  }, []); // eslint-disable-line
 
   const handleCategoryChange = (value) => {
     setActiveCategory(
