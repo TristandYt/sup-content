@@ -24,14 +24,12 @@ const Parametres = ({ user }) => {
     const [loading, setLoading] = useState(false);
     const [exportLoading, setExportLoading] = useState(false);
 
-    // initialisation depuis l'utilisateur actuel si besoin
     useEffect(() => {
         if (user && user.preferences) {
             setPreferences(user.preferences);
         }
     }, [user]);
 
-    // ── Gestion des toggles ──
     const togglePreference = async (key) => {
         setLoading(true);
         const newPrefs = { ...preferences, [key]: !preferences[key] };
@@ -39,33 +37,45 @@ const Parametres = ({ user }) => {
 
         try {
             const api = await authAxios();
-            // met a jour le profil avec les nouvelles preference
             await api.put("/users/profile", { preferences: newPrefs });
         } catch (err) {
             alert("Erreur lors de la mise à jour des paramètres.");
-            // rollback en cas d'erreur
             setPreferences(preferences);
         } finally {
             setLoading(false);
         }
     };
 
-    // ── Export des données personnelles ──
+    git  ── Exportation Minimaliste & RGPD Compliant ──
     const handleExportData = async () => {
         setExportLoading(true);
         try {
             const api = await authAxios();
             const res = await api.get("/users/me/export");
+            const rawData = res.data;
 
-            // creation d'un fichier JSON downloadable
-            const dataStr = JSON.stringify(res.data, null, 2);
+            const minimalistExport = {
+                utilisateur: {
+                    pseudo: user?.pseudo || rawData.user?.username || rawData.user?.pseudo || "Joueur",
+                    email: user?.email || rawData.user?.email || "Non renseigné"
+                },
+                collection: (rawData.library || rawData.collection || []).map(
+                    game => game.gameName || game.name || "Jeu sans nom"
+                ),
+                listes_personnalisees: (rawData.lists || rawData.customLists || []).map(list => ({
+                    nom_liste: list.name || "Liste sans nom",
+                    jeux: (list.games || []).map(game => game.gameName || game.name || "Jeu sans nom")
+                }))
+            };
+
+            // Génération du fichier nettoyé
+            const dataStr = JSON.stringify(minimalistExport, null, 2);
             const blob = new Blob([dataStr], { type: "application/json" });
             const url = URL.createObjectURL(blob);
 
-            // download auto
             const link = document.createElement("a");
             link.href = url;
-            link.download = `TGMF_Export_Donnees_${user?.pseudo || "User"}.json`;
+            link.download = `TGMF_Donnees_${user?.pseudo || "Utilisateur"}.json`;
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
@@ -79,7 +89,6 @@ const Parametres = ({ user }) => {
         }
     };
 
-    // ── Suppression du compte ──
     const handleDeleteAccount = async () => {
         const confirm1 = window.confirm("⚠️ ATTENTION ⚠️\n\nÊtes-vous sûr de vouloir supprimer DÉFINITIVEMENT votre compte ? Cette action effacera toutes vos listes, favoris, et messages.");
         if (!confirm1) return;
@@ -90,18 +99,13 @@ const Parametres = ({ user }) => {
         setLoading(true);
         try {
             const api = await authAxios();
-
-            //  suppression des données coté Backend
             await api.delete("/users/account");
 
-            // suppression du compte coté firebase auth
             if (auth.currentUser) {
                 await auth.currentUser.delete();
             }
 
-            // redirection vers l'accueil
             navigate("/");
-
         } catch (err) {
             console.error("Erreur Suppression:", err);
             if (err.code === "auth/requires-recent-login") {
@@ -135,7 +139,6 @@ const Parametres = ({ user }) => {
                             </h3>
 
                             <div style={{ display: "flex", flexDirection: "column", gap: "15px" }}>
-                                {/* ── Option : Profil Privé ── */}
                                 <div style={{ background: "rgba(128,128,128,0.05)", padding: "20px", borderRadius: "12px", border: "1px solid rgba(128,128,128,0.1)" }}>
                                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "10px" }}>
                                         <div>
@@ -175,7 +178,6 @@ const Parametres = ({ user }) => {
                                     </div>
                                 </div>
 
-                                {/* ── Option : Afficher les jeux +18 ── */}
                                 <div style={{ background: "rgba(128,128,128,0.05)", padding: "20px", borderRadius: "12px", border: "1px solid rgba(128,128,128,0.1)" }}>
                                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "10px" }}>
                                         <div>
@@ -224,15 +226,13 @@ const Parametres = ({ user }) => {
                             </h3>
 
                             <div style={{ display: "flex", flexDirection: "column", gap: "15px" }}>
-
-                                {/* ── Bouton Export ── */}
                                 <div style={{ background: "rgba(128,128,128,0.05)", padding: "20px", borderRadius: "12px", border: "1px solid rgba(128,128,128,0.1)", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "15px" }}>
                                     <div>
                                         <h4 style={{ margin: "0 0 4px 0", fontSize: "1.1rem", display: "flex", alignItems: "center", gap: "8px" }}>
                                             <i className="fa-solid fa-download" style={{ color: "#3b82f6" }}></i> Exporter mes données
                                         </h4>
                                         <p style={{ margin: 0, fontSize: "0.85rem", opacity: 0.7, maxWidth: "400px", lineHeight: "1.5" }}>
-                                            Téléchargez une copie de vos données personnelles (profil, favoris, listes) au format JSON.
+                                            Téléchargez une copie conforme et lisible de votre profil (pseudo, email, collection et listes) au format JSON, excluant tout identifiant technique.
                                         </p>
                                     </div>
                                     <button
@@ -242,21 +242,20 @@ const Parametres = ({ user }) => {
                                         style={{ display: "flex", alignItems: "center", gap: "8px", background: "rgba(59, 130, 246, 0.15)", borderColor: "rgba(59, 130, 246, 0.4)", color: "#3b82f6" }}
                                     >
                                         {exportLoading ? (
-                                            <><i className="fa-solid fa-circle-notch fa-spin"></i> Préparation...</>
+                                            <><i className="fa-solid fa-circle-notch fa-spin"></i> Traitement...</>
                                         ) : (
                                             <><i className="fa-solid fa-file-export"></i> Exporter</>
                                         )}
                                     </button>
                                 </div>
 
-                                {/* ── Bouton Suppression ── */}
                                 <div style={{ background: "rgba(239, 68, 68, 0.05)", padding: "20px", borderRadius: "12px", border: "1px solid rgba(239, 68, 68, 0.2)", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "15px" }}>
                                     <div>
                                         <h4 style={{ margin: "0 0 4px 0", fontSize: "1.1rem", display: "flex", alignItems: "center", gap: "8px", color: "#ef4444" }}>
                                             <i className="fa-solid fa-triangle-exclamation"></i> Zone de danger
                                         </h4>
                                         <p style={{ margin: 0, fontSize: "0.85rem", color: "#ef4444", opacity: 0.8, maxWidth: "400px", lineHeight: "1.5" }}>
-                                            Supprimer définitivement votre compte. Cette action est irréversible et supprimera toutes vos données.
+                                            Supprimer définitivement votre compte. Cette action est irréversible et écrasera l'ensemble de vos données.
                                         </p>
                                     </div>
                                     <button
@@ -265,7 +264,7 @@ const Parametres = ({ user }) => {
                                         disabled={loading}
                                         style={{ display: "flex", alignItems: "center", gap: "8px", background: "#ef4444", borderColor: "#ef4444", color: "#fff" }}
                                     >
-                                        <i className="fa-solid fa-trash-can"></i> Supprimer mon compte
+                                        <i className="fa-solid fa-trash-can"></i> Supprimer le compte
                                     </button>
                                 </div>
                             </div>
