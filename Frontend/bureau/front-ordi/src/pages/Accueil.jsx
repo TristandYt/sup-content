@@ -14,13 +14,13 @@ const authAxios = async () => {
 };
 
 const Accueil = ({
-                   onGameClick,
-                   onUserClick,
-                   searchTerm,
-                   user,
-                   onAdminClick,
-                   onOpenCatalogue,
-                 }) => {
+  onGameClick,
+  onUserClick,
+  searchTerm,
+  user,
+  onAdminClick,
+  onOpenCatalogue,
+}) => {
   const { t } = useTranslation();
   const [games, setGames] = useState([]);
   const [users, setUsers] = useState([]);
@@ -61,11 +61,11 @@ const Accueil = ({
   }, [searchType]);
 
   const CATEGORIES = [
-    { label: "Tous", value: "", icon: "fa-solid fa-layer-group" },
-    { label: "Combat", value: "4", icon: "fa-solid fa-hand-fist" },
-    { label: "Shooter", value: "5", icon: "fa-solid fa-crosshairs" },
-    { label: "RPG", value: "12", icon: "fa-solid fa-dragon" },
-    { label: "Aventure", value: "31", icon: "fa-solid fa-compass" },
+    { label: "Tous", value: "" },
+    { label: "Combat", value: "4" },
+    { label: "Shooter", value: "5" },
+    { label: "RPG", value: "12" },
+    { label: "Aventure", value: "31" },
   ];
 
   const getImageUrl = (game) => {
@@ -95,8 +95,8 @@ const Accueil = ({
           valA = (a.name || "").toLowerCase();
           valB = (b.name || "").toLowerCase();
           return sortOrder === "asc"
-              ? valA.localeCompare(valB)
-              : valB.localeCompare(valA);
+            ? valA.localeCompare(valB)
+            : valB.localeCompare(valA);
 
         case "first_release_date":
           valA = a.first_release_date || 0;
@@ -221,8 +221,8 @@ const Accueil = ({
 
     try {
       const api = auth.currentUser
-          ? await authAxios()
-          : axios.create({ baseURL: "http://localhost:3000/api" });
+        ? await authAxios()
+        : axios.create({ baseURL: "http://localhost:3000/api" });
 
       const res = await api.get("/games/upcoming", {
         params: { page: targetPage, limit: UPCOMING_PAGE_SIZE },
@@ -254,450 +254,455 @@ const Accueil = ({
 
   const handleCategoryChange = (value) => {
     setActiveCategory(
-        CATEGORIES.find((c) => c.value === value)?.label || "Tous",
+      CATEGORIES.find((c) => c.value === value)?.label || "Tous",
     );
     setParams((prev) => ({ ...prev, genre: value }));
   };
 
   return (
-      <div className="accueil-container">
-        <div className="hero-section">
-          <div className="hero-gradient"></div>
-          <div className="hero-content">
-            <h2 className="hero-title">Découvrez les meilleurs jeux</h2>
-            <p className="hero-subtitle">
-              Tout le contenu sur TGMF à portée de clic. Explorez, filtrez et trouvez votre prochain jeu préféré.
-            </p>
+    <div className="accueil-container">
+      <div className="hero-section">
+        <div className="hero-gradient"></div>
+        <div className="hero-content">
+          <h2 className="hero-title">Découvrez les meilleurs jeux</h2>
+          <p className="hero-subtitle">
+            Tout le contenu sur TGMF à portée de clic. Explorez, filtrez et
+            trouvez votre prochain jeu préféré.
+          </p>
+        </div>
+      </div>
+
+      <div className="categories-nav" style={{ marginBottom: "1rem" }}>
+        <button
+          className={`category-btn ${searchType === "games" ? "active" : ""}`}
+          onClick={() => setSearchType("games")}
+        >
+          🎮 Jeux
+        </button>
+        <button
+          className={`category-btn ${searchType === "users" ? "active" : ""}`}
+          onClick={() => setSearchType("users")}
+        >
+          👥 Membres
+        </button>
+        {user?.role === "admin" && (
+          <button
+            className="category-btn"
+            style={{ borderColor: "#a78bfa", color: "#a78bfa" }}
+            onClick={onAdminClick}
+          >
+            🛡️ Administration
+          </button>
+        )}
+      </div>
+
+      {searchType === "games" && (
+        <div className="categories-nav">
+          {CATEGORIES.map((category) => (
+            <button
+              key={category.value}
+              onClick={() => handleCategoryChange(category.value)}
+              className={`category-btn ${
+                activeCategory === category.label ? "active" : ""
+              }`}
+            >
+              {category.label}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {searchType === "games" && (
+        <div className="filters-section">
+          <div className="filters-container">
+            <select
+              value={params.platform}
+              onChange={(e) =>
+                setParams((prev) => ({ ...prev, platform: e.target.value }))
+              }
+              className="filter-select"
+            >
+              <option value="">🎮 Toutes Plateformes</option>
+              <option value="6">💻 PC (Windows)</option>
+              <option value="48">🎮 PlayStation 4</option>
+              <option value="167">🎮 PlayStation 5</option>
+              <option value="49">🎮 Xbox One</option>
+              <option value="169">🎮 Xbox Series X|S</option>
+              <option value="130">🎮 Nintendo Switch</option>
+            </select>
+
+            <select
+              value={params.style}
+              onChange={(e) =>
+                setParams((prev) => ({ ...prev, style: e.target.value }))
+              }
+              className="filter-select"
+            >
+              <option value="">🎭 Tous les Styles</option>
+              <option value="1">💥 Action</option>
+              <option value="18">🚀 Science-Fiction</option>
+              <option value="19">👻 Horreur</option>
+              <option value="21">🏕️ Survie</option>
+              <option value="22">🌍 Open World</option>
+            </select>
+
+            <select
+              value={params.sortBy}
+              onChange={(e) =>
+                setParams((prev) => ({ ...prev, sortBy: e.target.value }))
+              }
+              className="filter-select"
+            >
+              <option value="total_rating">⭐ Note</option>
+              <option value="name">📝 Nom</option>
+              <option value="first_release_date">📅 Date de sortie</option>
+            </select>
+
+            <button
+              onClick={() =>
+                setParams((prev) => ({
+                  ...prev,
+                  sortOrder: prev.sortOrder === "asc" ? "desc" : "asc",
+                }))
+              }
+              className="filter-select sort-btn"
+            >
+              {params.sortOrder === "asc" ? "↑ Croissant" : "↓ Décroissant"}
+            </button>
           </div>
         </div>
+      )}
 
-        <div className="categories-nav" style={{ marginBottom: "1rem" }}>
-          <button
-              className={`category-btn ${searchType === "games" ? "active" : ""}`}
-              onClick={() => setSearchType("games")}
-          >
-            <i className="fa-solid fa-gamepad" style={{ marginRight: "8px" }}></i> Jeux
-          </button>
-          <button
-              className={`category-btn ${searchType === "users" ? "active" : ""}`}
-              onClick={() => setSearchType("users")}
-          >
-            <i className="fa-solid fa-users" style={{ marginRight: "8px" }}></i> Membres
-          </button>
-          {user?.role === "admin" && (
-              <button
-                  className="category-btn"
-                  style={{ borderColor: "#a78bfa", color: "#a78bfa" }}
-                  onClick={onAdminClick}
-              >
-                <i className="fa-solid fa-lock" style={{ marginRight: "6px" }}></i> Administration
-              </button>
-          )}
+      <div className="section-header">
+        <div className="section-icon">
+          {searchType === "games" ? "🔥" : "✨"}
         </div>
+        <h3 className="section-title">
+          {searchTerm
+            ? `Résultats pour "${searchTerm}"`
+            : searchType === "games"
+              ? "Tendances mondiales"
+              : "Membres de la communauté"}
+        </h3>
+      </div>
 
-        {searchType === "games" && (
-            <div className="categories-nav">
-              {CATEGORIES.map((category) => (
-                  <button
-                      key={category.value}
-                      onClick={() => handleCategoryChange(category.value)}
-                      className={`category-btn ${
-                          activeCategory === category.label ? "active" : ""
-                      }`}
-                  >
-                    <i className={category.icon} style={{ marginRight: "6px" }}></i>
-                    {category.label}
-                  </button>
-              ))}
-            </div>
-        )}
-
-        {/* ── FILTRES (On garde les EMOJIS natifs ici car les icônes FontAwesome cassent dans un <select>) ── */}
-        {searchType === "games" && (
-            <div className="filters-section">
-              <div className="filters-container">
-                <select
-                    value={params.platform}
-                    onChange={(e) => setParams((prev) => ({ ...prev, platform: e.target.value }))}
-                    className="filter-select"
-                >
-                  <option value="">🎮 Toutes Plateformes</option>
-                  <option value="6">💻 PC (Windows)</option>
-                  <option value="48">🎮 PlayStation 4</option>
-                  <option value="167">🎮 PlayStation 5</option>
-                  <option value="49">🎮 Xbox One</option>
-                  <option value="169">🎮 Xbox Series X|S</option>
-                  <option value="130">🎮 Nintendo Switch</option>
-                </select>
-
-                <select
-                    value={params.style}
-                    onChange={(e) => setParams((prev) => ({ ...prev, style: e.target.value }))}
-                    className="filter-select"
-                >
-                  <option value="">🎭 Tous les Styles</option>
-                  <option value="1">💥 Action</option>
-                  <option value="18">🚀 Science-Fiction</option>
-                  <option value="19">👻 Horreur</option>
-                  <option value="21">🏕️ Survie</option>
-                  <option value="22">🌍 Open World</option>
-                </select>
-
-                <select
-                    value={params.sortBy}
-                    onChange={(e) => setParams((prev) => ({ ...prev, sortBy: e.target.value }))}
-                    className="filter-select"
-                >
-                  <option value="total_rating">⭐ Note</option>
-                  <option value="name">📝 Nom</option>
-                  <option value="first_release_date">📅 Date de sortie</option>
-                </select>
-
-                <button
-                    onClick={() =>
-                        setParams((prev) => ({
-                          ...prev,
-                          sortOrder: prev.sortOrder === "asc" ? "desc" : "asc",
-                        }))
-                    }
-                    className="filter-select sort-btn"
-                    style={{ display: "flex", alignItems: "center", gap: "6px" }}
-                >
-                  <i className={params.sortOrder === "asc" ? "fa-solid fa-arrow-up-wide-short" : "fa-solid fa-arrow-down-wide-short"}></i>
-                  {params.sortOrder === "asc" ? "Croissant" : "Décroissant"}
-                </button>
-              </div>
-            </div>
-        )}
-
-        <div className="section-header">
-          <div className="section-icon">
-            {searchType === "games" ? (
-                <i className="fa-solid fa-fire" style={{ color: "rgb(239, 68, 68)" }}></i>
-            ) : (
-                <i className="fa-solid fa-users" style={{ color: "rgb(59, 130, 246)" }}></i>
-            )}
+      {loading && games.length === 0 && users.length === 0 ? (
+        <div className="loading-container">
+          <div className="loading-spinner"></div>
+          <p className="loading-text">Chargement en cours...</p>
+        </div>
+      ) : error ? (
+        <div className="empty-state">
+          <div className="empty-icon">⚠️</div>
+          <h3 className="empty-title">Erreur de connexion</h3>
+          <p className="empty-text">{error}</p>
+        </div>
+      ) : (searchType === "games" ? games.length : users.length) === 0 ? (
+        <div className="empty-state">
+          <div className="empty-icon">
+            {searchType === "games" ? "🎮" : "👤"}
           </div>
-          <h3 className="section-title">
-            {searchTerm
-                ? `Résultats pour "${searchTerm}"`
-                : searchType === "games"
-                    ? "Tendances mondiales"
-                    : "Membres de la communauté"}
-          </h3>
+          <h3 className="empty-title">Aucun résultat</h3>
+          <p className="empty-text">
+            Essayez de modifier vos filtres ou votre recherche
+          </p>
         </div>
-
-        {loading && games.length === 0 && users.length === 0 ? (
-            <div className="loading-container">
-              <div className="loading-spinner"></div>
-              <p className="loading-text">Chargement en cours...</p>
-            </div>
-        ) : error ? (
-            <div className="empty-state">
-              <div className="empty-icon">
-                <i className="fa-solid fa-xmark" style={{ color: "rgb(239, 68, 68)" }}></i>
-              </div>
-              <h3 className="empty-title">Erreur de connexion</h3>
-              <p className="empty-text">{error}</p>
-            </div>
-        ) : (searchType === "games" ? games.length : users.length) === 0 ? (
-            <div className="empty-state">
-              <div className="empty-icon">
-                {searchType === "games" ? (
-                    <i className="fa-solid fa-gamepad" style={{ color: "rgb(148, 163, 184)" }}></i>
-                ) : (
-                    <i className="fa-solid fa-user" style={{ color: "rgb(148, 163, 184)" }}></i>
-                )}
-              </div>
-              <h3 className="empty-title">Aucun résultat</h3>
-              <p className="empty-text">Essayez de modifier vos filtres ou votre recherche</p>
-            </div>
-        ) : (
-            <div className={searchType === "games" ? "games-grid" : "game-grid"}>
-              {searchType === "games"
-                  ? games.map((game) => (
-                      <div
-                          key={game.id}
-                          onClick={() => onGameClick(game.id)}
-                          className="game-card-modern"
-                      >
-                        <div className="game-image-container">
-                          <img
-                              src={getImageUrl(game)}
-                              alt={game.name}
-                              className="game-image"
-                          />
-                          <div className="game-overlay"></div>
-                          {game.total_rating && (
-                              <div className="rating-badge">
-                        <span className="rating-star">
-                          <i className="fa-solid fa-star" style={{ color: "rgb(255, 212, 59)" }}></i>
-                        </span>
-                                <span className="rating-value">
+      ) : (
+        <div className={searchType === "games" ? "games-grid" : "game-grid"}>
+          {searchType === "games"
+            ? games.map((game) => (
+                <div
+                  key={game.id}
+                  onClick={() => onGameClick(game.id)}
+                  className="game-card-modern"
+                >
+                  <div className="game-image-container">
+                    <img
+                      src={getImageUrl(game)}
+                      alt={game.name}
+                      className="game-image"
+                    />
+                    <div className="game-overlay"></div>
+                    {game.total_rating && (
+                      <div className="rating-badge">
+                        <span className="rating-star">⭐</span>
+                        <span className="rating-value">
                           {(game.total_rating / 20).toFixed(1)}
                         </span>
-                              </div>
-                          )}
-                        </div>
-                        <div className="game-content">
-                          <h3 className="game-title">{game.name}</h3>
-                          <div className="game-meta">
+                      </div>
+                    )}
+                  </div>
+                  <div className="game-content">
+                    <h3 className="game-title">{game.name}</h3>
+                    <div className="game-meta">
                       <span className="game-year">
                         {game.first_release_date
-                            ? new Date(game.first_release_date * 1000).getFullYear()
-                            : "TBA"}
+                          ? new Date(
+                              game.first_release_date * 1000,
+                            ).getFullYear()
+                          : "TBA"}
                       </span>
-                            {game.genres && game.genres.length > 0 && (
-                                <span className="game-genre">{game.genres[0].name}</span>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                  ))
-                  : users.map((u) => (
-                      <div
-                          key={u.id || u.uid}
-                          className="game-card-modern"
-                          style={{ cursor: "pointer" }}
-                          onClick={() => onUserClick && onUserClick(u.id || u.uid)}
-                      >
-                        <div
-                            className="game-image-container"
-                            style={{
-                              borderRadius: "50%",
-                              width: "120px",
-                              height: "120px",
-                              margin: "20px auto 10px",
-                              overflow: "hidden",
-                            }}
-                        >
-                          <img
-                              src={
-                                  u.avatar ||
-                                  u.photoURL ||
-                                  `https://api.dicebear.com/7.x/bottts/svg?seed=${u.username || u.pseudo}`
-                              }
-                              alt={u.username || u.pseudo}
-                              className="game-image"
-                          />
-                        </div>
-                        <div
-                            className="game-content"
-                            style={{ textAlign: "center", paddingBottom: "20px" }}
-                        >
-                          <h3 className="game-title">{u.username || u.pseudo}</h3>
-                          <p className="game-genre" style={{ fontSize: "0.8rem" }}>
-                            {u.bio || "Joueur passionné"}
-                          </p>
-                        </div>
-                      </div>
-                  ))}
-            </div>
-        )}
-
-        {/* ── Bouton catalogue ── */}
-        {searchType === "games" &&
-            !searchTerm &&
-            games.length > 0 &&
-            onOpenCatalogue && (
-                <div
-                    style={{
-                      display: "flex",
-                      justifyContent: "center",
-                      marginTop: "40px",
-                      padding: "20px",
-                      borderTop: "1px solid rgba(255,255,255,0.05)",
-                    }}
-                >
-                  <button
-                      className="category-btn active"
-                      onClick={onOpenCatalogue}
-                      style={{ padding: "12px 60px", fontSize: "1rem" }}
-                  >
-                    Voir tout le catalogue
-                  </button>
-                </div>
-            )}
-
-        {/* ── Jeux à venir ── */}
-        {searchType === "games" && !searchTerm && (
-            <div style={{ marginTop: "3rem" }}>
-              <div className="section-header">
-                <div className="section-icon">
-                  <i className="fa-solid fa-clock" style={{ color: "rgb(59, 130, 246)" }}></i>
-                </div>
-                <h3 className="section-title">Jeux à venir</h3>
-              </div>
-
-              {upcomingLoading ? (
-                  <div className="loading-container">
-                    <div className="loading-spinner"></div>
-                    <p className="loading-text">Chargement des jeux à venir...</p>
-                  </div>
-              ) : upcomingGames.length === 0 ? (
-                  <div className="empty-state">
-                    <div className="empty-icon">
-                      <i className="fa-solid fa-calendar" style={{ color: "rgb(148, 163, 184)" }}></i>
-                    </div>
-                    <h3 className="empty-title">Aucun jeu à venir</h3>
-                    <p className="empty-text">Restez à l'écoute, de nouveaux titres arrivent bientôt !</p>
-                  </div>
-              ) : (
-                  <div style={{ position: "relative", padding: "0 28px" }}>
-                    <button
-                        onClick={() => scrollCarousel("left")}
-                        style={{
-                          position: "absolute",
-                          left: "0",
-                          top: "50%",
-                          transform: "translateY(-50%)",
-                          zIndex: 10,
-                          background: "rgba(20,20,35,0.92)",
-                          border: "1px solid rgba(167,139,250,0.3)",
-                          borderRadius: "50%",
-                          width: "40px",
-                          height: "40px",
-                          cursor: "pointer",
-                          color: "#a78bfa",
-                          fontSize: "1.3rem",
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          boxShadow: "0 4px 15px rgba(0,0,0,0.4)",
-                        }}
-                    >
-                      <i className="fa-solid fa-chevron-left"></i>
-                    </button>
-
-                    <div
-                        ref={upcomingRef}
-                        style={{
-                          display: "flex",
-                          gap: "14px",
-                          overflowX: "auto",
-                          scrollbarWidth: "none",
-                          msOverflowStyle: "none",
-                          paddingBottom: "8px",
-                        }}
-                    >
-                      {upcomingGames.map((game) => (
-                          <div
-                              key={game.id}
-                              onClick={() => onGameClick(game.id)}
-                              className="game-card-modern"
-                              style={{
-                                minWidth: "160px",
-                                maxWidth: "160px",
-                                flexShrink: 0,
-                              }}
-                          >
-                            <div className="game-image-container">
-                              <img
-                                  src={getImageUrl(game)}
-                                  alt={game.name}
-                                  className="game-image"
-                              />
-                              <div className="game-overlay"></div>
-                              {game.total_rating && (
-                                  <div className="rating-badge">
-                          <span className="rating-star">
-                            <i className="fa-solid fa-star" style={{ color: "rgb(255, 212, 59)" }}></i>
-                          </span>
-                                    <span className="rating-value">
-                            {(game.total_rating / 20).toFixed(1)}
-                          </span>
-                                  </div>
-                              )}
-                            </div>
-                            <div className="game-content">
-                              <h3 className="game-title" style={{ fontSize: "0.8rem" }}>
-                                {game.name}
-                              </h3>
-                              <div className="game-meta">
-                        <span className="game-year">
-                          {game.first_release_date
-                              ? new Date(game.first_release_date * 1000).getFullYear()
-                              : "TBA"}
+                      {game.genres && game.genres.length > 0 && (
+                        <span className="game-genre">
+                          {game.genres[0].name}
                         </span>
-                              </div>
-                            </div>
-                          </div>
-                      ))}
-
-                      {upcomingHasMore && (
-                          <div
-                              style={{
-                                minWidth: "160px",
-                                maxWidth: "160px",
-                                flexShrink: 0,
-                                display: "flex",
-                                flexDirection: "column",
-                                alignItems: "center",
-                                justifyContent: "center",
-                                cursor: upcomingLoadingMore ? "default" : "pointer",
-                                border: "1px solid rgba(167,139,250,0.3)",
-                                borderRadius: "12px",
-                                gap: "10px",
-                                color: "#a78bfa",
-                                opacity: upcomingLoadingMore ? 0.6 : 1,
-                                transition: "all 0.2s",
-                              }}
-                              onClick={() => {
-                                if (!upcomingLoadingMore) fetchUpcoming(upcomingPage + 1, true);
-                              }}
-                          >
-                            {upcomingLoadingMore ? (
-                                <>
-                                  <div className="loading-spinner" style={{ width: "24px", height: "24px" }} />
-                                  <span style={{ fontSize: "0.75rem" }}>Chargement...</span>
-                                </>
-                            ) : (
-                                <>
-                        <span style={{ fontSize: "1.8rem" }}>
-                          <i className="fa-solid fa-circle-plus"></i>
-                        </span>
-                                  <span style={{ fontSize: "0.75rem", textAlign: "center", padding: "0 10px" }}>
-                          Voir plus
-                        </span>
-                                </>
-                            )}
-                          </div>
                       )}
                     </div>
-
-                    <button
-                        onClick={() => scrollCarousel("right")}
-                        style={{
-                          position: "absolute",
-                          right: "0",
-                          top: "50%",
-                          transform: "translateY(-50%)",
-                          zIndex: 10,
-                          background: "rgba(20,20,35,0.92)",
-                          border: "1px solid rgba(167,139,250,0.3)",
-                          borderRadius: "50%",
-                          width: "40px",
-                          height: "40px",
-                          cursor: "pointer",
-                          color: "#a78bfa",
-                          fontSize: "1.3rem",
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          boxShadow: "0 4px 15px rgba(0,0,0,0.4)",
-                        }}
-                    >
-                      <i className="fa-solid fa-chevron-right"></i>
-                    </button>
                   </div>
-              )}
-            </div>
+                </div>
+              ))
+            : users.map((u) => (
+                <div
+                  key={u.id || u.uid}
+                  className="game-card-modern"
+                  style={{ cursor: "pointer" }}
+                  onClick={() => onUserClick && onUserClick(u.id || u.uid)}
+                >
+                  <div
+                    className="game-image-container"
+                    style={{
+                      borderRadius: "50%",
+                      width: "120px",
+                      height: "120px",
+                      margin: "20px auto 10px",
+                      overflow: "hidden",
+                    }}
+                  >
+                    <img
+                      src={
+                        u.avatar ||
+                        u.photoURL ||
+                        `https://api.dicebear.com/7.x/bottts/svg?seed=${u.username || u.pseudo}`
+                      }
+                      alt={u.username || u.pseudo}
+                      className="game-image"
+                    />
+                  </div>
+                  <div
+                    className="game-content"
+                    style={{ textAlign: "center", paddingBottom: "20px" }}
+                  >
+                    <h3 className="game-title">{u.username || u.pseudo}</h3>
+                    <p className="game-genre" style={{ fontSize: "0.8rem" }}>
+                      {u.bio || "Joueur passionné"}
+                    </p>
+                  </div>
+                </div>
+              ))}
+        </div>
+      )}
+
+      {/* ── Bouton catalogue ── */}
+      {searchType === "games" &&
+        !searchTerm &&
+        games.length > 0 &&
+        onOpenCatalogue && (
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "center",
+              marginTop: "40px",
+              padding: "20px",
+              borderTop: "1px solid rgba(255,255,255,0.05)",
+            }}
+          >
+            <button
+              className="category-btn active"
+              onClick={onOpenCatalogue}
+              style={{ padding: "12px 60px", fontSize: "1rem" }}
+            >
+              Voir tout le catalogue
+            </button>
+          </div>
         )}
 
-        <style>{`
+      {/* ── Jeux à venir ── */}
+      {searchType === "games" && !searchTerm && (
+        <div style={{ marginTop: "3rem" }}>
+          <div className="section-header">
+            <div className="section-icon">🚀</div>
+            <h3 className="section-title">Jeux à venir</h3>
+          </div>
+
+          {upcomingLoading ? (
+            <div className="loading-container">
+              <div className="loading-spinner"></div>
+              <p className="loading-text">Chargement des jeux à venir...</p>
+            </div>
+          ) : upcomingGames.length === 0 ? (
+            <div className="empty-state">
+              <div className="empty-icon">📅</div>
+              <h3 className="empty-title">Aucun jeu à venir</h3>
+              <p className="empty-text">
+                Restez à l'écoute, de nouveaux titres arrivent bientôt !
+              </p>
+            </div>
+          ) : (
+            <div style={{ position: "relative", padding: "0 28px" }}>
+              <button
+                onClick={() => scrollCarousel("left")}
+                style={{
+                  position: "absolute",
+                  left: "0",
+                  top: "50%",
+                  transform: "translateY(-50%)",
+                  zIndex: 10,
+                  background: "rgba(20,20,35,0.92)",
+                  border: "1px solid rgba(167,139,250,0.3)",
+                  borderRadius: "50%",
+                  width: "40px",
+                  height: "40px",
+                  cursor: "pointer",
+                  color: "#a78bfa",
+                  fontSize: "1.3rem",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  boxShadow: "0 4px 15px rgba(0,0,0,0.4)",
+                }}
+              >
+                ‹
+              </button>
+
+              <div
+                ref={upcomingRef}
+                style={{
+                  display: "flex",
+                  gap: "14px",
+                  overflowX: "auto",
+                  scrollbarWidth: "none",
+                  msOverflowStyle: "none",
+                  paddingBottom: "8px",
+                }}
+              >
+                {upcomingGames.map((game) => (
+                  <div
+                    key={game.id}
+                    onClick={() => onGameClick(game.id)}
+                    className="game-card-modern"
+                    style={{
+                      minWidth: "160px",
+                      maxWidth: "160px",
+                      flexShrink: 0,
+                    }}
+                  >
+                    <div className="game-image-container">
+                      <img
+                        src={getImageUrl(game)}
+                        alt={game.name}
+                        className="game-image"
+                      />
+                      <div className="game-overlay"></div>
+                      {game.total_rating && (
+                        <div className="rating-badge">
+                          <span className="rating-star">⭐</span>
+                          <span className="rating-value">
+                            {(game.total_rating / 20).toFixed(1)}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                    <div className="game-content">
+                      <h3 className="game-title" style={{ fontSize: "0.8rem" }}>
+                        {game.name}
+                      </h3>
+                      <div className="game-meta">
+                        <span className="game-year">
+                          {game.first_release_date
+                            ? new Date(
+                                game.first_release_date * 1000,
+                              ).getFullYear()
+                            : "TBA"}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+
+                {upcomingHasMore && (
+                  <div
+                    style={{
+                      minWidth: "160px",
+                      maxWidth: "160px",
+                      flexShrink: 0,
+                      display: "flex",
+                      flexDirection: "column",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      cursor: upcomingLoadingMore ? "default" : "pointer",
+                      border: "1px solid rgba(167,139,250,0.3)",
+                      borderRadius: "12px",
+                      gap: "10px",
+                      color: "#a78bfa",
+                      opacity: upcomingLoadingMore ? 0.6 : 1,
+                      transition: "all 0.2s",
+                    }}
+                    onClick={() => {
+                      if (!upcomingLoadingMore)
+                        fetchUpcoming(upcomingPage + 1, true);
+                    }}
+                  >
+                    {upcomingLoadingMore ? (
+                      <>
+                        <div
+                          className="loading-spinner"
+                          style={{ width: "24px", height: "24px" }}
+                        />
+                        <span style={{ fontSize: "0.75rem" }}>
+                          Chargement...
+                        </span>
+                      </>
+                    ) : (
+                      <>
+                        <span style={{ fontSize: "1.8rem" }}>›</span>
+                        <span
+                          style={{
+                            fontSize: "0.75rem",
+                            textAlign: "center",
+                            padding: "0 10px",
+                          }}
+                        >
+                          Voir plus
+                        </span>
+                      </>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              <button
+                onClick={() => scrollCarousel("right")}
+                style={{
+                  position: "absolute",
+                  right: "0",
+                  top: "50%",
+                  transform: "translateY(-50%)",
+                  zIndex: 10,
+                  background: "rgba(20,20,35,0.92)",
+                  border: "1px solid rgba(167,139,250,0.3)",
+                  borderRadius: "50%",
+                  width: "40px",
+                  height: "40px",
+                  cursor: "pointer",
+                  color: "#a78bfa",
+                  fontSize: "1.3rem",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  boxShadow: "0 4px 15px rgba(0,0,0,0.4)",
+                }}
+              >
+                ›
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+
+      <style>{`
         div[style*="overflowX: auto"]::-webkit-scrollbar { display: none; }
       `}</style>
-      </div>
+    </div>
   );
 };
 

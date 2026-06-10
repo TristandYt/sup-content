@@ -2,7 +2,6 @@ import React, { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import axios from "axios";
 import { auth } from "../Service/firebase";
-import { statusConfig } from "../Utils/icons";
 import "../../Style/Styles.css";
 import defaultCover from "../assets/fr-default-large_default.jpg";
 
@@ -100,7 +99,7 @@ const PublicProfile = ({
         username: userData.username || userData.pseudo || "Utilisateur",
         bio: userData.bio || "",
         website: userData.website || "",
-        avatar: userData.avatar || userData.profileData?.avatarUrl || userData.photoURL || null,
+        avatar: userData.avatar || userData.photoURL || null,
         followersCount: userData.followersCount || 0,
         followingCount: userData.followingCount || 0,
         gamesCount: lib.length,
@@ -109,7 +108,6 @@ const PublicProfile = ({
       });
 
       setLibrary(lib);
-      // On filtre les listes privées dans la vue publique
       setCustomLists((customListsReq.data?.lists || []).filter((l) => !l.isPrivate));
 
       const myFollowing = followingRes.data?.following || [];
@@ -186,14 +184,11 @@ const PublicProfile = ({
     return defaultCover;
   };
 
-  const renderStatus = (status) => {
-    const cfg = statusConfig[status] || statusConfig.to_play;
-    return (
-        <span style={{ display: "inline-flex", alignItems: "center" }}>
-            <i className={cfg.icon} style={{ color: cfg.color, marginRight: "8px" }}></i>
-          {cfg.label}
-        </span>
-    );
+  const statusMapping = {
+    to_play: "⏳ À faire",
+    playing: "🎮 En cours",
+    finished: "✅ Fini",
+    dropped: "❌ Abandonné",
   };
 
   if (loading) {
@@ -208,10 +203,10 @@ const PublicProfile = ({
   if (error || !profile) {
     return (
         <div className="accueil-container" style={{ textAlign: "center", paddingTop: "80px" }}>
-          <div className="empty-icon"><i className="fa-solid fa-ghost" style={{color: "rgb(148, 163, 184)"}}></i></div>
+          <div className="empty-icon">😕</div>
           <h3 className="empty-title">Profil introuvable</h3>
           <p className="empty-text">{error}</p>
-          <button className="category-btn" onClick={onBack} style={{ marginTop: "20px" }}>Retour</button>
+          <button className="category-btn" onClick={onBack} style={{ marginTop: "20px" }}>← Retour</button>
         </div>
     );
   }
@@ -220,7 +215,7 @@ const PublicProfile = ({
       <div className="accueil-container">
         <div style={{ position: "relative", zIndex: 10, padding: "20px 20px 0" }}>
           <button className="category-btn" onClick={onBack} style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}>
-            <i className="fa-solid fa-arrow-left"></i> Retour
+            ← Retour
           </button>
         </div>
 
@@ -242,14 +237,12 @@ const PublicProfile = ({
               <h2 className="hero-title" style={{ fontSize: "1.8rem", margin: "10px 0 8px" }}>
                 {profile.username}
                 {profile.isCertified && (
-                    <span title="Profil certifié" style={{ marginLeft: "10px", fontSize: "1.2rem", verticalAlign: "middle" }}>
-                  <i className="fa-solid fa-star" style={{color: "rgb(255, 212, 59)"}}></i>
-                </span>
+                    <span title="Profil certifié" style={{ marginLeft: "10px", fontSize: "1.2rem", color: "#60a5fa", verticalAlign: "middle" }}>⭐</span>
                 )}
               </h2>
 
               <div style={{ display: "flex", justifyContent: "center", gap: "8px", flexWrap: "wrap", marginBottom: "12px" }}>
-                {isMutual && <span style={{ background: "rgba(34,197,94,0.12)", border: "1px solid rgba(34,197,94,0.35)", color: "#4ade80", borderRadius: "20px", padding: "3px 12px", fontSize: "0.75rem", fontWeight: "600" }}><i className="fa-solid fa-check" style={{color: "rgb(34, 197, 94)", marginRight: "4px"}}></i> Abonnement mutuel</span>}
+                {isMutual && <span style={{ background: "rgba(34,197,94,0.12)", border: "1px solid rgba(34,197,94,0.35)", color: "#4ade80", borderRadius: "20px", padding: "3px 12px", fontSize: "0.75rem", fontWeight: "600" }}>✓ Abonnement mutuel</span>}
                 {!isMutual && theyFollowMe && <span style={{ background: "rgba(59,130,246,0.12)", border: "1px solid rgba(59,130,246,0.35)", color: "#60a5fa", borderRadius: "20px", padding: "3px 12px", fontSize: "0.75rem" }}>Vous suit</span>}
                 {iFollow && !theyFollowMe && <span style={{ background: "rgba(139,92,246,0.12)", border: "1px solid rgba(139,92,246,0.35)", color: "#a78bfa", borderRadius: "20px", padding: "3px 12px", fontSize: "0.75rem" }}>Abonné</span>}
               </div>
@@ -271,11 +264,11 @@ const PublicProfile = ({
               {currentUser && !isMe ? (
                   <div style={{ display: "flex", gap: "12px", justifyContent: "center", flexWrap: "wrap" }}>
                     <button className="nav-user-btn" onClick={handleFollow} disabled={followLoading} style={{ minWidth: "150px", justifyContent: "center", opacity: followLoading ? 0.6 : 1, ...(iFollow ? { borderColor: "rgba(239,68,68,0.5)", color: "#f87171" } : {}) }}>
-                      {followLoading ? "…" : iFollow ? <><i className="fa-solid fa-xmark" style={{color: "rgb(239, 68, 68)", marginRight: "5px"}}></i> Se désabonner</> : <><i className="fa-solid fa-user-plus" style={{marginRight: "5px"}}></i> Suivre</>}
+                      {followLoading ? "…" : iFollow ? "✗ Se désabonner" : "✚ Suivre"}
                     </button>
                     {isMutual && (
                         <button className="nav-user-btn" onClick={handleMessage} disabled={msgLoading} style={{ minWidth: "150px", justifyContent: "center", opacity: msgLoading ? 0.6 : 1, background: "rgba(139,92,246,0.2)", borderColor: "rgba(139,92,246,0.5)" }}>
-                          {msgLoading ? "…" : <><i className="fa-solid fa-message" style={{color: "#c084fc", marginRight: "5px"}}></i> Envoyer un message</>}
+                          {msgLoading ? "…" : "💬 Envoyer un message"}
                         </button>
                     )}
                   </div>
@@ -283,12 +276,11 @@ const PublicProfile = ({
             </div>
           </div>
 
-          {/* ── GESTION DE LA CONFIDENTIALITÉ ── */}
+          {/* ── Collection publique ── */}
           {profile.isPrivate && !isMutual ? (
+              /* ── VUE COMPTE PRIVÉ ── */
               <div className="game-card-modern" style={{ marginTop: "40px", padding: "60px 20px", textAlign: "center", cursor: "default" }}>
-                <div style={{ fontSize: "3.5rem", marginBottom: "16px", opacity: 0.8 }}>
-                  <i className="fa-solid fa-lock" style={{color: "rgb(148, 163, 184)"}}></i>
-                </div>
+                <div style={{ fontSize: "3.5rem", marginBottom: "16px", opacity: 0.8 }}>🔒</div>
                 <h3 className="section-title" style={{ fontSize: "1.5rem", marginBottom: "8px", justifyContent: "center", border: "none" }}>
                   Ce compte est privé
                 </h3>
@@ -314,9 +306,7 @@ const PublicProfile = ({
                               </div>
                               <div className="game-content">
                                 <h4 className="game-title">{game.gameName || game.name}</h4>
-                                <span className="game-genre" style={{ fontSize: "0.7rem", opacity: 0.8 }}>
-                                  {renderStatus(game.status)}
-                                </span>
+                                <span className="game-genre" style={{ fontSize: "0.7rem", opacity: 0.8 }}>{statusMapping[game.status] || "Prévu"}</span>
                               </div>
                             </div>
                         ))}
@@ -339,14 +329,12 @@ const PublicProfile = ({
                               <div key={list.id} className="game-card-modern" style={{ padding: "0", cursor: "default", position: "relative", zIndex: isOpen ? 50 : 1 }}>
                                 <div onClick={() => setActiveListId(isOpen ? null : list.id)} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "16px 20px", cursor: "pointer" }}>
                                   <div>
-                                    <h4 className="game-title" style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                      {list.name}
-                                    </h4>
+                                    <h4 className="game-title" style={{ margin: 0 }}>{list.name}</h4>
                                     {list.description && <p style={{ fontSize: "0.82rem", color: "#94a3b8", margin: "4px 0 0" }}>{list.description}</p>}
                                   </div>
                                   <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
                                     <span className="section-count" style={{ fontSize: "0.75rem" }}>{(list.games || []).length} jeux</span>
-                                    <i className={isOpen ? "fa-solid fa-chevron-up" : "fa-solid fa-chevron-down"} style={{color: "#9333ea"}}></i>
+                                    <span style={{ color: "#9333ea", fontSize: "1.2rem" }}>{isOpen ? "▾" : "▸"}</span>
                                   </div>
                                 </div>
 
@@ -517,7 +505,7 @@ const CustomLists = ({ onGameClick }) => {
         <div className="section-header" style={{ marginBottom: "20px" }}>
           <h2 className="section-title">Mes Listes</h2>
           <button className="category-btn active" onClick={() => { setShowForm(!showForm); setEditingList(null); setFormData({ name: "", description: "", isPrivate: false }); }}>
-            {showForm && !editingList ? <><i className="fa-solid fa-xmark" style={{marginRight: "6px"}}></i> Annuler</> : <><i className="fa-solid fa-plus" style={{marginRight: "6px"}}></i> Nouvelle liste</>}
+            {showForm && !editingList ? "Annuler" : "+ Nouvelle liste"}
           </button>
         </div>
 
@@ -528,12 +516,10 @@ const CustomLists = ({ onGameClick }) => {
               <textarea className="filter-select" style={{ width: "100%", minHeight: "70px", marginBottom: "10px", paddingTop: "10px" }} placeholder="Description (optionnel)" value={formData.description} onChange={(e) => setFormData({ ...formData, description: e.target.value })} />
               <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "16px" }}>
                 <input type="checkbox" id="isPrivate" checked={formData.isPrivate} onChange={(e) => setFormData({ ...formData, isPrivate: e.target.checked })} style={{ accentColor: "#9333ea" }} />
-                <label htmlFor="isPrivate" className="game-genre" style={{ cursor: "pointer", margin: 0 }}>
-                  <i className="fa-solid fa-lock" style={{color: "rgb(148, 163, 184)", marginRight: "6px"}}></i> Liste privée (visible uniquement par moi)
-                </label>
+                <label htmlFor="isPrivate" className="game-genre" style={{ cursor: "pointer", margin: 0 }}>🔒 Liste privée (visible uniquement par moi)</label>
               </div>
               <button className="nav-user-btn" style={{ width: "100%", justifyContent: "center", opacity: saving ? 0.6 : 1 }} onClick={handleSaveList} disabled={saving}>
-                {saving ? "Sauvegarde..." : editingList ? <><i className="fa-solid fa-pen-to-square" style={{marginRight: "6px"}}></i> Mettre à jour</> : <><i className="fa-solid fa-check" style={{marginRight: "6px"}}></i> Créer la liste</>}
+                {saving ? "Sauvegarde..." : editingList ? "Mettre à jour" : "Créer la liste"}
               </button>
             </div>
         )}
@@ -542,9 +528,7 @@ const CustomLists = ({ onGameClick }) => {
             <div className="loading-container"><div className="loading-spinner" /></div>
         ) : lists.length === 0 ? (
             <div className="game-card-modern" style={{ padding: "40px", textAlign: "center", cursor: "default" }}>
-              <p style={{ fontSize: "2rem", marginBottom: "12px" }}>
-                <i className="fa-solid fa-clipboard-list" style={{color: "rgb(148, 163, 184)"}}></i>
-              </p>
+              <p style={{ fontSize: "2rem", marginBottom: "12px" }}>📋</p>
               <p className="hero-subtitle">Aucune liste pour l'instant.</p>
             </div>
         ) : (
@@ -567,27 +551,14 @@ const CustomLists = ({ onGameClick }) => {
                         <div style={{ flex: 1, minWidth: 0 }}>
                           <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
                             <h4 className="game-title" style={{ margin: 0, fontSize: "1rem" }}>{list.name}</h4>
-                            {list.isPrivate ? (
-                                <span style={{ fontSize: "0.65rem", backgroundColor: "rgba(239, 68, 68, 0.15)", color: "#ef4444", padding: "2px 6px", borderRadius: "4px", border: "1px solid rgba(239, 68, 68, 0.3)" }}>
-                                  <i className="fa-solid fa-lock" style={{marginRight: "4px"}}></i>Privée
-                                </span>
-                            ) : (
-                                <span style={{ fontSize: "0.65rem", backgroundColor: "rgba(34, 197, 94, 0.15)", color: "#22c55e", padding: "2px 6px", borderRadius: "4px", border: "1px solid rgba(34, 197, 94, 0.3)" }}>
-                                  <i className="fa-solid fa-earth-americas" style={{marginRight: "4px"}}></i>Publique
-                                </span>
-                            )}
+                            {list.isPrivate && <span style={{ fontSize: "0.7rem", color: "#94a3b8" }}>🔒</span>}
                             <span className="section-count" style={{ fontSize: "0.72rem" }}>{(list.games || []).length} jeux</span>
                           </div>
                         </div>
                         <div style={{ display: "flex", gap: "6px", alignItems: "center", flexShrink: 0, marginLeft: "12px" }}>
-                          <button className="category-btn" style={{ padding: "4px 10px", fontSize: "0.75rem", borderColor: "rgba(59, 130, 246, 0.5)", background: "rgba(59, 130, 246, 0.1)" }} onClick={(e) => { e.stopPropagation(); openEdit(list); }}>
-                            <i className="fa-solid fa-pen-to-square" style={{color: "#3b82f6"}}></i>
-                          </button>
-
-                          <button className="category-btn" style={{ padding: "4px 10px", fontSize: "0.75rem", borderColor: "rgba(239, 68, 68, 0.5)", background: "rgba(239, 68, 68, 0.1)" }} onClick={(e) => { e.stopPropagation(); handleDeleteList(list.id); }}>
-                            <i className="fa-solid fa-trash" style={{color: "#ef4444"}}></i>
-                          </button>
-                          <i className={isOpen ? "fa-solid fa-chevron-up" : "fa-solid fa-chevron-down"} style={{color: "#9333ea", marginLeft: "6px"}}></i>
+                          <button className="category-btn" style={{ padding: "4px 10px", fontSize: "0.75rem" }} onClick={(e) => { e.stopPropagation(); openEdit(list); }}>✏️</button>
+                          <button className="category-btn" style={{ padding: "4px 10px", fontSize: "0.75rem", borderColor: "#ef4444", color: "#f87171" }} onClick={(e) => { e.stopPropagation(); handleDeleteList(list.id); }}>🗑️</button>
+                          <span style={{ color: "#9333ea", fontSize: "1.2rem" }}>{isOpen ? "▾" : "▸"}</span>
                         </div>
                       </div>
 
@@ -602,9 +573,7 @@ const CustomLists = ({ onGameClick }) => {
                                         <div onClick={() => onGameClick && onGameClick(g.gameId)} style={{ width: "70px", height: "90px", borderRadius: "8px", overflow: "hidden", cursor: "pointer" }}>
                                           <img src={getCoverUrl(g.gameCover)} alt={g.gameName} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
                                         </div>
-                                        <button onClick={() => handleRemoveGame(list.id, g.gameId)} style={{ position: "absolute", top: "-6px", right: "-6px", background: "#ef4444", border: "none", borderRadius: "50%", width: "18px", height: "18px", cursor: "pointer", color: "#fff", fontSize: "0.6rem", display: "flex", alignItems: "center", justifyContent: "center", lineHeight: 1 }}>
-                                          <i className="fa-solid fa-xmark"></i>
-                                        </button>
+                                        <button onClick={() => handleRemoveGame(list.id, g.gameId)} style={{ position: "absolute", top: "-6px", right: "-6px", background: "#ef4444", border: "none", borderRadius: "50%", width: "18px", height: "18px", cursor: "pointer", color: "#fff", fontSize: "0.6rem", display: "flex", alignItems: "center", justifyContent: "center", lineHeight: 1 }}>✕</button>
                                         <p style={{ fontSize: "0.65rem", color: "#94a3b8", margin: "4px 0 0", textAlign: "center", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{g.gameName}</p>
                                       </div>
                                   ))}
@@ -612,7 +581,7 @@ const CustomLists = ({ onGameClick }) => {
                             )}
 
                             <div style={{ position: "relative", marginTop: "8px" }}>
-                              <input className="filter-select" style={{ width: "100%" }} placeholder="Ajouter un jeu à cette liste…" value={gameSearch} onChange={(e) => setGameSearch(e.target.value)} onBlur={() => setTimeout(() => setGameResults([]), 200)} />
+                              <input className="filter-select" style={{ width: "100%" }} placeholder="🔍 Ajouter un jeu à cette liste…" value={gameSearch} onChange={(e) => setGameSearch(e.target.value)} onBlur={() => setTimeout(() => setGameResults([]), 200)} />
                               {searchingGames && <span style={{ position: "absolute", right: "12px", top: "50%", transform: "translateY(-50%)", color: "#64748b", fontSize: "0.75rem" }}>…</span>}
                               {gameResults.length > 0 && (
                                   <div style={{ position: "absolute", top: "calc(100% + 6px)", left: 0, right: 0, background: "#1e293b", border: "1px solid rgba(147,51,234,0.3)", borderRadius: "10px", zIndex: 99999, pointerEvents: "auto", overflow: "hidden", boxShadow: "0 15px 40px rgba(0,0,0,0.8)" }}>
@@ -620,7 +589,7 @@ const CustomLists = ({ onGameClick }) => {
                                         <div key={g.id} onMouseDown={() => handleAddGame(list, g)} style={{ padding: "10px 14px", cursor: "pointer", display: "flex", alignItems: "center", gap: "10px" }} onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(147,51,234,0.15)")} onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}>
                                           {g.cover?.image_id && <img src={`https://images.igdb.com/igdb/image/upload/t_thumb/${g.cover.image_id}.jpg`} alt="" style={{ width: "28px", height: "36px", borderRadius: "4px", objectFit: "cover" }} />}
                                           <span style={{ color: "#e2e8f0", fontSize: "0.9rem" }}>{g.name}</span>
-                                          {(list.games || []).some((lg) => String(lg.gameId) === String(g.id)) && <span style={{ marginLeft: "auto", color: "#4ade80", fontSize: "0.75rem" }}><i className="fa-solid fa-check" style={{marginRight: "4px"}}></i> Ajouté</span>}
+                                          {(list.games || []).some((lg) => String(lg.gameId) === String(g.id)) && <span style={{ marginLeft: "auto", color: "#4ade80", fontSize: "0.75rem" }}>✓ Ajouté</span>}
                                         </div>
                                     ))}
                                   </div>
@@ -671,8 +640,6 @@ const MyProfile = ({
         user?.photoURL ||
         `https://api.dicebear.com/7.x/bottts/svg?seed=${user?.username || user?.pseudo || user?.displayName || "Joueur"}`,
   });
-
-  const isLight = profileData.preferences?.theme === "light";
 
   const [favorites, setFavorites] = useState([]);
   const [filter, setFilter] = useState("Tous");
@@ -836,10 +803,16 @@ const MyProfile = ({
   };
   const userAge = getAge(profileData.birthDate);
 
+  const statusMapping = {
+    to_play: "A faire",
+    playing: "En cours",
+    finished: "Fini",
+    dropped: "Abandonné",
+  };
+
   const filteredGames = favorites.filter((game) => {
     if (filter === "Tous") return true;
-    const filterMapping = { to_play: "A faire", playing: "En cours", finished: "Fini", dropped: "Abandonné" };
-    return filterMapping[game.status] === filter;
+    return statusMapping[game.status] === filter;
   });
 
   const getCoverUrl = (cover) => {
@@ -851,8 +824,8 @@ const MyProfile = ({
 
   const saveLabel = {
     saving: "Sauvegarde...",
-    saved: <><i className="fa-solid fa-check" style={{color: "rgb(34, 197, 94)", marginRight: "5px"}}></i> Sauvegardé !</>,
-    error: <><i className="fa-solid fa-xmark" style={{color: "rgb(239, 68, 68)", marginRight: "5px"}}></i> Erreur</>,
+    saved: "✅ Sauvegardé !",
+    error: "❌ Erreur",
     "": "Sauvegarder les modifications",
   }[saveStatus];
 
@@ -871,7 +844,7 @@ const MyProfile = ({
             <div style={{ padding: "16px 30px 30px", textAlign: "center" }}>
               <h2 className="hero-title" style={{ fontSize: "1.8rem", margin: "10px 0 4px" }}>
                 {profileData.pseudo}
-                {profileData.isCertified && <span title="Profil certifié" style={{ marginLeft: "10px", fontSize: "1.2rem" }}><i className="fa-solid fa-star" style={{color: "rgb(255, 212, 59)"}}></i></span>}
+                {profileData.isCertified && <span title="Profil certifié" style={{ marginLeft: "10px", fontSize: "1.2rem", color: "#60a5fa" }}>⭐</span>}
               </h2>
 
               {userAge && <p style={{ color: "#a78bfa", fontSize: "0.95rem", margin: "0 0 10px 0", fontWeight: "600" }}>{userAge} ans</p>}
@@ -895,30 +868,8 @@ const MyProfile = ({
                 ))}
               </div>
 
-              <button
-                  className="nav-user-btn"
-                  onClick={() => setIsEditing(!isEditing)}
-                  style={{
-                    minWidth: "220px",
-                    justifyContent: "center",
-                    margin: "0 auto",
-                    padding: "10px 20px",
-                    fontSize: "0.95rem",
-                    fontWeight: "600",
-                    border: "none",
-                    transition: "all 0.3s ease",
-                    background: isEditing
-                        ? (isLight ? "#e2e8f0" : "rgba(255,255,255,0.1)")
-                        : "linear-gradient(135deg, #9333ea 0%, #3b82f6 100%)",
-                    color: isEditing
-                        ? (isLight ? "#475569" : "#e2e8f0")
-                        : "#ffffff",
-                    boxShadow: isEditing
-                        ? "none"
-                        : "0 4px 15px rgba(147, 51, 234, 0.35)",
-                  }}
-              >
-                {isEditing ? <><i className="fa-solid fa-xmark" style={{marginRight: "5px", color: isEditing ? (isLight ? "#475569" : "#e2e8f0") : "#ffffff"}}></i> Fermer l'édition</> : <><i className="fa-solid fa-pen-to-square" style={{marginRight: "5px", color: isEditing ? (isLight ? "#475569" : "#e2e8f0") : "#ffffff"}}></i> Éditer le profil</>}
+              <button className="nav-user-btn" onClick={() => setIsEditing(!isEditing)} style={{ minWidth: "220px", justifyContent: "center", margin: "0 auto", background: isEditing ? "rgba(255,255,255,0.1)" : "" }}>
+                {isEditing ? "❌ Fermer l'édition" : "✏️ Éditer le profil"}
               </button>
             </div>
           </div>
@@ -950,7 +901,7 @@ const MyProfile = ({
                   </div>
 
                   <div style={{ background: "rgba(0,0,0,0.2)", padding: "16px", borderRadius: "10px" }}>
-                    <h4 style={{ margin: "0 0 12px 0", fontSize: "0.95rem", color: "#c4b5fd" }}>Paramètres</h4>
+                    <h4 style={{ margin: "0 0 12px 0", fontSize: "0.95rem", color: "#c4b5fd" }}>⚙️ Paramètres</h4>
 
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 0", borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
                       <div><p style={{ margin: 0, fontSize: "0.9rem", color: "#e2e8f0" }}>Afficher les jeux +18</p></div>
@@ -973,11 +924,11 @@ const MyProfile = ({
                     </button>
                     {profileData.role === "admin" && (
                         <button className="nav-user-btn" onClick={onAdminClick} style={{ justifyContent: "center", background: "rgba(167,139,250,0.2)", borderColor: "#a78bfa" }}>
-                          <i className="fa-solid fa-lock" style={{marginRight: "6px"}}></i> Dashboard Admin
+                          🛡️ Dashboard Admin
                         </button>
                     )}
                     <button className="category-btn" onClick={onLogout} style={{ justifyContent: "center", borderColor: "#ef4444", color: "#ef4444", marginTop: "10px" }}>
-                      <i className="fa-solid fa-arrow-right-from-bracket" style={{marginRight: "6px"}}></i> Déconnexion
+                      {t("btnLogout")}
                     </button>
                   </div>
 
@@ -1012,11 +963,11 @@ const MyProfile = ({
                         </div>
                         <div className="game-content">
                           <h4 className="game-title">{game.gameName || game.name}</h4>
-                          <select className={`status-select ${game.status}`} value={game.status || "to_play"} onClick={(e) => e.stopPropagation()} onChange={(e) => handleStatusUpdate(game.gameId, e.target.value, game.gameName || game.name, game.gameCover || game.cover)}>
-                            <option value="to_play">À faire</option>
-                            <option value="playing">En cours</option>
-                            <option value="finished">Fini</option>
-                            <option value="dropped">Abandonné</option>
+                          <select className={`status-select ${statusMapping[game.status]?.toLowerCase().replace(" ", "-") || ""}`} value={game.status || "to_play"} onClick={(e) => e.stopPropagation()} onChange={(e) => handleStatusUpdate(game.gameId, e.target.value, game.gameName || game.name, game.gameCover || game.cover)}>
+                            <option value="to_play">⏳ À faire</option>
+                            <option value="playing">🎮 En cours</option>
+                            <option value="finished">✅ Fini</option>
+                            <option value="dropped">❌ Abandonné</option>
                           </select>
                         </div>
                       </div>
@@ -1045,12 +996,12 @@ export const Notificationsbell = ({ user, onUserClick, onGameClick }) => {
   const unread = notifs.filter((n) => !n.isRead).length;
 
   const TYPE_CONFIG = {
-    follow: { icon: <i className="fa-solid fa-user" style={{color: "rgb(148, 163, 184)"}}></i>, label: "vous suit", color: "#a78bfa" },
-    like: { icon: <i className="fa-solid fa-heart" style={{color: "rgb(239, 68, 68)"}}></i>, label: "a aimé votre avis", color: "#f87171" },
-    comment: { icon: <i className="fa-solid fa-message" style={{color: "rgb(96, 165, 250)"}}></i>, label: "a commenté", color: "#60a5fa" },
-    review: { icon: <i className="fa-solid fa-star" style={{color: "rgb(255, 212, 59)"}}></i>, label: "a noté le jeu", color: "#fbbf24" },
-    message: { icon: <i className="fa-solid fa-message" style={{color: "rgb(52, 211, 153)"}}></i>, label: "vous a écrit", color: "#34d399" },
-    thread_reply: { icon: <i className="fa-solid fa-reply" style={{color: "rgb(192, 132, 252)"}}></i>, label: "a répondu au fil", color: "#c084fc" },
+    follow: { icon: "👤", label: "vous suit", color: "#a78bfa" },
+    like: { icon: "❤️", label: "a aimé votre avis", color: "#f87171" },
+    comment: { icon: "💬", label: "a commenté", color: "#60a5fa" },
+    review: { icon: "⭐", label: "a noté le jeu", color: "#fbbf24" },
+    message: { icon: "✉️", label: "vous a écrit", color: "#34d399" },
+    thread_reply: { icon: "🗨️", label: "a répondu au fil", color: "#c084fc" },
   };
 
   const timeAgo = (ts) => {
@@ -1118,7 +1069,7 @@ export const Notificationsbell = ({ user, onUserClick, onGameClick }) => {
   return (
       <div ref={dropRef} style={{ position: "relative" }}>
         <button onClick={() => { setOpen((v) => !v); if (!open) fetchNotifs(); }} className="nav-icon-btn" title="Notifications" style={{ position: "relative" }}>
-          <i className="fa-solid fa-bell" style={{color: "currentColor"}}></i>
+          🔔
           {unread > 0 && (
               <span style={{ position: "absolute", top: "-4px", right: "-4px", background: "#9333ea", color: "#fff", borderRadius: "99px", fontSize: "0.65rem", fontWeight: "700", padding: "1px 5px", minWidth: "16px", textAlign: "center", boxShadow: "0 0 0 2px #0f0f1a" }}>
             {unread > 9 ? "9+" : unread}
@@ -1136,10 +1087,10 @@ export const Notificationsbell = ({ user, onUserClick, onGameClick }) => {
                 {loading && notifs.length === 0 ? (
                     <div style={{ padding: "30px", textAlign: "center" }}><div className="loading-spinner" style={{ margin: "0 auto" }} /></div>
                 ) : notifs.length === 0 ? (
-                    <div style={{ padding: "40px 20px", textAlign: "center" }}><div style={{ fontSize: "2rem", marginBottom: "8px" }}><i className="fa-solid fa-bell-slash" style={{color: "rgb(148, 163, 184)"}}></i></div><p style={{ color: "rgba(255,255,255,0.35)", fontSize: "0.85rem" }}>Aucune notification pour le moment</p></div>
+                    <div style={{ padding: "40px 20px", textAlign: "center" }}><div style={{ fontSize: "2rem", marginBottom: "8px" }}>🔕</div><p style={{ color: "rgba(255,255,255,0.35)", fontSize: "0.85rem" }}>Aucune notification pour le moment</p></div>
                 ) : (
                     notifs.map((n) => {
-                      const cfg = TYPE_CONFIG[n.type] || { icon: <i className="fa-solid fa-bell" style={{color: "rgb(148, 163, 184)"}}></i>, label: n.type, color: "#888" };
+                      const cfg = TYPE_CONFIG[n.type] || { icon: "📣", label: n.type, color: "#888" };
                       return (
                           <div key={n.id} onClick={() => handleClick(n)} style={{ display: "flex", alignItems: "flex-start", gap: "12px", padding: "12px 16px", background: n.isRead ? "transparent" : "rgba(147,51,234,0.07)", borderBottom: "1px solid rgba(255,255,255,0.04)", cursor: "pointer" }} onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(255,255,255,0.04)")} onMouseLeave={(e) => (e.currentTarget.style.background = n.isRead ? "transparent" : "rgba(147,51,234,0.07)")}>
                             <div style={{ width: "36px", height: "36px", borderRadius: "50%", background: `${cfg.color}22`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1rem", flexShrink: 0 }}>{cfg.icon}</div>

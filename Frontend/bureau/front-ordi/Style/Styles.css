@@ -2589,29 +2589,20 @@ light .main-content-wrapper button *,
 
 /* bordure message forum clair */
 .light .post-item {
-  background: rgba(0, 0, 0, 0.06) !important;
+  background: rgba(0, 0, 0, 0.06) !important; /* Un gris très léger qui fait ressortir le bloc */
   border: 1px solid rgba(0, 0, 0, 0.05);
 }
 
 /* bouton navigation clair */
 .light .slider-nav-btn {
-  background: rgba(255, 255, 255, 0.85) !important;
-  color: #111827 !important;
+  background: rgba(255, 255, 255, 0.85) !important; /* Fond blanc translucide */
+  color: #111827 !important; /* Texte sombre pour la flèche */
   border: 1px solid rgba(0, 0, 0, 0.1) !important;
 }
 
 /* hover effet clair */
 .light .slider-nav-btn:hover {
   background: #ffffff !important;
-  color: #9333ea !important;
+  color: #9333ea !important; /* La flèche devient violette au survol */
   border-color: #9333ea !important;
 }
-
-.fa-icon-primary {
-  color: rgb(30, 48, 80);
-  margin-right: 6px;
-}
-
-.fa-icon-primary { color: rgb(30, 48, 80); }
-
-.dark .fa-icon-primary { color: #e2e8f0; }
