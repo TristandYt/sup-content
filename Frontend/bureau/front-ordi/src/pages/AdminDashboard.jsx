@@ -12,16 +12,17 @@ import { auth } from "../Service/firebase";
 
 const API = "http://localhost:3000/api";
 
-// ─── Axios instance avec token Firebase ───────────────────────────────────────
+// Axios instance avec token Firebase
+// FIX #3 : getIdToken() sans `true` — pas de rafraîchissement forcé à chaque appel
 const authAxios = async () => {
-  const token = await auth.currentUser?.getIdToken(true);
+  const token = await auth.currentUser?.getIdToken();
   return axios.create({
     baseURL: API,
     headers: { Authorization: `Bearer ${token}` },
   });
 };
 
-// ─── Palette & constantes ─────────────────────────────────────────────────────
+// Palette & constantes
 const NAV = [
   { id: "overview", icon: "⬡", label: "Tableau de bord" },
   { id: "users", icon: "◈", label: "Membres" },
@@ -31,7 +32,7 @@ const NAV = [
   { id: "logs", icon: "◌", label: "Logs système" },
 ];
 
-// ─── Sous-composants ──────────────────────────────────────────────────────────
+// ── Sous-composants ──────────────────────────────────────────────────────────
 
 function Toast({ toast }) {
   if (!toast) return null;
@@ -66,7 +67,7 @@ function StatCard({ label, value, accent }) {
   return (
     <div
       style={{
-        background: "#0e0e12",
+        background: "#111118",
         border: "1px solid #1e1e2a",
         borderRadius: 8,
         padding: "1.25rem 1.5rem",
@@ -193,7 +194,7 @@ function SectionTitle({ children }) {
   );
 }
 
-// ─── Panels ───────────────────────────────────────────────────────────────────
+// ── Panels ───────────────────────────────────────────────────────────────────
 
 function OverviewPanel({ logs, stats }) {
   return (
@@ -218,7 +219,7 @@ function OverviewPanel({ logs, stats }) {
       </div>
       <div
         style={{
-          background: "#0a0a0e",
+          background: "#111118",
           border: "1px solid #1a1a24",
           borderRadius: 8,
           padding: "1rem",
@@ -275,6 +276,12 @@ function UsersPanel({ showToast }) {
   const [loading, setLoading] = useState(false);
   const [query, setQuery] = useState("");
 
+  // FIX #2 : normaliser l'ID une fois à la réception pour éviter les keys undefined
+  const normalizeUser = (u) => ({
+    ...u,
+    _id: u.userId || u.id || u.uid || null,
+  });
+
   const searchUsers = async () => {
     if (!query.trim()) return;
     setLoading(true);
@@ -284,11 +291,12 @@ function UsersPanel({ showToast }) {
         params: { q: query.trim() },
       });
       if (data.success) {
-        setResults(data.results?.users || []);
-        if ((data.results?.users || []).length === 0) {
-          showToast("Aucun utilisateur trouvé", false);
-        }
-      } else showToast("Erreur recherche", false);
+        const users = (data.results?.users || []).map(normalizeUser);
+        setResults(users);
+        if (users.length === 0) showToast("Aucun utilisateur trouvé", false);
+      } else {
+        showToast("Erreur recherche", false);
+      }
     } catch {
       showToast("Erreur serveur", false);
     }
@@ -302,11 +310,7 @@ function UsersPanel({ showToast }) {
       showToast(data.msg, data.success);
       if (data.success) {
         setResults((prev) =>
-          prev.map((u) =>
-            u.id === userId || u.uid === userId || u.userId === userId
-              ? { ...u, isBanned: true }
-              : u,
-          ),
+          prev.map((u) => (u._id === userId ? { ...u, isBanned: true } : u)),
         );
       }
     } catch {
@@ -323,11 +327,7 @@ function UsersPanel({ showToast }) {
       showToast(data.msg, data.success);
       if (data.success) {
         setResults((prev) =>
-          prev.map((u) =>
-            u.id === userId || u.uid === userId || u.userId === userId
-              ? { ...u, role: "admin" }
-              : u,
-          ),
+          prev.map((u) => (u._id === userId ? { ...u, role: "admin" } : u)),
         );
       }
     } catch {
@@ -346,7 +346,7 @@ function UsersPanel({ showToast }) {
           placeholder="Rechercher par pseudo (ex: Tristan)"
           style={{
             flex: 1,
-            background: "#0a0a0e",
+            background: "#111118",
             border: "1px solid #1e1e2a",
             borderRadius: 6,
             color: "#ddd",
@@ -361,11 +361,12 @@ function UsersPanel({ showToast }) {
       </div>
 
       <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+        {/* FIX #2 : key sur _id normalisé — jamais undefined */}
         {results.map((u) => (
           <div
-            key={u.id || u.uid}
+            key={u._id}
             style={{
-              background: "#0a0a0e",
+              background: "#111118",
               border: "1px solid #1e1e2a",
               borderRadius: 8,
               padding: "1.25rem",
@@ -393,7 +394,7 @@ function UsersPanel({ showToast }) {
                     marginTop: 4,
                   }}
                 >
-                  {u.userId || u.id || u.uid}
+                  {u._id}
                 </div>
               </div>
               <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
@@ -408,18 +409,12 @@ function UsersPanel({ showToast }) {
             )}
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
               {!u.isBanned && (
-                <Btn
-                  variant="danger"
-                  onClick={() => ban(u.userId || u.id || u.uid)}
-                >
+                <Btn variant="danger" onClick={() => ban(u._id)}>
                   ◬ Bannir
                 </Btn>
               )}
               {u.role !== "admin" && (
-                <Btn
-                  variant="success"
-                  onClick={() => promote(u.userId || u.id || u.uid)}
-                >
+                <Btn variant="success" onClick={() => promote(u._id)}>
                   ◉ Promouvoir
                 </Btn>
               )}
@@ -468,7 +463,7 @@ function RolesPanel({ showToast }) {
 
   const fieldStyle = {
     width: "100%",
-    background: "#0a0a0e",
+    background: "#111118",
     border: "1px solid #1e1e2a",
     borderRadius: 6,
     color: "#ddd",
@@ -484,7 +479,7 @@ function RolesPanel({ showToast }) {
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
         <div
           style={{
-            background: "#0a0a0e",
+            background: "#111118",
             border: "1px solid #1e1e2a",
             borderRadius: 8,
             padding: "1.25rem",
@@ -519,7 +514,7 @@ function RolesPanel({ showToast }) {
 
         <div
           style={{
-            background: "#0a0a0e",
+            background: "#111118",
             border: "1px solid #1e1e2a",
             borderRadius: 8,
             padding: "1.25rem",
@@ -557,34 +552,13 @@ function RolesPanel({ showToast }) {
 }
 
 function ReportsPanel({ showToast }) {
-  const [reports, setReports] = useState([]);
-  const [loading, setLoading] = useState(true);
-
-  // Note : pas de GET /api/moderation/reports dans le back exposé.
-  // On récupère directement depuis Firestore via l'export RGPD ou on affiche
-  // un message avec le formulaire de signalement pour tester.
-  useEffect(() => {
-    // Simulation : en prod, ajouter une route GET /api/moderation/reports (admin)
-    setLoading(false);
-    setReports([]);
-  }, []);
-
-  const banFromReport = async (userId) => {
-    try {
-      const api = await authAxios();
-      const { data } = await api.post(`/moderation/users/${userId}/ban`);
-      showToast(data.msg, data.success);
-    } catch {
-      showToast("Erreur serveur", false);
-    }
-  };
-
+  // FIX #4 : banFromReport supprimé — code mort, BanFromReportForm gère son propre ban
   return (
     <div>
       <SectionTitle>Signalements</SectionTitle>
       <div
         style={{
-          background: "#0a0a0e",
+          background: "#111118",
           border: "1px solid #1a130d",
           borderRadius: 8,
           padding: "1rem 1.25rem",
@@ -609,7 +583,7 @@ function ReportsPanel({ showToast }) {
 
       <div
         style={{
-          background: "#0a0a0e",
+          background: "#111118",
           border: "1px solid #1e1e2a",
           borderRadius: 8,
           padding: "1.25rem",
@@ -672,10 +646,9 @@ function BanFromReportForm({ showToast }) {
 
 function ReviewsPanel({ showToast }) {
   const [reviews, setReviews] = useState([]);
-  const [loading, setLoading] = useState(false);
+  // FIX #5 : `loading` supprimé — état déclaré mais jamais utilisé ni affiché
   const [reviewId, setReviewId] = useState("");
 
-  // Helper : charger une review par ID (pas de route GET liste dans le back)
   const addReviewById = (id) => {
     if (!id.trim()) return;
     if (reviews.find((r) => r.id === id.trim())) return;
@@ -742,7 +715,7 @@ function ReviewsPanel({ showToast }) {
           placeholder="ID de la critique (reviewId Firestore)"
           style={{
             flex: 1,
-            background: "#0a0a0e",
+            background: "#111118",
             border: "1px solid #1e1e2a",
             borderRadius: 6,
             color: "#ddd",
@@ -759,7 +732,7 @@ function ReviewsPanel({ showToast }) {
       {reviews.length === 0 ? (
         <div
           style={{
-            background: "#0a0a0e",
+            background: "#111118",
             border: "1px solid #1e1e2a",
             borderRadius: 8,
             padding: "2rem",
@@ -774,7 +747,7 @@ function ReviewsPanel({ showToast }) {
       ) : (
         <div
           style={{
-            background: "#0a0a0e",
+            background: "#111118",
             border: "1px solid #1e1e2a",
             borderRadius: 8,
             overflow: "hidden",
@@ -831,6 +804,8 @@ function ReviewsPanel({ showToast }) {
   );
 }
 
+// FIX #1 : LogsPanel — titre et bouton dans un wrapper flex dédié
+// SectionTitle inline pour ne pas créer un bloc séparé qui casse le space-between
 function LogsPanel({ logs, reload, loading }) {
   return (
     <div>
@@ -839,17 +814,32 @@ function LogsPanel({ logs, reload, loading }) {
           display: "flex",
           justifyContent: "space-between",
           alignItems: "center",
-          marginBottom: "1.5rem",
+          marginBottom: "0.75rem",
         }}
       >
-        <SectionTitle>Logs système</SectionTitle>
+        <h2
+          style={{
+            fontSize: 13,
+            textTransform: "uppercase",
+            letterSpacing: "0.15em",
+            color: "#555",
+            fontFamily: "'JetBrains Mono', monospace",
+            margin: 0,
+          }}
+        >
+          Logs système
+        </h2>
         <Btn onClick={reload} disabled={loading}>
           {loading ? "…" : "↺ Actualiser"}
         </Btn>
       </div>
+      {/* Séparateur indépendant pour ne pas couper le flex row */}
+      <div
+        style={{ borderBottom: "1px solid #1a1a24", marginBottom: "1.5rem" }}
+      />
       <div
         style={{
-          background: "#080810",
+          background: "#0d0d14",
           border: "1px solid #1a1a24",
           borderRadius: 8,
           overflow: "hidden",
@@ -913,7 +903,7 @@ function LogsPanel({ logs, reload, loading }) {
   );
 }
 
-// ─── Composant principal ──────────────────────────────────────────────────────
+// ── Composant principal ───────────────────────────────────────────────────────
 
 export default function AdminDashboard({ onBack }) {
   const [active, setActive] = useState("overview");
@@ -955,7 +945,7 @@ export default function AdminDashboard({ onBack }) {
             .length,
         });
       }
-    } catch (e) {
+    } catch {
       showToast(
         "Impossible de charger les logs — vérifier le token admin",
         false,
@@ -992,7 +982,7 @@ export default function AdminDashboard({ onBack }) {
         style={{
           display: "flex",
           minHeight: "100vh",
-          background: "#06060a",
+          background: "#0a0a0f",
           color: "#c8c8d8",
           fontFamily: "'DM Sans', sans-serif",
         }}
@@ -1002,7 +992,7 @@ export default function AdminDashboard({ onBack }) {
           style={{
             width: 220,
             flexShrink: 0,
-            background: "#080810",
+            background: "#0d0d14",
             borderRight: "1px solid #12121e",
             display: "flex",
             flexDirection: "column",
@@ -1055,7 +1045,7 @@ export default function AdminDashboard({ onBack }) {
                     active === item.id
                       ? "2px solid #a78bfa"
                       : "2px solid transparent",
-                  background:
+                  backgroundColor:
                     active === item.id
                       ? "rgba(167,139,250,0.05)"
                       : "transparent",
