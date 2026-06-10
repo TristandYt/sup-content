@@ -4,12 +4,12 @@ const Logger = require("../Services/Logger");
 
 const REVIEWS_PAGE_SIZE = 20;
 
-// ── Ajouter ou modifier une critique ──────────────────────────────────────────
+// Ajouter ou modifier une critique
 exports.addOrUpdateReview = async (req, res, next) => {
   try {
     const userId = req.user.id;
     const gameId = (req.params.gameId || req.body.gameId)?.toString();
-    // FIX 1 : on récupère le pseudo envoyé par le front
+    //on récupère le pseudo envoyé par le front
     const { rating, text = "", pseudo } = req.body;
 
     if (!gameId)
@@ -23,7 +23,7 @@ exports.addOrUpdateReview = async (req, res, next) => {
 
     const reviewId = `${userId}_${gameId}`;
 
-    // FIX 1 : on stocke pseudo (fallback sur userId si absent)
+    // on stocke pseudo
     await db
       .collection("reviews")
       .doc(reviewId)
@@ -51,13 +51,13 @@ exports.addOrUpdateReview = async (req, res, next) => {
   }
 };
 
-// ── Récupérer les critiques de l'utilisateur (paginé) ────────────────────────
+//Récupérer les critiques de l'utilisateur
 exports.getMyReviews = async (req, res, next) => {
   try {
     const userId = req.user.id;
     const page = parseInt(req.query.page) || 1;
     const limitSize = parseInt(req.query.limit) || REVIEWS_PAGE_SIZE;
-    const { lastVisible } = req.query; // Curseur pour startAfter
+    const { lastVisible } = req.query; 
 
     let query = db
       .collection("reviews")
@@ -113,12 +113,10 @@ exports.getGameReviews = async (req, res, next) => {
 
     const snapshot = await query.get();
     const reviews = [];
-    let totalRating = 0;
 
     await Promise.all(
       snapshot.docs.map(async (doc) => {
         const data = doc.data();
-        totalRating += data.rating;
 
         // Récupère les comments de cette review, triés par date
         const commentsSnap = await doc.ref
@@ -147,8 +145,14 @@ exports.getGameReviews = async (req, res, next) => {
       return tb - ta;
     });
 
+    // Calcul de la note moyenne à partir des critiques du jeu
+    const allReviewsSnap = await db.collection("reviews").where("gameId", "==", gameId).select("rating").get();
+    let totalRating = 0;
+    allReviewsSnap.forEach(doc => { // Itérer sur tous les documents de critique
+      totalRating += doc.data().rating; // Additionner toutes les notes
+    });
     const averageRating =
-      reviews.length > 0 ? (totalRating / reviews.length).toFixed(1) : null;
+      !allReviewsSnap.empty ? (totalRating / allReviewsSnap.size).toFixed(1) : null;
 
     res.json({
       success: true,
@@ -245,7 +249,7 @@ exports.commentReview = async (req, res, next) => {
   try {
     const userId = req.user.id;
     const { reviewId } = req.params;
-    // FIX 3 : on récupère le pseudo du front
+    //on récupère le pseudo du front
     const { text, pseudo } = req.body;
 
     if (!text || text.trim() === "") {

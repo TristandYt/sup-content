@@ -371,6 +371,99 @@ components:
           type: string
           nullable: true
 
+    ProfileUpdateRequest:
+      type: object
+      properties:
+        username:
+          type: string
+          minLength: 3
+          maxLength: 30
+          description: Pseudo unique (3-30 caractères)
+        email:
+          type: string
+          format: email
+          description: Email unique
+        bio:
+          type: string
+          maxLength: 500
+          nullable: true
+          description: Biographie
+        avatarUrl:
+          type: string
+          format: uri
+          nullable: true
+          description: URL de l'avatar
+        website:
+          type: string
+          format: uri
+          nullable: true
+          description: URL du site personnel
+        birthDate:
+          type: string
+          pattern: '^\d{4}-\d{2}-\d{2}$'
+          nullable: true
+          description: Date de naissance (YYYY-MM-DD)
+        preferences:
+          $ref: '#/components/schemas/UserPreferences'
+
+    UserPreferences:
+      type: object
+      properties:
+        theme:
+          type: string
+          enum: [light, dark]
+          default: dark
+        language:
+          type: string
+          enum: [en, fr]
+          default: fr
+        emailNotifications:
+          type: boolean
+          default: true
+        pushNotifications:
+          type: boolean
+          default: true
+        showAdultGames:
+          type: boolean
+          default: false
+          description: Afficher les jeux classés +18
+        privateProfile:
+          type: boolean
+          default: false
+          description: Rendre le profil privé
+
+    PreferencesUpdateRequest:
+      type: object
+      properties:
+        theme:
+          type: string
+          enum: [light, dark]
+          description: Thème (clair/sombre)
+        language:
+          type: string
+          enum: [en, fr]
+          description: Langue
+        emailNotifications:
+          type: boolean
+          description: Recevoir les notifications par email
+        pushNotifications:
+          type: boolean
+          description: Recevoir les notifications push
+        showAdultGames:
+          type: boolean
+          description: Afficher les jeux classés +18
+
+    Favorite:
+      type: object
+      properties:
+        gameId:
+          type: string
+        gameName:
+          type: string
+        gameCover:
+          type: string
+          format: uri
+
 paths:
   # ==================== AUTH ====================
   /auth/register:
@@ -637,24 +730,46 @@ paths:
         content:
           application/json:
             schema:
-              type: object
-              properties:
-                username:
-                  type: string
-                bio:
-                  type: string
-                avatar:
-                  type: string
+              $ref: '#/components/schemas/ProfileUpdateRequest'
       responses:
         '200':
-          description: Profil mis à jour
+          description: Profil mis à jour avec succès
           content:
             application/json:
               schema:
                 type: object
                 properties:
-                  data:
-                    $ref: '#/components/schemas/UserProfile'
+                  success:
+                    type: boolean
+                    example: true
+                  msg:
+                    type: string
+                    example: Profil mis à jour
+        '400':
+          description: Validation échouée (username trop court, email invalide, etc.)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Conflit — username ou email déjà utilisé
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: false
+                  msg:
+                    type: string
+                    example: "Ce pseudo est déjà pris"
+        '401':
+          description: Non authentifié
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
 
   /users/{userId}/profile:
     get:
@@ -749,18 +864,29 @@ paths:
         - FirebaseJWT: []
       responses:
         '200':
-          description: Préférences
+          description: Préférences utilisateur
           content:
             application/json:
               schema:
                 type: object
                 properties:
-                  data:
-                    type: object
+                  success:
+                    type: boolean
+                  preferences:
+                    $ref: '#/components/schemas/UserPreferences'
+        '401':
+          description: Non authentifié
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
 
     put:
       tags: [Users]
-      summary: Mettre à jour les préférences
+      summary: Mettre à jour mes préférences
+      description: |
+        Valide avec Zod schema. Les champs `showAdultGames` et `theme` sont immédiatement appliqués au profil utilisateur.
+        Toute modification est enregistrée dans les logs d'audit.
       security:
         - FirebaseJWT: []
       requestBody:
@@ -768,14 +894,40 @@ paths:
         content:
           application/json:
             schema:
-              type: object
+              $ref: '#/components/schemas/PreferencesUpdateRequest'
       responses:
         '200':
-          description: Préférences mises à jour
+          description: Préférences mises à jour avec succès
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/SuccessMessage'
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  msg:
+                    type: string
+                    example: Préférences mises à jour
+        '400':
+          description: Validation échouée (thème ou langue invalide)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: false
+                  msg:
+                    type: string
+                    example: "Thème invalide"
+        '401':
+          description: Non authentifié
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
 
   /users/favorites:
     get:
@@ -785,19 +937,101 @@ paths:
         - FirebaseJWT: []
       responses:
         '200':
-          description: Favoris
+          description: Liste des favoris
           content:
             application/json:
               schema:
                 type: object
                 properties:
-                  data:
+                  success:
+                    type: boolean
+                  total:
+                    type: integer
+                  favorites:
                     type: array
                     items:
-                      $ref: '#/components/schemas/GameSummary'
+                      $ref: '#/components/schemas/Favorite'
+        '401':
+          description: Non authentifié
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
 
     post:
       tags: [Users]
+      summary: Ajouter un jeu aux favoris
+      security:
+        - FirebaseJWT: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [gameId]
+              properties:
+                gameId:
+                  type: integer
+                  description: ID IGDB du jeu
+                gameName:
+                  type: string
+                  nullable: true
+                gameCover:
+                  type: string
+                  format: uri
+                  nullable: true
+      responses:
+        '200':
+          description: Jeu ajouté aux favoris
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessMessage'
+        '400':
+          description: gameId manquant
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Non authentifié
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    delete:
+      tags: [Users]
+      summary: Retirer un jeu des favoris
+      security:
+        - FirebaseJWT: []
+      parameters:
+        - name: gameId
+          in: query
+          required: true
+          schema:
+            type: integer
+          description: ID IGDB du jeu
+      responses:
+        '200':
+          description: Jeu retiré des favoris
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessMessage'
+        '400':
+          description: gameId manquant
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Non authentifié
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
       summary: Ajouter aux favoris
       security:
         - FirebaseJWT: []
@@ -838,36 +1072,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/SuccessMessage'
-
-  /users/me/stats:
-    get:
-      tags: [Users]
-      summary: Statistiques de ma bibliothèque
-      security:
-        - FirebaseJWT: []
-      responses:
-        '200':
-          description: Statistiques récupérées
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  success:
-                    type: boolean
-                  stats:
-                    type: object
-                    properties:
-                      to_play:
-                        type: integer
-                      playing:
-                        type: integer
-                      finished:
-                        type: integer
-                      dropped:
-                        type: integer
-                      total:
-                        type: integer
 
   /users/me/export:
     get:

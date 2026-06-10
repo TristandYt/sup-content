@@ -447,6 +447,24 @@ const Jeu = ({
     return defaultCover;
   };
 
+  const getPegiBadgeUrls = (g) => {
+    if (!g?.age_ratings || !Array.isArray(g.age_ratings)) return [];
+    const urls = [];
+    for (const r of g.age_ratings) {
+      const ratingObj = typeof r === "object" ? r : { rating: r };
+      let url =
+        ratingObj.rating_cover_url ||
+        ratingObj.rating_cover ||
+        ratingObj.rating_cover?.url ||
+        null;
+      if (!url && ratingObj.rating_cover?.image_id) {
+        url = `https://images.igdb.com/igdb/image/upload/t_cover_big/${ratingObj.rating_cover.image_id}.jpg`;
+      }
+      if (url && !urls.includes(url)) urls.push(url);
+    }
+    return urls;
+  };
+
   const displaySummary = () => {
     if (i18n.language === "fr") {
       if (translating) return game?.summary || "";
@@ -534,6 +552,22 @@ const Jeu = ({
                   alt={game.name}
                   className="game-image"
                 />
+                {/* PEGI / Age rating logos fournis par IGDB (rating_cover_url) */}
+                <div style={{ position: "absolute", left: 8, bottom: 8, display: "flex", gap: 8 }}>
+                  {getPegiBadgeUrls(game).map((u, i) => {
+                    let src = u || "";
+                    if (src.startsWith("//")) src = `https:${src}`;
+                    if (src && !src.startsWith("http")) src = `https:${src}`;
+                    return (
+                      <img
+                        key={i}
+                        src={src}
+                        alt={`PEGI ${i}`}
+                        style={{ width: 40, height: 40, objectFit: "contain", borderRadius: 6, background: "rgba(0,0,0,0.4)" }}
+                      />
+                    );
+                  })}
+                </div>
                 <div className="rating-badge">
                   <span className="rating-star">⭐</span>
                   <span className="rating-value">

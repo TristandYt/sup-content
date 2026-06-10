@@ -1,6 +1,7 @@
 // Service API IGDB
 const axios = require("axios");
 const { getIgdbToken } = require("./igdbAuth");
+const { ADULT_THEME_ID } = require("./constants");
 
 class IGDBService {
   constructor() {
@@ -24,23 +25,32 @@ class IGDBService {
       return response.data;
     } catch (error) {
       if (error.response && error.response.status === 401 && !isRetry) {
-        console.warn("Token IGDB expiré ou révoqué. Nouvelle tentative...");
+        console.warn("Token IGDB expiré ou révoqué. Nouvelle tentative avec refresh du token...");
+        // Forcer le rafraîchissement du token une fois
+        try {
+          await getIgdbToken(true);
+        } catch (e) {}
         return this.request(endpoint, query, true);
       }
       throw error;
     }
   }
 
-  async searchGames(title, limit = 15, offset = 0, includeAdultThemes = false) {
-    const adultFilter = includeAdultThemes ? "" : "& themes != (42)";
-    const query = `
-    fields name, cover.image_id;
-    search "${title}";
-    where cover != null ${adultFilter};
-    limit ${limit};
-    offset ${offset};
-  `;
-    console.log("DEBUG QUERY:", query);
+  async searchGames(title, limit = 15, offset = 0, includeAdultThemes = false, options = {}) {
+    let query = `fields name, cover.image_id; search "${title}"; limit ${limit}; offset ${offset};`;
+    let whereClauses = ["cover != null"];
+
+    if (!includeAdultThemes) {
+      whereClauses.push(`themes != (${ADULT_THEME_ID})`);
+    }
+
+    if (options.genre) whereClauses.push(`genres = (${options.genre})`);
+    if (options.platform) whereClauses.push(`platforms = (${options.platform})`);
+    if (options.style) whereClauses.push(`themes = (${options.style})`);
+
+    if (whereClauses.length > 0) {
+      query += ` where ${whereClauses.join(" & ")};`;
+    }
     return this.request("games", query);
   }
 
@@ -49,9 +59,9 @@ class IGDBService {
     order = "desc",
     limit = 15,
     offset = 0,
-    includeAdultThemes = false,
+    includeAdultThemes = false
   ) {
-    const adultFilter = includeAdultThemes ? "" : " & themes != (42)";
+    const adultFilter = includeAdultThemes ? "" : ` & themes != (${ADULT_THEME_ID})`;
 
     // récupérer les IDs des jeux tendance en ce moment via IGDB PopScore
     const popQuery = `
@@ -67,8 +77,9 @@ class IGDBService {
     if (gameIds.length === 0) return [];
 
     // récupérer les détails des jeux correspondants
-    const detailsQuery = `
-      fields name, cover.image_id, total_rating, first_release_date, genres.name, age_ratings.category, age_ratings.rating;
+      const detailsQuery = `
+      fields name, cover.image_id, total_rating, first_release_date, genres.name,
+             age_ratings.category, age_ratings.rating, age_ratings.rating_cover_url, age_ratings.rating_category, age_ratings.rating_content_descriptions;
       where id = (${gameIds.join(",")}) & cover != null${adultFilter};
       limit ${limit};
     `;
@@ -87,7 +98,8 @@ class IGDBService {
     limit = 20,
     offset = 0,
   ) {
-    let query = `fields name, cover.image_id, first_release_date, total_rating, genres.name, age_ratings.category, age_ratings.rating; limit ${limit}; offset ${offset};`;
+    let query = `fields name, cover.image_id, first_release_date, total_rating, genres.name,
+         age_ratings.category, age_ratings.rating, age_ratings.rating_cover_url, age_ratings.rating_category; limit ${limit}; offset ${offset};`;
     let whereClauses = [];
     if (q) whereClauses.push(`name ~ * "${q}" *`);
     else if (genre || year) query += ` sort total_rating desc;`;
@@ -106,7 +118,7 @@ class IGDBService {
       whereClauses.push("total_rating_count > 10");
 
     if (!includeAdultThemes) {
-      whereClauses.push("themes != (42)");
+      whereClauses.push(`themes != (${ADULT_THEME_ID})`);
     }
 
     if (whereClauses.length > 0) query += ` where ${whereClauses.join(" & ")};`;
@@ -116,9 +128,10 @@ class IGDBService {
 
   async getUpcomingGames(limit = 20, offset = 0, includeAdultThemes = false) {
     const now = Math.floor(Date.now() / 1000);
-    const adultFilter = includeAdultThemes ? "" : " & themes != (42)";
+    const adultFilter = includeAdultThemes ? "" : ` & themes != (${ADULT_THEME_ID})`;
     const query = `
-      fields name, cover.image_id, first_release_date, total_rating, age_ratings.category, age_ratings.rating;
+      fields name, cover.image_id, first_release_date, total_rating,
+             age_ratings.category, age_ratings.rating, age_ratings.rating_cover_url, age_ratings.rating_category;
       where first_release_date > ${now} & cover != null${adultFilter};
       sort first_release_date asc;
       limit ${limit};
@@ -129,7 +142,7 @@ class IGDBService {
 
   async getGamesFiltered(
     { style, genre, platform, sortBy, order, limit = 15, offset = 0 },
-    includeAdultThemes = false,
+    includeAdultThemes = false
   ) {
     // Résolution du champ de tri
     let field = "total_rating";
@@ -144,7 +157,8 @@ class IGDBService {
     const ratingFilter =
       field === "total_rating" ? "total_rating != null & " : "";
 
-    let query = `fields name, cover.image_id, first_release_date, total_rating, genres.name, age_ratings.category, age_ratings.rating; sort ${field} ${direction}; limit ${limit}; offset ${offset};`;
+    let query = `fields name, cover.image_id, first_release_date, total_rating, genres.name,
+             age_ratings.category, age_ratings.rating, age_ratings.rating_cover_url, age_ratings.rating_category; sort ${field} ${direction}; limit ${limit}; offset ${offset};`;
 
     let whereClauses = [];
     if (ratingFilter) whereClauses.push("total_rating != null");
@@ -153,7 +167,7 @@ class IGDBService {
     if (style) whereClauses.push(`themes = (${style})`);
 
     if (!includeAdultThemes) {
-      whereClauses.push("themes != (42)");
+      whereClauses.push(`themes != (${ADULT_THEME_ID})`);
     }
 
     if (whereClauses.length > 0) query += ` where ${whereClauses.join(" & ")};`;
@@ -166,7 +180,7 @@ class IGDBService {
       fields name, cover.image_id, summary, total_rating, total_rating_count,
              genres.name, platforms.name, themes,
              screenshots.image_id, first_release_date,
-             age_ratings.category, age_ratings.rating,
+             age_ratings.category, age_ratings.rating, age_ratings.rating_cover_url, age_ratings.rating_category, age_ratings.rating_content_descriptions,
              dlcs.name, dlcs.cover.image_id, dlcs.first_release_date, dlcs.summary,
              expansions.name, expansions.cover.image_id, expansions.first_release_date, expansions.summary;
       where id = ${gameId};
@@ -187,7 +201,8 @@ class IGDBService {
 
   async getSimilarGames(gameId) {
     const query = `
-      fields similar_games.name, similar_games.cover.image_id, similar_games.total_rating, similar_games.first_release_date, similar_games.age_ratings.category, similar_games.age_ratings.rating;
+      fields similar_games.name, similar_games.cover.image_id, similar_games.total_rating, similar_games.first_release_date,
+             similar_games.age_ratings.category, similar_games.age_ratings.rating, similar_games.age_ratings.rating_cover_url, similar_games.age_ratings.rating_category;
       where id = ${gameId};
     `;
     return this.request("games", query);

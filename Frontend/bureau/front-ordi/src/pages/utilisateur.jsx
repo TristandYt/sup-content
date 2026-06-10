@@ -728,14 +728,16 @@ const MyProfile = ({
       const api = await authAxios();
       if (!api) throw new Error("Erreur authentification");
 
-      await api.put("/users/profile", {
+      const payload = {
         username: profileData.pseudo || profileData.username,
         bio: profileData.bio,
-        website: profileData.website,
-        avatarUrl: profileData.avatar,
-        birthDate: profileData.birthDate,
         preferences: profileData.preferences,
-      });
+      };
+      if (profileData.avatar) payload.avatarUrl = profileData.avatar;
+      if (profileData.birthDate) payload.birthDate = profileData.birthDate;
+      if (profileData.website) payload.website = profileData.website;
+
+      await api.put("/users/profile", payload);
 
       if (onLoginSuccess) onLoginSuccess(profileData);
       setSaveStatus("saved");
@@ -757,10 +759,27 @@ const MyProfile = ({
   };
 
   const handlePreferenceChange = (key, value) => {
+    // Optimistic UI update
     setProfileData((prev) => ({
       ...prev,
       preferences: { ...prev.preferences, [key]: value },
     }));
+
+    (async () => {
+      try {
+        const api = await authAxios();
+        if (!api) return;
+        const updatedPreferences = { ...(profileData.preferences || {}), [key]: value };
+        await api.put('/users/profile', { preferences: updatedPreferences });
+        if (onLoginSuccess) onLoginSuccess({ ...profileData, preferences: updatedPreferences });
+      } catch (err) {
+        console.error('Erreur sauvegarde préférence', err);
+        setProfileData((prev) => ({
+          ...prev,
+          preferences: { ...prev.preferences, [key]: !value },
+        }));
+      }
+    })();
   };
 
   const handleAvatarChange = (e) => {
