@@ -46,7 +46,6 @@ const Parametres = ({ user }) => {
         }
     };
 
-    git  ── Exportation Minimaliste & RGPD Compliant ──
     const handleExportData = async () => {
         setExportLoading(true);
         try {
