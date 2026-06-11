@@ -14,7 +14,177 @@ const authAxios = async () => {
   });
 };
 
-/* MODALE RECHERCHE UTILISATEUR*/
+/* ── MODALE ÉDITION MESSAGE ── */
+const EditMessageModal = ({ initialText, onConfirm, onClose }) => {
+  const [text, setText] = useState(initialText || "");
+
+  useEffect(() => {
+    const handleKey = (e) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", handleKey);
+    return () => window.removeEventListener("keydown", handleKey);
+  }, [onClose]);
+
+  return (
+    <>
+      {/* Overlay */}
+      <div
+        onClick={onClose}
+        style={{
+          position: "fixed",
+          inset: 0,
+          background: "rgba(0,0,0,0.65)",
+          zIndex: 2000,
+          backdropFilter: "blur(4px)",
+        }}
+      />
+      {/* Modale */}
+      <div
+        style={{
+          position: "fixed",
+          top: "50%",
+          left: "50%",
+          transform: "translate(-50%, -50%)",
+          zIndex: 2001,
+          width: "90%",
+          maxWidth: "420px",
+          background: "#1a1a2e",
+          border: "1px solid rgba(139,92,246,0.3)",
+          borderRadius: "16px",
+          padding: "24px",
+          boxShadow: "0 20px 60px rgba(0,0,0,0.5)",
+        }}
+      >
+        {/* En-tête */}
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            marginBottom: "18px",
+          }}
+        >
+          <h3
+            style={{
+              margin: 0,
+              color: "#e2e8f0",
+              fontSize: "16px",
+              fontWeight: 500,
+              display: "flex",
+              alignItems: "center",
+              gap: "8px",
+            }}
+          >
+            <i
+              className="fa-solid fa-pen-to-square"
+              style={{ color: "#9333ea", fontSize: "16px" }}
+              aria-hidden="true"
+            />
+            Modifier le message
+          </h3>
+          <button
+            onClick={onClose}
+            style={{
+              background: "none",
+              border: "none",
+              color: "rgba(255,255,255,0.5)",
+              fontSize: "1.4rem",
+              cursor: "pointer",
+              lineHeight: 1,
+              padding: "0 4px",
+            }}
+          >
+            ×
+          </button>
+        </div>
+
+        {/* Textarea */}
+        <textarea
+          autoFocus
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
+              e.preventDefault();
+              if (text.trim()) onConfirm(text.trim());
+            }
+          }}
+          style={{
+            width: "100%",
+            height: "100px",
+            background: "rgba(255,255,255,0.06)",
+            border: "1px solid rgba(139,92,246,0.35)",
+            borderRadius: "10px",
+            color: "#e2e8f0",
+            padding: "12px",
+            fontSize: "14px",
+            resize: "vertical",
+            boxSizing: "border-box",
+            outline: "none",
+            fontFamily: "inherit",
+            lineHeight: "1.5",
+          }}
+        />
+        <p
+          style={{
+            fontSize: "0.72rem",
+            color: "rgba(255,255,255,0.3)",
+            margin: "6px 0 14px",
+            textAlign: "right",
+          }}
+        >
+          Ctrl+Entrée pour valider
+        </p>
+
+        {/* Actions */}
+        <div style={{ display: "flex", gap: "10px" }}>
+          <button
+            onClick={onClose}
+            style={{
+              flex: 1,
+              padding: "10px",
+              background: "rgba(255,255,255,0.05)",
+              border: "1px solid rgba(255,255,255,0.12)",
+              borderRadius: "8px",
+              color: "#94a3b8",
+              cursor: "pointer",
+              fontSize: "14px",
+            }}
+          >
+            Annuler
+          </button>
+          <button
+            onClick={() => text.trim() && onConfirm(text.trim())}
+            disabled={!text.trim() || text.trim() === initialText?.trim()}
+            style={{
+              flex: 2,
+              padding: "10px",
+              background:
+                !text.trim() || text.trim() === initialText?.trim()
+                  ? "rgba(139,92,246,0.4)"
+                  : "#8b5cf6",
+              border: "none",
+              borderRadius: "8px",
+              color: "#fff",
+              cursor:
+                !text.trim() || text.trim() === initialText?.trim()
+                  ? "not-allowed"
+                  : "pointer",
+              fontSize: "14px",
+              fontWeight: 500,
+              transition: "background 0.15s",
+            }}
+          >
+            Enregistrer
+          </button>
+        </div>
+      </div>
+    </>
+  );
+};
+
+/* ── MODALE RECHERCHE UTILISATEUR ── */
 const UserSearchModal = ({ onClose, onSelectConversation }) => {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState([]);
@@ -254,7 +424,7 @@ const UserSearchModal = ({ onClose, onSelectConversation }) => {
   );
 };
 
-/*MESSAGERIE PRINCIPALE */
+/* ── MESSAGERIE PRINCIPALE ── */
 const Messagerie = ({
   user,
   preselectedConversation,
@@ -271,12 +441,15 @@ const Messagerie = ({
   const [sendLoading, setSendLoading] = useState(false);
   const [showSearchModal, setShowSearchModal] = useState(false);
   const [activeMenu, setActiveMenu] = useState(null);
+
+  // État pour la modale d'édition
+  const [editModal, setEditModal] = useState(null); // { messageId, text } | null
+
   const messagesEndRef = useRef(null);
   const selectedConvRef = useRef(null);
 
   const myId = String(user?.uid || user?.id || "");
 
-  // Garde selectedConv en ref pour les intervalles
   useEffect(() => {
     selectedConvRef.current = selectedConv;
   }, [selectedConv]);
@@ -316,21 +489,18 @@ const Messagerie = ({
           if (prev.some((m) => m._pending) || activeMenu !== null) return prev;
           return newMsgs;
         });
-        // Marquer automatiquement comme lus les nouveaux messages reçus
         markMessagesAsRead(selectedConv.id, newMsgs);
       } catch (err) {}
     }, 4000);
     return () => clearInterval(interval);
   }, [selectedConv, activeMenu]);
 
-  /* ── Marquer comme lus + mise à jour locale immédiate ── */
   const markMessagesAsRead = async (convId, msgs) => {
     const unread = msgs.filter(
       (m) => String(m.senderId) !== myId && !m.readBy?.includes(myId),
     );
     if (unread.length === 0) return;
 
-    // 1. Reset local immédiat du badge de la conversation
     setConversations((prev) =>
       prev.map((c) => (c.id === convId ? { ...c, unreadCount: 0 } : c)),
     );
@@ -342,7 +512,6 @@ const Messagerie = ({
           api.patch(`/conversations/${convId}/messages/${m.id}/read`),
         ),
       );
-      // 2. Notifier App.js pour recalculer le compteur global
       if (onMessagesRead) onMessagesRead();
     } catch (err) {
       console.error("Erreur lecture:", err);
@@ -357,8 +526,7 @@ const Messagerie = ({
       const res = await api.get("/conversations");
       const convs = res.data.conversations || [];
 
-      setConversations((prev) => {
-        // Si une conv est actuellement ouverte, on garde son unreadCount à 0
+      setConversations(() => {
         const currentId = selectedConvRef.current?.id;
         return convs.map((c) =>
           c.id === currentId ? { ...c, unreadCount: 0 } : c,
@@ -386,9 +554,9 @@ const Messagerie = ({
     setSelectedConv(conv);
     setMessages([]);
     setActiveMenu(null);
+    setEditModal(null);
     setLoadingMsgs(true);
 
-    // Reset immédiat du badge dans la liste
     setConversations((prev) =>
       prev.map((c) => (c.id === conv.id ? { ...c, unreadCount: 0 } : c)),
     );
@@ -485,33 +653,39 @@ const Messagerie = ({
     }
   };
 
-  const handleEditMessage = async (messageId) => {
-    if (!selectedConv?.id) return;
+  // Ouvre la modale d'édition au lieu du prompt()
+  const handleEditMessage = (messageId) => {
     const msgToEdit = messages.find((m) => m.id === messageId);
     if (!msgToEdit) return;
-    const newText = prompt("Modifier votre message :", msgToEdit?.text);
-    if (!newText || !newText.trim() || newText === msgToEdit.text) {
-      setActiveMenu(null);
-      return;
-    }
+    setActiveMenu(null);
+    setEditModal({ messageId, text: msgToEdit.text });
+  };
+
+  // Appelé quand l'utilisateur valide la modale
+  const handleConfirmEdit = async (newText) => {
+    const { messageId } = editModal;
+    setEditModal(null);
+
+    if (!selectedConv?.id) return;
+    const msgToEdit = messages.find((m) => m.id === messageId);
+    if (!msgToEdit || newText === msgToEdit.text) return;
+
     try {
       const api = await authAxios();
       await api.patch(
         `/conversations/${selectedConv.id}/messages/${messageId}`,
-        { text: newText.trim() },
+        { text: newText },
       );
       setMessages((prev) => {
         const updated = prev.map((m) =>
-          m.id === messageId ? { ...m, text: newText.trim() } : m,
+          m.id === messageId ? { ...m, text: newText } : m,
         );
         const isLast =
           prev.length > 0 && prev[prev.length - 1].id === messageId;
         if (isLast) {
           setConversations((convs) =>
             convs.map((c) =>
-              c.id === selectedConv.id
-                ? { ...c, lastMessage: newText.trim() }
-                : c,
+              c.id === selectedConv.id ? { ...c, lastMessage: newText } : c,
             ),
           );
         }
@@ -519,8 +693,6 @@ const Messagerie = ({
       });
     } catch (err) {
       alert("Erreur lors de la modification.");
-    } finally {
-      setActiveMenu(null);
     }
   };
 
@@ -557,12 +729,6 @@ const Messagerie = ({
   };
 
   const otherUser = getOtherUser(selectedConv);
-
-  // Calcul du total de messages non lus (toutes convs sauf celle ouverte)
-  const totalUnread = conversations.reduce((acc, c) => {
-    if (c.id === selectedConv?.id) return acc;
-    return acc + (c.unreadCount || 0);
-  }, 0);
 
   return (
     <div className="messaging-container">
@@ -630,7 +796,6 @@ const Messagerie = ({
               conversations.map((conv) => {
                 const other = getOtherUser(conv);
                 const isActive = selectedConv?.id === conv.id;
-                // Badge : 0 si la conv est ouverte, sinon unreadCount réel
                 const badge = isActive ? 0 : conv.unreadCount || 0;
 
                 return (
@@ -933,6 +1098,7 @@ const Messagerie = ({
         </main>
       </div>
 
+      {/* Modale recherche utilisateur */}
       {showSearchModal && (
         <UserSearchModal
           onClose={() => setShowSearchModal(false)}
@@ -950,6 +1116,15 @@ const Messagerie = ({
             });
             selectConversation(enrichedConv);
           }}
+        />
+      )}
+
+      {/* Modale édition message */}
+      {editModal && (
+        <EditMessageModal
+          initialText={editModal.text}
+          onConfirm={handleConfirmEdit}
+          onClose={() => setEditModal(null)}
         />
       )}
     </div>
