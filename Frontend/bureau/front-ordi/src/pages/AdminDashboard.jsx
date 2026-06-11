@@ -1,28 +1,17 @@
-// src/pages/AdminDashboard.jsx
-// Branché sur :
-//   GET    /api/users/logs
-//   POST   /api/users/promote/:userId
-//   POST   /api/moderation/users/:userId/ban
-//   DELETE /api/moderation/reviews/:reviewId
-//   PATCH  /api/moderation/reviews/:reviewId/highlight
-
 import React, { useState, useEffect, useCallback } from "react";
 import axios from "axios";
 import { auth } from "../Service/firebase";
 
 const API = "http://localhost:3000/api";
 
-// Axios instance avec token Firebase
-// FIX #3 : getIdToken() sans `true` — pas de rafraîchissement forcé à chaque appel
 const authAxios = async () => {
-  const token = await auth.currentUser?.getIdToken(true); // Force le rafraîchissement du token
+  const token = await auth.currentUser?.getIdToken(true);
   return axios.create({
     baseURL: API,
     headers: { Authorization: `Bearer ${token}` },
   });
 };
 
-// Palette & constantes
 const NAV = [
   { id: "overview", icon: "⬡", label: "Tableau de bord" },
   { id: "users", icon: "◈", label: "Membres" },
@@ -31,8 +20,6 @@ const NAV = [
   { id: "reviews", icon: "◫", label: "Critiques" },
   { id: "logs", icon: "◌", label: "Logs système" },
 ];
-
-// ── Sous-composants ──────────────────────────────────────────────────────────
 
 function Toast({ toast }) {
   if (!toast) return null;
@@ -108,6 +95,8 @@ function Badge({ type }) {
     pending: { bg: "#1a130d", color: "#f2994a", label: "en attente" },
     on: { bg: "#1a1535", color: "#a78bfa", label: "mis en avant" },
     off: { bg: "#111", color: "#555", label: "normal" },
+    comment: { bg: "#0d172a", color: "#38bdf8", label: "commentaire" },
+    review: { bg: "#1e1b4b", color: "#818cf8", label: "critique" },
   };
   const s = map[type] || map.off;
   return (
@@ -194,8 +183,6 @@ function SectionTitle({ children }) {
   );
 }
 
-// ── Panels ───────────────────────────────────────────────────────────────────
-
 function OverviewPanel({ logs, stats }) {
   return (
     <div>
@@ -276,7 +263,6 @@ function UsersPanel({ showToast }) {
   const [loading, setLoading] = useState(false);
   const [query, setQuery] = useState("");
 
-  // FIX #2 : normaliser l'ID une fois à la réception pour éviter les keys undefined
   const normalizeUser = (u) => ({
     ...u,
     _id: u.userId || u.id || u.uid || null,
@@ -300,7 +286,7 @@ function UsersPanel({ showToast }) {
     } catch {
       showToast("Erreur serveur", false);
     }
-    setLoading(false);
+    setQuery("");
   };
 
   const ban = async (userId) => {
@@ -361,7 +347,6 @@ function UsersPanel({ showToast }) {
       </div>
 
       <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-        {/* FIX #2 : key sur _id normalisé — jamais undefined */}
         {results.map((u) => (
           <div
             key={u._id}
@@ -551,34 +536,144 @@ function RolesPanel({ showToast }) {
   );
 }
 
+// Module Signalements révisé : Charge désormais dynamiquement les données du serveur
 function ReportsPanel({ showToast }) {
-  // FIX #4 : banFromReport supprimé — code mort, BanFromReportForm gère son propre ban
+  const [reports, setReports] = useState([]);
+  const [loading, setLoading] = useState(false);
+
+  const fetchReports = async () => {
+    setLoading(true);
+    try {
+      const api = await authAxios();
+      const { data } = await api.get("/moderation/reports");
+      if (data.success) {
+        setReports(data.reports || []);
+      }
+    } catch {
+      showToast("Erreur de synchronisation des signalements", false);
+    }
+    setLoading(false);
+  };
+
+  useEffect(() => {
+    fetchReports();
+  }, []);
+
+  const thStyle = {
+    fontSize: 10,
+    color: "#555",
+    textTransform: "uppercase",
+    letterSpacing: "0.1em",
+    padding: "10px 12px",
+    textAlign: "left",
+    borderBottom: "1px solid #1a1a24",
+    fontFamily: "'JetBrains Mono', monospace",
+  };
+  const tdStyle = {
+    padding: "12px",
+    borderBottom: "1px solid #111",
+    fontSize: 13,
+    color: "#aaa",
+  };
+
   return (
     <div>
-      <SectionTitle>Signalements</SectionTitle>
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          marginBottom: "0.5rem",
+        }}
+      >
+        <SectionTitle>Gestion des signalements</SectionTitle>
+        <Btn small onClick={fetchReports} disabled={loading}>
+          {loading ? "…" : "↺ Actualiser"}
+        </Btn>
+      </div>
+
       <div
         style={{
           background: "#111118",
-          border: "1px solid #1a130d",
+          border: "1px solid #1e1e2a",
           borderRadius: 8,
-          padding: "1rem 1.25rem",
-          marginBottom: "1.5rem",
-          fontSize: 12,
-          color: "#f2994a",
-          fontFamily: "'JetBrains Mono', monospace",
+          overflow: "hidden",
+          marginBottom: "2rem",
         }}
       >
-        ◬ Aucune route GET /moderation/reports n'est encore exposée dans ton
-        backend.
-        <br />
-        Ajoute{" "}
-        <span style={{ color: "#fff" }}>
-          router.get('/reports', isAdmin, moderationController.getReports)
-        </span>{" "}
-        pour lister les signalements ici.
-        <br />
-        En attendant, les signalements sont visibles directement dans Firestore
-        → collection <span style={{ color: "#fff" }}>'reports'</span>.
+        {reports.length === 0 ? (
+          <div
+            style={{
+              padding: "2rem",
+              textAlign: "center",
+              color: "#444",
+              fontFamily: "'JetBrains Mono', monospace",
+              fontSize: 12,
+            }}
+          >
+            {loading
+              ? "Chargement des signalements..."
+              : "Aucun signalement en attente"}
+          </div>
+        ) : (
+          <table style={{ width: "100%", borderCollapse: "collapse" }}>
+            <thead>
+              <tr>
+                <th style={thStyle}>Date</th>
+                <th style={thStyle}>Type</th>
+                <th style={thStyle}>ID Cible</th>
+                <th style={thStyle}>Motif</th>
+                <th style={thStyle}>Auteur</th>
+              </tr>
+            </thead>
+            <tbody>
+              {reports.map((r) => {
+                const dateStr = r.createdAt?._seconds
+                  ? new Date(r.createdAt._seconds * 1000).toLocaleDateString(
+                      "fr-FR",
+                    )
+                  : "—";
+                return (
+                  <tr key={r.id}>
+                    <td
+                      style={{
+                        ...tdStyle,
+                        fontFamily: "'JetBrains Mono', monospace",
+                        color: "#555",
+                      }}
+                    >
+                      {dateStr}
+                    </td>
+                    <td style={tdStyle}>
+                      <Badge type={r.targetType || "comment"} />
+                    </td>
+                    <td
+                      style={{
+                        ...tdStyle,
+                        fontFamily: "'JetBrains Mono', monospace",
+                        fontSize: 11,
+                        color: "#888",
+                      }}
+                    >
+                      {r.targetId}
+                    </td>
+                    <td style={{ ...tdStyle, color: "#e8e8f0" }}>{r.reason}</td>
+                    <td
+                      style={{
+                        ...tdStyle,
+                        fontFamily: "'JetBrains Mono', monospace",
+                        fontSize: 11,
+                        color: "#666",
+                      }}
+                    >
+                      {r.reporterId}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        )}
       </div>
 
       <div
@@ -592,13 +687,14 @@ function ReportsPanel({ showToast }) {
         <div
           style={{
             fontSize: 12,
-            color: "#555",
+            color: "#eb5757",
             marginBottom: 16,
             textTransform: "uppercase",
             letterSpacing: "0.1em",
+            fontFamily: "'JetBrains Mono', monospace",
           }}
         >
-          Action rapide — bannir depuis un signalement
+          Action rapide — Prendre une mesure de bannissement
         </div>
         <BanFromReportForm showToast={showToast} />
       </div>
@@ -624,7 +720,7 @@ function BanFromReportForm({ showToast }) {
       <input
         value={uid}
         onChange={(e) => setUid(e.target.value)}
-        placeholder="userId du membre signalé"
+        placeholder="Saisir le userId du membre à bannir"
         onKeyDown={(e) => e.key === "Enter" && doBan()}
         style={{
           flex: 1,
@@ -646,8 +742,9 @@ function BanFromReportForm({ showToast }) {
 
 function ReviewsPanel({ showToast }) {
   const [reviews, setReviews] = useState([]);
-  // FIX #5 : `loading` supprimé — état déclaré mais jamais utilisé ni affiché
   const [reviewId, setReviewId] = useState("");
+  const [targetReviewId, setTargetReviewId] = useState("");
+  const [targetCommentId, setTargetCommentId] = useState("");
 
   const addReviewById = (id) => {
     if (!id.trim()) return;
@@ -668,6 +765,23 @@ function ReviewsPanel({ showToast }) {
       if (data.success) setReviews((prev) => prev.filter((r) => r.id !== id));
     } catch {
       showToast("Erreur serveur", false);
+    }
+  };
+
+  const deleteCommentQuick = async () => {
+    if (!targetReviewId.trim() || !targetCommentId.trim()) return;
+    if (!window.confirm("Supprimer définitivement ce commentaire ?")) return;
+    try {
+      const api = await authAxios();
+      const { data } = await api.delete(
+        `/moderation/reviews/${targetReviewId.trim()}/comments/${targetCommentId.trim()}`,
+      );
+      showToast(data.msg, data.success);
+      if (data.success) {
+        setTargetCommentId("");
+      }
+    } catch {
+      showToast("Erreur lors de la suppression du commentaire", false);
     }
   };
 
@@ -751,6 +865,7 @@ function ReviewsPanel({ showToast }) {
             border: "1px solid #1e1e2a",
             borderRadius: 8,
             overflow: "hidden",
+            marginBottom: "2rem",
           }}
         >
           <table style={{ width: "100%", borderCollapse: "collapse" }}>
@@ -800,12 +915,67 @@ function ReviewsPanel({ showToast }) {
           </table>
         </div>
       )}
+
+      <div
+        style={{
+          background: "#111118",
+          border: "1px solid #1e1e2a",
+          borderRadius: 8,
+          padding: "1.25rem",
+        }}
+      >
+        <div
+          style={{
+            fontSize: 12,
+            color: "#eb5757",
+            marginBottom: 16,
+            textTransform: "uppercase",
+            letterSpacing: "0.1em",
+            fontFamily: "'JetBrains Mono', monospace",
+          }}
+        >
+          ✕ Action rapide — Supprimer un commentaire
+        </div>
+        <div style={{ display: "flex", gap: 8 }}>
+          <input
+            value={targetReviewId}
+            onChange={(e) => setTargetReviewId(e.target.value)}
+            placeholder="ID de la critique"
+            style={{
+              flex: 1,
+              background: "#111",
+              border: "1px solid #1e1e2a",
+              borderRadius: 6,
+              color: "#ddd",
+              padding: "8px 12px",
+              fontFamily: "'JetBrains Mono', monospace",
+              fontSize: 13,
+            }}
+          />
+          <input
+            value={targetCommentId}
+            onChange={(e) => setTargetCommentId(e.target.value)}
+            placeholder="ID du commentaire"
+            style={{
+              flex: 1,
+              background: "#111",
+              border: "1px solid #1e1e2a",
+              borderRadius: 6,
+              color: "#ddd",
+              padding: "8px 12px",
+              fontFamily: "'JetBrains Mono', monospace",
+              fontSize: 13,
+            }}
+          />
+          <Btn variant="danger" onClick={deleteCommentQuick}>
+            ✕ Supprimer
+          </Btn>
+        </div>
+      </div>
     </div>
   );
 }
 
-// FIX #1 : LogsPanel — titre et bouton dans un wrapper flex dédié
-// SectionTitle inline pour ne pas créer un bloc séparé qui casse le space-between
 function LogsPanel({ logs, reload, loading }) {
   return (
     <div>
@@ -833,7 +1003,6 @@ function LogsPanel({ logs, reload, loading }) {
           {loading ? "…" : "↺ Actualiser"}
         </Btn>
       </div>
-      {/* Séparateur indépendant pour ne pas couper le flex row */}
       <div
         style={{ borderBottom: "1px solid #1a1a24", marginBottom: "1.5rem" }}
       />
@@ -903,8 +1072,6 @@ function LogsPanel({ logs, reload, loading }) {
   );
 }
 
-// ── Composant principal ───────────────────────────────────────────────────────
-
 export default function AdminDashboard({ onBack }) {
   const [active, setActive] = useState("overview");
   const [toast, setToast] = useState(null);
@@ -946,10 +1113,7 @@ export default function AdminDashboard({ onBack }) {
         });
       }
     } catch {
-      showToast(
-        "Impossible de charger les logs — vérifier le token admin",
-        false,
-      );
+      showToast("Impossible de charger les logs", false);
     }
     setLogsLoading(false);
   }, [showToast]);
@@ -987,7 +1151,6 @@ export default function AdminDashboard({ onBack }) {
           fontFamily: "'DM Sans', sans-serif",
         }}
       >
-        {/* ── Sidebar ── */}
         <aside
           style={{
             width: 220,
@@ -1093,7 +1256,6 @@ export default function AdminDashboard({ onBack }) {
           )}
         </aside>
 
-        {/* ── Contenu principal ── */}
         <main
           style={{
             flex: 1,

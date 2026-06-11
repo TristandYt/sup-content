@@ -30,38 +30,38 @@ const translateToFr = async (text) => {
 };
 
 const StarRating = ({
-                      value,
-                      hoverValue,
-                      onChange,
-                      onHover,
-                      onLeave,
-                      readOnly = false,
-                    }) => (
-    <div style={{ display: "flex", gap: "4px" }}>
-      {[1, 2, 3, 4, 5].map((star) => (
-          <span
-              key={star}
-              style={{
-                fontSize: readOnly ? "1rem" : "1.5rem",
-                cursor: readOnly ? "default" : "pointer",
-                color: (hoverValue || value) >= star ? "#c084fc" : "#334155",
-                transition: "color 0.15s ease",
-              }}
-              onClick={() => !readOnly && onChange?.(star)}
-              onMouseEnter={() => !readOnly && onHover?.(star)}
-              onMouseLeave={() => !readOnly && onLeave?.()}
-          >
+  value,
+  hoverValue,
+  onChange,
+  onHover,
+  onLeave,
+  readOnly = false,
+}) => (
+  <div style={{ display: "flex", gap: "4px" }}>
+    {[1, 2, 3, 4, 5].map((star) => (
+      <span
+        key={star}
+        style={{
+          fontSize: readOnly ? "1rem" : "1.5rem",
+          cursor: readOnly ? "default" : "pointer",
+          color: (hoverValue || value) >= star ? "#c084fc" : "#334155",
+          transition: "color 0.15s ease",
+        }}
+        onClick={() => !readOnly && onChange?.(star)}
+        onMouseEnter={() => !readOnly && onHover?.(star)}
+        onMouseLeave={() => !readOnly && onLeave?.()}
+      >
         <i className="fa-solid fa-star"></i>
       </span>
-      ))}
-    </div>
+    ))}
+  </div>
 );
 
 const formatDate = (updatedAt) => {
   if (!updatedAt) return "";
   const ts = updatedAt?._seconds
-      ? new Date(updatedAt._seconds * 1000)
-      : new Date(updatedAt);
+    ? new Date(updatedAt._seconds * 1000)
+    : new Date(updatedAt);
   return ts.toLocaleDateString("fr-FR");
 };
 
@@ -74,15 +74,14 @@ const formatReleaseDate = (timestamp) => {
   });
 };
 
-/* ════════════════════════════════════════════════ */
 const Jeu = ({
-               gameId,
-               onBack,
-               user,
-               onFavoriteChange,
-               onGameClick,
-               onForumClick,
-             }) => {
+  gameId,
+  onBack,
+  user,
+  onFavoriteChange,
+  onGameClick,
+  onForumClick,
+}) => {
   const { i18n } = useTranslation();
   const navigate = useNavigate();
 
@@ -116,6 +115,12 @@ const Jeu = ({
   const [dlcTab, setDlcTab] = useState("dlc");
 
   const [gameThread, setGameThread] = useState(null);
+
+  // Nouveaux états locaux pour la fenêtre de dialogue des signalements
+  const [isReportModalOpen, setIsReportModalOpen] = useState(false);
+  const [reportTargetId, setReportTargetId] = useState(null);
+  const [reportReason, setReportReason] = useState("Spam / Publicité");
+  const [customReason, setCustomReason] = useState("");
 
   const scrollSimilar = (direction) => {
     setSimilarGames((prev) => {
@@ -176,8 +181,8 @@ const Jeu = ({
 
         try {
           const api = auth.currentUser
-              ? await authAxios()
-              : axios.create({ baseURL: "http://localhost:3000/api" });
+            ? await authAxios()
+            : axios.create({ baseURL: "http://localhost:3000/api" });
           const resSimilar = await api.get(`/games/${gameId}/similar`);
           setSimilarGames(resSimilar.data || []);
         } catch (_) {}
@@ -185,8 +190,8 @@ const Jeu = ({
         try {
           setDlcLoading(true);
           const api = auth.currentUser
-              ? await authAxios()
-              : axios.create({ baseURL: "http://localhost:3000/api" });
+            ? await authAxios()
+            : axios.create({ baseURL: "http://localhost:3000/api" });
           const resDlc = await api.get(`/games/${gameId}/dlcs`);
           if (resDlc.data?.success) {
             if (resDlc.data.dlcs?.length) setDlcs(resDlc.data.dlcs);
@@ -208,13 +213,13 @@ const Jeu = ({
 
         try {
           const api = auth.currentUser
-              ? await authAxios()
-              : axios.create({ baseURL: "http://localhost:3000/api" });
+            ? await authAxios()
+            : axios.create({ baseURL: "http://localhost:3000/api" });
           const resThreads = await api.get(`/forum/threads?gameId=${gameId}`);
           setGameThread(
-              resThreads.data?.success && resThreads.data.threads.length > 0
-                  ? resThreads.data.threads[0]
-                  : false,
+            resThreads.data?.success && resThreads.data.threads.length > 0
+              ? resThreads.data.threads[0]
+              : false,
           );
         } catch (_) {
           setGameThread(false);
@@ -225,12 +230,14 @@ const Jeu = ({
         if (status === 401) {
           setGameError({
             code: 401,
-            msg: err.response.data?.msg || "Connectez-vous pour voir ce contenu.",
+            msg:
+              err.response.data?.msg || "Connectez-vous pour voir ce contenu.",
           });
         } else if (status === 403) {
           setGameError({
             code: 403,
-            msg: err.response.data?.msg || "Vous n'avez pas accès à ce contenu.",
+            msg:
+              err.response.data?.msg || "Vous n'avez pas accès à ce contenu.",
           });
         } else {
           setGameError({ code: 0, msg: "Impossible de charger ce jeu." });
@@ -252,7 +259,7 @@ const Jeu = ({
   const refreshReviews = async (isInitial = false) => {
     try {
       const res = await axios.get(
-          `http://localhost:3000/api/reviews/game/${gameId}`,
+        `http://localhost:3000/api/reviews/game/${gameId}`,
       );
       if (res.data?.success) {
         const allReviews = res.data.reviews || [];
@@ -290,8 +297,8 @@ const Jeu = ({
         onFavoriteChange?.();
       } else {
         const gameCover = game?.cover?.image_id
-            ? `https://images.igdb.com/igdb/image/upload/t_cover_big/${game.cover.image_id}.jpg`
-            : "";
+          ? `https://images.igdb.com/igdb/image/upload/t_cover_big/${game.cover.image_id}.jpg`
+          : "";
         await api.post(`/lists/status`, {
           gameId: String(gameId),
           status: "to_play",
@@ -321,10 +328,10 @@ const Jeu = ({
     try {
       const api = await authAxios();
       const pseudo =
-          user?.pseudo ||
-          user?.displayName ||
-          auth.currentUser?.displayName ||
-          "Anonyme";
+        user?.pseudo ||
+        user?.displayName ||
+        auth.currentUser?.displayName ||
+        "Anonyme";
       if (myReview)
         await api.put(`/reviews/${gameId}`, {
           rating,
@@ -374,18 +381,18 @@ const Jeu = ({
       const res = await api.post(`/interactions/reviews/${reviewId}/like`);
       if (res.data.success) {
         setReviews((prev) =>
-            prev.map((r) => {
-              if (r.id !== reviewId) return r;
-              const myUid = auth.currentUser.uid;
-              const likedBy = r.likedBy || [];
-              const liked = !likedBy.includes(myUid);
-              return {
-                ...r,
-                likedBy: liked
-                    ? [...likedBy, myUid]
-                    : likedBy.filter((id) => id !== myUid),
-              };
-            }),
+          prev.map((r) => {
+            if (r.id !== reviewId) return r;
+            const myUid = auth.currentUser.uid;
+            const likedBy = r.likedBy || [];
+            const liked = !likedBy.includes(myUid);
+            return {
+              ...r,
+              likedBy: liked
+                ? [...likedBy, myUid]
+                : likedBy.filter((id) => id !== myUid),
+            };
+          }),
         );
       }
     } catch (_) {}
@@ -401,10 +408,10 @@ const Jeu = ({
     try {
       const api = await authAxios();
       const pseudo =
-          user?.pseudo ||
-          user?.displayName ||
-          auth.currentUser?.displayName ||
-          "Anonyme";
+        user?.pseudo ||
+        user?.displayName ||
+        auth.currentUser?.displayName ||
+        "Anonyme";
       const res = await api.post(`/interactions/reviews/${reviewId}/comments`, {
         text: reviewCommentText,
         pseudo,
@@ -414,11 +421,11 @@ const Jeu = ({
         setCommentingReviewId(null);
         if (res.data.comment) {
           setReviews((prev) =>
-              prev.map((r) =>
-                  r.id === reviewId
-                      ? { ...r, comments: [...(r.comments || []), res.data.comment] }
-                      : r,
-              ),
+            prev.map((r) =>
+              r.id === reviewId
+                ? { ...r, comments: [...(r.comments || []), res.data.comment] }
+                : r,
+            ),
           );
         } else {
           await refreshReviews(false);
@@ -428,6 +435,67 @@ const Jeu = ({
       alert("Erreur lors de l'envoi du commentaire.");
     } finally {
       setCommentLoading(false);
+    }
+  };
+
+  // Ouvre l'overlay et prépare le formulaire de signalement
+  const handleReportComment = (commentId) => {
+    setReportTargetId(commentId);
+    setReportReason("Spam / Publicité");
+    setCustomReason("");
+    setIsReportModalOpen(true);
+  };
+
+  // Traite la soumission finale de l'overlay de signalement vers l'API
+  const handleConfirmReport = async () => {
+    const finalReason =
+      reportReason === "Autre" ? customReason.trim() : reportReason;
+    if (!finalReason) {
+      alert("Veuillez indiquer un motif valide.");
+      return;
+    }
+
+    try {
+      const api = await authAxios();
+      const res = await api.post(`/moderation/report`, {
+        targetId: reportTargetId,
+        targetType: "comment",
+        reason: finalReason,
+      });
+      if (res.data.success) {
+        alert("Le commentaire a été signalé à l'équipe de modération.");
+        setIsReportModalOpen(false);
+      }
+    } catch (_) {
+      alert("Une erreur s'est produite lors de l'envoi.");
+    }
+  };
+
+  const handleDeleteComment = async (reviewId, commentId) => {
+    if (!window.confirm("Supprimer ce commentaire définitivement ?")) return;
+
+    try {
+      const api = await authAxios();
+      const res = await api.delete(
+        `/moderation/reviews/${reviewId}/comments/${commentId}`,
+      );
+      if (res.data.success) {
+        alert("Commentaire supprimé avec succès.");
+        setReviews((prev) =>
+          prev.map((r) =>
+            r.id === reviewId
+              ? {
+                  ...r,
+                  comments: (r.comments || []).filter(
+                    (c) => c.id !== commentId,
+                  ),
+                }
+              : r,
+          ),
+        );
+      }
+    } catch (_) {
+      alert("Erreur lors de la suppression du commentaire.");
     }
   };
 
@@ -475,11 +543,11 @@ const Jeu = ({
 
   if (loading)
     return (
-        <div className="app-container">
-          <div className="loading-container">
-            <div className="loading-spinner"></div>
-          </div>
+      <div className="app-container">
+        <div className="loading-container">
+          <div className="loading-spinner"></div>
         </div>
+      </div>
     );
 
   if (gameError || !game)
@@ -490,23 +558,33 @@ const Jeu = ({
           <button
             onClick={onBack}
             className="category-btn"
-            style={{ marginBottom: "2rem", display: "flex", alignItems: "center", gap: "8px" }}
+            style={{
+              marginBottom: "2rem",
+              display: "flex",
+              alignItems: "center",
+              gap: "8px",
+            }}
           >
             ← Retour
           </button>
           <div className="empty-state">
             <div className="empty-icon">
-              {gameError?.code === 401 ? "🔒" : gameError?.code === 403 ? "🔞" : "⚠️"}
+              {gameError?.code === 401
+                ? "🔒"
+                : gameError?.code === 403
+                  ? "🔞"
+                  : "⚠️"}
             </div>
             <h3 className="empty-title">
               {gameError?.code === 401
                 ? "Connexion requise"
                 : gameError?.code === 403
-                ? "Accès restreint"
-                : "Jeu introuvable"}
+                  ? "Accès restreint"
+                  : "Jeu introuvable"}
             </h3>
             <p className="empty-text">
-              {gameError?.msg || "Ce jeu n'existe pas ou n'est plus disponible."}
+              {gameError?.msg ||
+                "Ce jeu n'existe pas ou n'est plus disponible."}
             </p>
             {gameError?.code === 401 && (
               <button
@@ -525,25 +603,23 @@ const Jeu = ({
   const hasDlcContent = dlcs.length > 0 || expansions.length > 0;
 
   return (
-      <div className="app-container">
-        <div className="hero-gradient"></div>
-        <div className="main-content-wrapper">
-          <button
-              onClick={onBack}
-              className="category-btn"
-              style={{
-                marginBottom: "2rem",
-                display: "flex",
-                alignItems: "center",
-                gap: "8px",
-              }}
-          >
-            <i className="fa-solid fa-arrow-left"></i> Retour à la navigation
-          </button>
+    <div className="app-container">
+      <div className="hero-gradient"></div>
+      <div className="main-content-wrapper">
+        <button
+          onClick={onBack}
+          className="category-btn"
+          style={{
+            marginBottom: "2rem",
+            display: "flex",
+            alignItems: "center",
+            gap: "8px",
+          }}
+        >
+          <i className="fa-solid fa-arrow-left"></i> Retour à la navigation
+        </button>
 
-        {}
         <div className="game-details-layout" style={{ overflow: "hidden" }}>
-          {/* ── COLONNE GAUCHE ── */}
           <div className="game-sidebar-modern">
             <div className="game-card-modern" style={{ cursor: "default" }}>
               <div className="game-image-container">
@@ -552,8 +628,15 @@ const Jeu = ({
                   alt={game.name}
                   className="game-image"
                 />
-                {/* PEGI / Age rating logos fournis par IGDB (rating_cover_url) */}
-                <div style={{ position: "absolute", left: 8, bottom: 8, display: "flex", gap: 8 }}>
+                <div
+                  style={{
+                    position: "absolute",
+                    left: 8,
+                    bottom: 8,
+                    display: "flex",
+                    gap: 8,
+                  }}
+                >
                   {getPegiBadgeUrls(game).map((u, i) => {
                     let src = u || "";
                     if (src.startsWith("//")) src = `https:${src}`;
@@ -563,7 +646,13 @@ const Jeu = ({
                         key={i}
                         src={src}
                         alt={`PEGI ${i}`}
-                        style={{ width: 40, height: 40, objectFit: "contain", borderRadius: 6, background: "rgba(0,0,0,0.4)" }}
+                        style={{
+                          width: 40,
+                          height: 40,
+                          objectFit: "contain",
+                          borderRadius: 6,
+                          background: "rgba(0,0,0,0.4)",
+                        }}
                       />
                     );
                   })}
@@ -573,148 +662,154 @@ const Jeu = ({
                   <span className="rating-value">
                     {(game.total_rating / 20).toFixed(1)}
                   </span>
-                  </div>
-                </div>
-                <div
-                    className="game-content"
-                    style={{
-                      display: "flex",
-                      flexDirection: "column",
-                      gap: "10px",
-                    }}
-                >
-                  <button
-                      onClick={toggleFavorite}
-                      disabled={favLoading}
-                      className={`nav-user-btn ${isFavorite ? "" : "category-btn"}`}
-                      style={{
-                        width: "100%",
-                        justifyContent: "center",
-                        background: isFavorite ? "#ef4444" : "",
-                        opacity: favLoading ? 0.7 : 1,
-                      }}
-                  >
-                    {favLoading ? (
-                        "..."
-                    ) : isFavorite ? (
-                        <>
-                          <i className="fa-solid fa-heart" style={{ marginRight: "8px" }}></i> Dans la collection
-                        </>
-                    ) : (
-                        <>
-                          <i className="fa-regular fa-heart" style={{ marginRight: "8px" }}></i> Ajouter aux favoris
-                        </>
-                    )}
-                  </button>
-                  <button
-                      onClick={handleForumButtonClick}
-                      className="category-btn"
-                      style={{
-                        width: "100%",
-                        justifyContent: "center",
-                        display: "flex",
-                        alignItems: "center",
-                        gap: "8px",
-                        borderColor: "#9333ea",
-                        color: "#c084fc",
-                      }}
-                  >
-                    <i className="fa-solid fa-message"></i>
-                    {gameThread
-                        ? "Voir le fil de discussion"
-                        : "Ouvrir une discussion"}
-                    {gameThread?.replyCount > 0 && (
-                        <span
-                            style={{
-                              background: "#9333ea",
-                              color: "#fff",
-                              borderRadius: "99px",
-                              fontSize: "0.7rem",
-                              fontWeight: "700",
-                              padding: "1px 7px",
-                            }}
-                        >
-                      {gameThread.replyCount}
-                    </span>
-                    )}
-                  </button>
                 </div>
               </div>
-
-              <div className="filters-section" style={{ marginTop: "1.5rem" }}>
-                <h4
-                    className="game-genre"
-                    style={{
-                      display: "block",
-                      marginBottom: "1rem",
-                      textAlign: "center",
-                    }}
+              <div
+                className="game-content"
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: "10px",
+                }}
+              >
+                <button
+                  onClick={toggleFavorite}
+                  disabled={favLoading}
+                  className={`nav-user-btn ${isFavorite ? "" : "category-btn"}`}
+                  style={{
+                    width: "100%",
+                    justifyContent: "center",
+                    background: isFavorite ? "#ef4444" : "",
+                    opacity: favLoading ? 0.7 : 1,
+                  }}
                 >
-                  Informations
-                </h4>
-                <div
-                    style={{
-                      color: "#9ca3af",
-                      fontSize: "0.9rem",
-                      display: "flex",
-                      flexDirection: "column",
-                      gap: "10px",
-                    }}
-                >
-                  <p>
-                    <strong>Genres :</strong>{" "}
-                    {game.genres?.map((g) => g.name).join(", ") || "—"}
-                  </p>
-                  <p>
-                    <strong>Plateformes :</strong>{" "}
-                    {game.platforms?.map((p) => p.name).join(", ") || "—"}
-                  </p>
-                  {game.first_release_date && (
-                      <p>
-                        <strong>Sortie :</strong>{" "}
-                        {formatReleaseDate(game.first_release_date)}
-                      </p>
+                  {favLoading ? (
+                    "..."
+                  ) : isFavorite ? (
+                    <>
+                      <i
+                        className="fa-solid fa-heart"
+                        style={{ marginRight: "8px" }}
+                      ></i>{" "}
+                      Dans la collection
+                    </>
+                  ) : (
+                    <>
+                      <i
+                        className="fa-regular fa-heart"
+                        style={{ marginRight: "8px" }}
+                      ></i>{" "}
+                      Ajouter aux favoris
+                    </>
                   )}
-                </div>
+                </button>
+                <button
+                  onClick={handleForumButtonClick}
+                  className="category-btn"
+                  style={{
+                    width: "100%",
+                    justifyContent: "center",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "8px",
+                    borderColor: "#9333ea",
+                    color: "#c084fc",
+                  }}
+                >
+                  <i className="fa-solid fa-message"></i>
+                  {gameThread
+                    ? "Voir le fil de discussion"
+                    : "Ouvrir une discussion"}
+                  {gameThread?.replyCount > 0 && (
+                    <span
+                      style={{
+                        background: "#9333ea",
+                        color: "#fff",
+                        borderRadius: "99px",
+                        fontSize: "0.7rem",
+                        fontWeight: "700",
+                        padding: "1px 7px",
+                      }}
+                    >
+                      {gameThread.replyCount}
+                    </span>
+                  )}
+                </button>
               </div>
             </div>
 
-          {}
+            <div className="filters-section" style={{ marginTop: "1.5rem" }}>
+              <h4
+                className="game-genre"
+                style={{
+                  display: "block",
+                  marginBottom: "1rem",
+                  textAlign: "center",
+                }}
+              >
+                Informations
+              </h4>
+              <div
+                style={{
+                  color: "#9ca3af",
+                  fontSize: "0.9rem",
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: "10px",
+                }}
+              >
+                <p>
+                  <strong>Genres :</strong>{" "}
+                  {game.genres?.map((g) => g.name).join(", ") || "—"}
+                </p>
+                <p>
+                  <strong>Plateformes :</strong>{" "}
+                  {game.platforms?.map((p) => p.name).join(", ") || "—"}
+                </p>
+                {game.first_release_date && (
+                  <p>
+                    <strong>Sortie :</strong>{" "}
+                    {formatReleaseDate(game.first_release_date)}
+                  </p>
+                )}
+              </div>
+            </div>
+          </div>
+
           <div
             className="game-main-info"
             style={{ minWidth: 0, overflow: "hidden" }}
           >
             <h1 className="hero-title">{game.name}</h1>
 
-              <div className="section-header">
-                <h3 className="section-title">Résumé</h3>
-                {translating && (
-                    <span
-                        style={{
-                          fontSize: "0.75rem",
-                          color: "#9333ea",
-                          display: "flex",
-                          alignItems: "center",
-                          gap: "6px",
-                        }}
-                    >
+            <div className="section-header">
+              <h3 className="section-title">Résumé</h3>
+              {translating && (
+                <span
+                  style={{
+                    fontSize: "0.75rem",
+                    color: "#9333ea",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "6px",
+                  }}
+                >
                   <div
-                      className="loading-spinner"
-                      style={{ width: "12px", height: "12px" }}
+                    className="loading-spinner"
+                    style={{ width: "12px", height: "12px" }}
                   />
                   Traduction…
                 </span>
-                )}
-              </div>
-              <p
-                  className="hero-subtitle"
-                  style={{ color: "#e2e8f0", marginBottom: "3rem" }}
-              >
-                {displaySummary()}
-              </p>
+              )}
+            </div>
+            <p
+              className="hero-subtitle"
+              style={{ color: "#e2e8f0", marginBottom: "3rem" }}
+            >
+              {displaySummary()}
+            </p>
 
-            {/* ══ DLC & EXPANSIONS ══*/}
-            {(hasDlcContent || dlcLoading) && (
+            {hasDlcContent || dlcLoading ? (
               <div style={{ marginBottom: "3rem" }}>
                 <div
                   className="section-header"
@@ -724,49 +819,57 @@ const Jeu = ({
                   {hasDlcContent && (
                     <span className="section-count">
                       {dlcs.length + expansions.length} contenu
-                            {dlcs.length + expansions.length > 1 ? "s" : ""}
+                      {dlcs.length + expansions.length > 1 ? "s" : ""}
                     </span>
-                      )}
-                    </div>
+                  )}
+                </div>
 
-                    {dlcLoading ? (
-                        <div
-                            style={{
-                              display: "flex",
-                              gap: "10px",
-                              alignItems: "center",
-                              padding: "12px 0",
-                              color: "#64748b",
-                              fontSize: "0.85rem",
-                            }}
+                {dlcLoading ? (
+                  <div
+                    style={{
+                      display: "flex",
+                      gap: "10px",
+                      alignItems: "center",
+                      padding: "12px 0",
+                      color: "#64748b",
+                      fontSize: "0.85rem",
+                    }}
+                  >
+                    <div
+                      className="loading-spinner"
+                      style={{ width: "18px", height: "18px" }}
+                    />
+                    Chargement des DLC…
+                  </div>
+                ) : (
+                  <>
+                    {dlcs.length > 0 && expansions.length > 0 && (
+                      <div
+                        className="categories-nav"
+                        style={{ marginBottom: "16px" }}
+                      >
+                        <button
+                          className={`category-btn ${dlcTab === "dlc" ? "active" : ""}`}
+                          onClick={() => setDlcTab("dlc")}
                         >
-                          <div
-                              className="loading-spinner"
-                              style={{ width: "18px", height: "18px" }}
-                          />
-                          Chargement des DLC…
-                        </div>
-                    ) : (
-                        <>
-                          {dlcs.length > 0 && expansions.length > 0 && (
-                              <div
-                                  className="categories-nav"
-                                  style={{ marginBottom: "16px" }}
-                              >
-                                <button
-                                    className={`category-btn ${dlcTab === "dlc" ? "active" : ""}`}
-                                    onClick={() => setDlcTab("dlc")}
-                                >
-                                  <i className="fa-solid fa-gamepad" style={{ marginRight: "6px" }}></i> DLC ({dlcs.length})
-                                </button>
-                                <button
-                                    className={`category-btn ${dlcTab === "expansion" ? "active" : ""}`}
-                                    onClick={() => setDlcTab("expansion")}
-                                >
-                                  <i className="fa-solid fa-layer-group" style={{ marginRight: "6px" }}></i> Expansions ({expansions.length})
-                                </button>
-                              </div>
-                          )}
+                          <i
+                            className="fa-solid fa-gamepad"
+                            style={{ marginRight: "6px" }}
+                          ></i>{" "}
+                          DLC ({dlcs.length})
+                        </button>
+                        <button
+                          className={`category-btn ${dlcTab === "expansion" ? "active" : ""}`}
+                          onClick={() => setDlcTab("expansion")}
+                        >
+                          <i
+                            className="fa-solid fa-layer-group"
+                            style={{ marginRight: "6px" }}
+                          ></i>{" "}
+                          Expansions ({expansions.length})
+                        </button>
+                      </div>
+                    )}
 
                     {(dlcTab === "dlc" || expansions.length === 0) &&
                       dlcs.length > 0 && (
@@ -803,47 +906,46 @@ const Jeu = ({
                         </div>
                       )}
 
-                          {(dlcTab === "expansion" || dlcs.length === 0) &&
-                              expansions.length > 0 && (
-                                  <div
-                                      style={{
-                                        display: "flex",
-                                        flexDirection: "column",
-                                        width: "100%",
-                                        overflow: "hidden",
-                                        gap: "10px",
-                                      }}
-                                  >
-                                    {dlcs.length === 0 && expansions.length > 0 && (
-                                        <p
-                                            style={{
-                                              fontSize: "0.78rem",
-                                              color: "#64748b",
-                                              marginBottom: "4px",
-                                              textTransform: "uppercase",
-                                              letterSpacing: "0.05em",
-                                            }}
-                                        >
-                                          Expansions
-                                        </p>
-                                    )}
-                                    {expansions.map((exp) => (
-                                        <DlcCard
-                                            key={exp.id}
-                                            item={exp}
-                                            getThumbUrl={getThumbUrl}
-                                            onGameClick={onGameClick}
-                                            isExpansion
-                                        />
-                                    ))}
-                                  </div>
-                              )}
-                        </>
-                    )}
-                  </div>
-              )}
+                    {(dlcTab === "expansion" || dlcs.length === 0) &&
+                      expansions.length > 0 && (
+                        <div
+                          style={{
+                            display: "flex",
+                            flexDirection: "column",
+                            width: "100%",
+                            overflow: "hidden",
+                            gap: "10px",
+                          }}
+                        >
+                          {dlcs.length === 0 && expansions.length > 0 && (
+                            <p
+                              style={{
+                                fontSize: "0.78rem",
+                                color: "#64748b",
+                                marginBottom: "4px",
+                                textTransform: "uppercase",
+                                letterSpacing: "0.05em",
+                              }}
+                            >
+                              Expansions
+                            </p>
+                          )}
+                          {expansions.map((exp) => (
+                            <DlcCard
+                              key={exp.id}
+                              item={exp}
+                              getThumbUrl={getThumbUrl}
+                              onGameClick={onGameClick}
+                              isExpansion
+                            />
+                          ))}
+                        </div>
+                      )}
+                  </>
+                )}
+              </div>
+            ) : null}
 
-            {/* ══ AVIS ══*/}
             <div className="comments-section-modern">
               <div className="section-header">
                 <h3 className="section-title">Avis des joueurs</h3>
@@ -861,341 +963,413 @@ const Jeu = ({
                       ({reviews.length})
                     </span>
                   </span>
-                  )}
-                  {auth.currentUser && (
-                      <button
-                          className="category-btn active sort-btn"
-                          onClick={() => {
-                            if (!showCommentBox && myReview) {
-                              setRating(myReview.rating);
-                              setNewComment(myReview.text || "");
-                            }
-                            setShowCommentBox((v) => !v);
-                          }}
-                      >
-                        {showCommentBox
-                            ? "Annuler"
-                            : myReview
-                                ? "Modifier mon avis"
-                                : "Noter le jeu"}
-                      </button>
-                  )}
-                </div>
-
-                {showCommentBox && (
-                    <div
-                        className="game-card-modern"
-                        style={{
-                          padding: "1.5rem",
-                          marginBottom: "2rem",
-                          cursor: "default",
-                        }}
-                    >
-                      <p
-                          style={{
-                            color: "#9ca3af",
-                            marginBottom: "0.75rem",
-                            fontSize: "0.9rem",
-                          }}
-                      >
-                        Votre note
-                      </p>
-                      <div style={{ marginBottom: "1rem" }}>
-                        <StarRating
-                            value={rating}
-                            hoverValue={hoverRating}
-                            onChange={setRating}
-                            onHover={setHoverRating}
-                            onLeave={() => setHoverRating(0)}
-                        />
-                      </div>
-                      <textarea
-                          className="filter-select"
-                          style={{
-                            width: "100%",
-                            minHeight: "100px",
-                            marginBottom: "1rem",
-                            paddingTop: "10px",
-                            resize: "vertical",
-                          }}
-                          value={newComment}
-                          onChange={(e) => setNewComment(e.target.value)}
-                          placeholder="Partagez votre expérience... (optionnel)"
-                      />
-                      <div style={{ display: "flex", gap: "1rem" }}>
-                        <button
-                            onClick={handleSaveReview}
-                            disabled={reviewLoading || rating === 0}
-                            className="nav-user-btn"
-                            style={{
-                              flex: 1,
-                              justifyContent: "center",
-                              opacity: reviewLoading || rating === 0 ? 0.5 : 1,
-                            }}
-                        >
-                          {reviewLoading
-                              ? "Envoi..."
-                              : myReview
-                                  ? "Mettre à jour"
-                                  : "Publier mon avis"}
-                        </button>
-                        {myReview && (
-                            <button
-                                onClick={handleDeleteReview}
-                                disabled={reviewLoading}
-                                className="category-btn"
-                                style={{
-                                  background: "#ef4444",
-                                  borderColor: "#ef4444",
-                                  color: "#fff",
-                                }}
-                            >
-                              Supprimer
-                            </button>
-                        )}
-                      </div>
-                    </div>
                 )}
-
-                <div className="comments-list-modern">
-                  {reviews.length === 0 && (
-                      <p
-                          style={{
-                            color: "#6b7280",
-                            textAlign: "center",
-                            padding: "2rem 0",
-                          }}
-                      >
-                        Aucun avis pour le moment. Soyez le premier !
-                      </p>
-                  )}
-                  {reviews.map((r) => {
-                    const isMe =
-                        auth.currentUser &&
-                        r.id === `${auth.currentUser.uid}_${gameId}`;
-                    const isCommenting = commentingReviewId === r.id;
-                    return (
-                        <div
-                            key={r.id}
-                            className="game-card-modern"
-                            style={{
-                              padding: "1rem",
-                              marginBottom: "1rem",
-                              background: isMe
-                                  ? "rgba(147,51,234,0.08)"
-                                  : "rgba(255,255,255,0.02)",
-                              border: isMe
-                                  ? "1px solid rgba(147,51,234,0.3)"
-                                  : undefined,
-                              cursor: "default",
-                            }}
-                        >
-                          <div
-                              style={{
-                                display: "flex",
-                                justifyContent: "space-between",
-                                marginBottom: "0.5rem",
-                              }}
-                          >
-                            <StarRating value={r.rating} readOnly />
-                            <span className="game-year">
-                          {formatDate(r.updatedAt)}
-                        </span>
-                          </div>
-                          {r.text && (
-                              <p style={{ margin: "0.5rem 0", color: "#cbd5e1" }}>
-                                {r.text}
-                              </p>
-                          )}
-                          <div
-                              className="game-title"
-                              style={{ fontSize: "0.85rem", color: "#9333ea" }}
-                          >
-                            — {r.pseudo || r.userId}
-                            {isMe && (
-                                <span
-                                    style={{
-                                      marginLeft: "8px",
-                                      color: "#6b7280",
-                                      fontSize: "0.75rem",
-                                    }}
-                                >
-                            (vous)
-                          </span>
-                            )}
-                          </div>
-
-                          <div
-                              style={{
-                                marginTop: "12px",
-                                borderTop: "1px solid rgba(255,255,255,0.05)",
-                                paddingTop: "8px",
-                                display: "flex",
-                                alignItems: "center",
-                                gap: "15px",
-                              }}
-                          >
-                            <button
-                                onClick={() => handleLikeReview(r.id)}
-                                className="nav-icon-btn"
-                                style={{
-                                  padding: "4px 10px",
-                                  display: "flex",
-                                  alignItems: "center",
-                                  gap: "6px",
-                                  color: r.likedBy?.includes(auth.currentUser?.uid)
-                                      ? "#f87171"
-                                      : "#94a3b8",
-                                  background: r.likedBy?.includes(
-                                      auth.currentUser?.uid,
-                                  )
-                                      ? "rgba(248,113,113,0.1)"
-                                      : "transparent",
-                                  border: "none",
-                                  borderRadius: "6px",
-                                  fontSize: "0.85rem",
-                                  fontWeight: "600",
-                                }}
-                            >
-                              <i
-                                  className={r.likedBy?.includes(auth.currentUser?.uid) ? "fa-solid fa-heart" : "fa-regular fa-heart"}
-                                  style={{ color: r.likedBy?.includes(auth.currentUser?.uid) ? "#f87171" : "currentColor" }}
-                              ></i>
-                              <span>{r.likedBy?.length || 0}</span>
-                            </button>
-                            {auth.currentUser && (
-                                <button
-                                    onClick={() => {
-                                      setCommentingReviewId(isCommenting ? null : r.id);
-                                      setReviewCommentText("");
-                                    }}
-                                    className="nav-icon-btn"
-                                    style={{
-                                      padding: "4px 10px",
-                                      display: "flex",
-                                      alignItems: "center",
-                                      gap: "6px",
-                                      color: isCommenting ? "#c084fc" : "#94a3b8",
-                                      fontSize: "0.85rem",
-                                      fontWeight: "600",
-                                    }}
-                                >
-                                  <i className={isCommenting ? "fa-solid fa-xmark" : "fa-solid fa-reply"} style={{ marginRight: "4px" }}></i>
-                                  {isCommenting ? "Annuler" : "Répondre"}
-                                </button>
-                            )}
-                          </div>
-
-                          {r.comments && r.comments.length > 0 && (
-                              <div
-                                  style={{
-                                    marginTop: "12px",
-                                    marginLeft: "10px",
-                                    paddingLeft: "12px",
-                                    borderLeft: "2px solid rgba(147,51,234,0.3)",
-                                  }}
-                              >
-                                {r.comments.map((c, idx) => (
-                                    <div
-                                        key={c.id || idx}
-                                        style={{
-                                          background: "rgba(255,255,255,0.03)",
-                                          padding: "8px 12px",
-                                          borderRadius: "8px",
-                                          marginBottom: "6px",
-                                          fontSize: "0.82rem",
-                                        }}
-                                    >
-                                      <p
-                                          style={{
-                                            margin: "0 0 4px 0",
-                                            color: "#cbd5e1",
-                                            lineHeight: "1.4",
-                                          }}
-                                      >
-                                        {c.text}
-                                      </p>
-                                      <span
-                                          style={{
-                                            color: "#9333ea",
-                                            fontSize: "0.75rem",
-                                            fontWeight: "600",
-                                          }}
-                                      >
-                                {c.pseudo || c.userId || "Anonyme"}
-                              </span>
-                                    </div>
-                                ))}
-                              </div>
-                          )}
-
-                          {isCommenting && (
-                              <div
-                                  style={{
-                                    marginTop: "12px",
-                                    borderTop: "1px solid rgba(255,255,255,0.05)",
-                                    paddingTop: "12px",
-                                  }}
-                              >
-                          <textarea
-                              className="filter-select"
-                              style={{
-                                width: "100%",
-                                minHeight: "70px",
-                                fontSize: "0.85rem",
-                                padding: "10px",
-                                resize: "vertical",
-                                marginBottom: "8px",
-                              }}
-                              value={reviewCommentText}
-                              onChange={(e) =>
-                                  setReviewCommentText(e.target.value)
-                              }
-                              placeholder="Écrire une réponse..."
-                              autoFocus
-                          />
-                                <div style={{ display: "flex", gap: "8px" }}>
-                                  <button
-                                      className="nav-user-btn"
-                                      style={{
-                                        padding: "6px 18px",
-                                        fontSize: "0.85rem",
-                                        opacity:
-                                            commentLoading || !reviewCommentText.trim()
-                                                ? 0.5
-                                                : 1,
-                                      }}
-                                      onClick={() => handleSendComment(r.id)}
-                                      disabled={
-                                          commentLoading || !reviewCommentText.trim()
-                                      }
-                                  >
-                                    {commentLoading ? "Envoi..." : "Envoyer"}
-                                  </button>
-                                  <button
-                                      className="category-btn"
-                                      style={{
-                                        padding: "6px 14px",
-                                        fontSize: "0.85rem",
-                                      }}
-                                      onClick={() => {
-                                        setCommentingReviewId(null);
-                                        setReviewCommentText("");
-                                      }}
-                                  >
-                                    Annuler
-                                  </button>
-                                </div>
-                              </div>
-                          )}
-                        </div>
-                    );
-                  })}
-                </div>
+                {auth.currentUser && (
+                  <button
+                    className="category-btn active sort-btn"
+                    onClick={() => {
+                      if (!showCommentBox && myReview) {
+                        setRating(myReview.rating);
+                        setNewComment(myReview.text || "");
+                      }
+                      setShowCommentBox((v) => !v);
+                    }}
+                  >
+                    {showCommentBox
+                      ? "Annuler"
+                      : myReview
+                        ? "Modifier mon avis"
+                        : "Noter le jeu"}
+                  </button>
+                )}
               </div>
 
-            {/* ══ JEUX SIMILAIRES === */}
-            {similarGames.length > 0 && (
+              {showCommentBox && (
+                <div
+                  className="game-card-modern"
+                  style={{
+                    padding: "1.5rem",
+                    marginBottom: "2rem",
+                    cursor: "default",
+                  }}
+                >
+                  <p
+                    style={{
+                      color: "#9ca3af",
+                      marginBottom: "0.75rem",
+                      fontSize: "0.9rem",
+                    }}
+                  >
+                    Votre note
+                  </p>
+                  <div style={{ marginBottom: "1rem" }}>
+                    <StarRating
+                      value={rating}
+                      hoverValue={hoverRating}
+                      onChange={setRating}
+                      onHover={setHoverRating}
+                      onLeave={() => setHoverRating(0)}
+                    />
+                  </div>
+                  <textarea
+                    className="filter-select"
+                    style={{
+                      width: "100%",
+                      minHeight: "100px",
+                      marginBottom: "1rem",
+                      paddingTop: "10px",
+                      resize: "vertical",
+                    }}
+                    value={newComment}
+                    onChange={(e) => setNewComment(e.target.value)}
+                    placeholder="Partagez votre expérience... (optionnel)"
+                  />
+                  <div style={{ display: "flex", gap: "1rem" }}>
+                    <button
+                      onClick={handleSaveReview}
+                      disabled={reviewLoading || rating === 0}
+                      className="nav-user-btn"
+                      style={{
+                        flex: 1,
+                        justifyContent: "center",
+                        opacity: reviewLoading || rating === 0 ? 0.5 : 1,
+                      }}
+                    >
+                      {reviewLoading
+                        ? "Envoi..."
+                        : myReview
+                          ? "Mettre à jour"
+                          : "Publier mon avis"}
+                    </button>
+                    {myReview && (
+                      <button
+                        onClick={handleDeleteReview}
+                        disabled={reviewLoading}
+                        className="category-btn"
+                        style={{
+                          background: "#ef4444",
+                          borderColor: "#ef4444",
+                          color: "#fff",
+                        }}
+                      >
+                        Supprimer
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              <div className="comments-list-modern">
+                {reviews.length === 0 && (
+                  <p
+                    style={{
+                      color: "#6b7280",
+                      textAlign: "center",
+                      padding: "2rem 0",
+                    }}
+                  >
+                    Aucun avis pour le moment. Soyez le premier !
+                  </p>
+                )}
+                {reviews.map((r) => {
+                  const isMe =
+                    auth.currentUser &&
+                    r.id === `${auth.currentUser.uid}_${gameId}`;
+                  const isCommenting = commentingReviewId === r.id;
+                  return (
+                    <div
+                      key={r.id}
+                      className="game-card-modern"
+                      style={{
+                        padding: "1rem",
+                        marginBottom: "1rem",
+                        background: isMe
+                          ? "rgba(147,51,234,0.08)"
+                          : "rgba(255,255,255,0.02)",
+                        border: isMe
+                          ? "1px solid rgba(147,51,234,0.3)"
+                          : undefined,
+                        cursor: "default",
+                      }}
+                    >
+                      <div
+                        style={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                          marginBottom: "0.5rem",
+                        }}
+                      >
+                        <StarRating value={r.rating} readOnly />
+                        <span className="game-year">
+                          {formatDate(r.updatedAt)}
+                        </span>
+                      </div>
+                      {r.text && (
+                        <p style={{ margin: "0.5rem 0", color: "#cbd5e1" }}>
+                          {r.text}
+                        </p>
+                      )}
+                      <div
+                        className="game-title"
+                        style={{ fontSize: "0.85rem", color: "#9333ea" }}
+                      >
+                        — {r.pseudo || r.userId}
+                        {isMe && (
+                          <span
+                            style={{
+                              marginLeft: "8px",
+                              color: "#6b7280",
+                              fontSize: "0.75rem",
+                            }}
+                          >
+                            (vous)
+                          </span>
+                        )}
+                      </div>
+
+                      <div
+                        style={{
+                          marginTop: "12px",
+                          borderTop: "1px solid rgba(255,255,255,0.05)",
+                          paddingTop: "8px",
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "15px",
+                        }}
+                      >
+                        <button
+                          onClick={() => handleLikeReview(r.id)}
+                          className="nav-icon-btn"
+                          style={{
+                            padding: "4px 10px",
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "6px",
+                            color: r.likedBy?.includes(auth.currentUser?.uid)
+                              ? "#f87171"
+                              : "#94a3b8",
+                            background: r.likedBy?.includes(
+                              auth.currentUser?.uid,
+                            )
+                              ? "rgba(248,113,113,0.1)"
+                              : "transparent",
+                            border: "none",
+                            borderRadius: "6px",
+                            fontSize: "0.85rem",
+                            fontWeight: "600",
+                          }}
+                        >
+                          <i
+                            className={
+                              r.likedBy?.includes(auth.currentUser?.uid)
+                                ? "fa-solid fa-heart"
+                                : "fa-regular fa-heart"
+                            }
+                            style={{
+                              color: r.likedBy?.includes(auth.currentUser?.uid)
+                                ? "#f87171"
+                                : "currentColor",
+                            }}
+                          ></i>
+                          <span>{r.likedBy?.length || 0}</span>
+                        </button>
+                        {auth.currentUser && (
+                          <button
+                            onClick={() => {
+                              setCommentingReviewId(isCommenting ? null : r.id);
+                              setReviewCommentText("");
+                            }}
+                            className="nav-icon-btn"
+                            style={{
+                              padding: "4px 10px",
+                              display: "flex",
+                              alignItems: "center",
+                              gap: "6px",
+                              color: isCommenting ? "#c084fc" : "#94a3b8",
+                              fontSize: "0.85rem",
+                              fontWeight: "600",
+                            }}
+                          >
+                            <i
+                              className={
+                                isCommenting
+                                  ? "fa-solid fa-xmark"
+                                  : "fa-solid fa-reply"
+                              }
+                              style={{ marginRight: "4px" }}
+                            ></i>
+                            {isCommenting ? "Annuler" : "Répondre"}
+                          </button>
+                        )}
+                      </div>
+
+                      {r.comments && r.comments.length > 0 && (
+                        <div
+                          style={{
+                            marginTop: "12px",
+                            marginLeft: "10px",
+                            paddingLeft: "12px",
+                            borderLeft: "2px solid rgba(147,51,234,0.3)",
+                          }}
+                        >
+                          {r.comments.map((c, idx) => {
+                            const cId = c.id || idx;
+                            return (
+                              <div
+                                key={cId}
+                                style={{
+                                  background: "rgba(255,255,255,0.03)",
+                                  padding: "8px 12px",
+                                  borderRadius: "8px",
+                                  marginBottom: "6px",
+                                  fontSize: "0.82rem",
+                                }}
+                              >
+                                <p
+                                  style={{
+                                    margin: "0 0 4px 0",
+                                    color: "#cbd5e1",
+                                    lineHeight: "1.4",
+                                  }}
+                                >
+                                  {c.text}
+                                </p>
+                                <div
+                                  style={{
+                                    display: "flex",
+                                    justifyContent: "space-between",
+                                    alignItems: "center",
+                                  }}
+                                >
+                                  <span
+                                    style={{
+                                      color: "#9333ea",
+                                      fontSize: "0.75rem",
+                                      fontWeight: "600",
+                                    }}
+                                  >
+                                    {c.pseudo || c.userId || "Anonyme"}
+                                  </span>
+
+                                  <div
+                                    style={{
+                                      display: "flex",
+                                      gap: "10px",
+                                      alignItems: "center",
+                                    }}
+                                  >
+                                    {auth.currentUser && (
+                                      <button
+                                        onClick={() => handleReportComment(cId)}
+                                        style={{
+                                          background: "none",
+                                          border: "none",
+                                          color: "#94a3b8",
+                                          cursor: "pointer",
+                                          padding: "2px",
+                                        }}
+                                        title="Signaler ce commentaire"
+                                      >
+                                        <i
+                                          className="fa-solid fa-flag"
+                                          style={{ fontSize: "0.75rem" }}
+                                        ></i>
+                                      </button>
+                                    )}
+                                    {user?.role === "admin" && (
+                                      <button
+                                        onClick={() =>
+                                          handleDeleteComment(r.id, cId)
+                                        }
+                                        style={{
+                                          background: "none",
+                                          border: "none",
+                                          color: "#ef4444",
+                                          cursor: "pointer",
+                                          padding: "2px",
+                                        }}
+                                        title="Supprimer (Admin)"
+                                      >
+                                        <i
+                                          className="fa-solid fa-trash-can"
+                                          style={{ fontSize: "0.75rem" }}
+                                        ></i>
+                                      </button>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+
+                      {isCommenting && (
+                        <div
+                          style={{
+                            marginTop: "12px",
+                            borderTop: "1px solid rgba(255,255,255,0.05)",
+                            paddingTop: "12px",
+                          }}
+                        >
+                          <textarea
+                            className="filter-select"
+                            style={{
+                              width: "100%",
+                              minHeight: "70px",
+                              fontSize: "0.85rem",
+                              padding: "10px",
+                              resize: "vertical",
+                              marginBottom: "8px",
+                            }}
+                            value={reviewCommentText}
+                            onChange={(e) =>
+                              setReviewCommentText(e.target.value)
+                            }
+                            placeholder="Écrire une réponse..."
+                            autoFocus
+                          />
+                          <div style={{ display: "flex", gap: "8px" }}>
+                            <button
+                              className="nav-user-btn"
+                              style={{
+                                padding: "6px 18px",
+                                fontSize: "0.85rem",
+                                opacity:
+                                  commentLoading || !reviewCommentText.trim()
+                                    ? 0.5
+                                    : 1,
+                              }}
+                              onClick={() => handleSendComment(r.id)}
+                              disabled={
+                                commentLoading || !reviewCommentText.trim()
+                              }
+                            >
+                              {commentLoading ? "Envoi..." : "Envoyer"}
+                            </button>
+                            <button
+                              className="category-btn"
+                              style={{
+                                padding: "6px 14px",
+                                fontSize: "0.85rem",
+                              }}
+                              onClick={() => {
+                                setCommentingReviewId(null);
+                                setReviewCommentText("");
+                              }}
+                            >
+                              Annuler
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {similarGames.length > 0 ? (
               <div style={{ marginTop: "3rem" }}>
                 <h3
                   className="section-title"
@@ -1302,149 +1476,294 @@ const Jeu = ({
                   </button>
                 </div>
               </div>
-            )}
+            ) : null}
           </div>
         </div>
       </div>
+
+      {/* Overlay HTML/CSS pour la sélection contrôlée des motifs de signalement */}
+      {isReportModalOpen && (
+        <div
+          style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: "rgba(0,0,0,0.85)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 10000,
+            padding: "20px",
+          }}
+        >
+          <div
+            style={{
+              background: "#111118",
+              border: "1px solid #1e1e2a",
+              borderRadius: "12px",
+              padding: "24px",
+              maxWidth: "440px",
+              width: "100%",
+              boxSizing: "border-box",
+              animation: "fadeIn 0.2s ease",
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                marginBottom: "18px",
+              }}
+            >
+              <h3
+                style={{
+                  margin: 0,
+                  fontSize: "1.1rem",
+                  color: "#e8e8f0",
+                  fontWeight: 500,
+                }}
+              >
+                Signaler un abus
+              </h3>
+              <button
+                onClick={() => setIsReportModalOpen(false)}
+                style={{
+                  background: "none",
+                  border: "none",
+                  color: "#555",
+                  cursor: "pointer",
+                  fontSize: "1.2rem",
+                }}
+              >
+                ✕
+              </button>
+            </div>
+
+            <p
+              style={{
+                color: "#888",
+                fontSize: "0.85rem",
+                marginBottom: "16px",
+                lineHeight: "1.4",
+              }}
+            >
+              Veuillez sélectionner la raison pour laquelle vous estimez que ce
+              commentaire enfreint nos conditions d'utilisation.
+            </p>
+
+            <select
+              value={reportReason}
+              onChange={(e) => setReportReason(e.target.value)}
+              className="filter-select"
+              style={{
+                width: "100%",
+                marginBottom: "16px",
+                height: "42px",
+                background: "#0a0a0f",
+                border: "1px solid #1e1e2a",
+                color: "#ddd",
+                borderRadius: "6px",
+                padding: "0 10px",
+              }}
+            >
+              <option value="Spam / Publicité">Spam / Publicité</option>
+              <option value="Harcèlement / Intimidation">
+                Harcèlement / Intimidation
+              </option>
+              <option value="Propos haineux ou injurieux">
+                Propos haineux ou injurieux
+              </option>
+              <option value="Contenu inapproprié">Contenu inapproprié</option>
+              <option value="Autre">Autre motif (préciser ci-dessous)</option>
+            </select>
+
+            {reportReason === "Autre" && (
+              <textarea
+                value={customReason}
+                onChange={(e) => setCustomReason(e.target.value)}
+                className="filter-select"
+                style={{
+                  width: "100%",
+                  minHeight: "90px",
+                  padding: "10px",
+                  marginBottom: "16px",
+                  background: "#0a0a0f",
+                  border: "1px solid #1e1e2a",
+                  color: "#ddd",
+                  borderRadius: "6px",
+                  resize: "vertical",
+                }}
+                placeholder="Renseignez des détails complémentaires concernant l'infraction..."
+              />
+            )}
+
+            <div
+              style={{
+                display: "flex",
+                gap: "12px",
+                justifyContent: "flex-end",
+                marginTop: "8px",
+              }}
+            >
+              <button
+                className="category-btn"
+                onClick={() => setIsReportModalOpen(false)}
+                style={{ padding: "8px 16px" }}
+              >
+                Annuler
+              </button>
+              <button
+                className="nav-user-btn"
+                style={{ background: "#ef4444", padding: "8px 18px" }}
+                onClick={handleConfirmReport}
+              >
+                Envoyer le signalement
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
 
-/* ── Carte DLC / Expansion ───────────────────────────────────────────────── */
 const DlcCard = ({ item, getThumbUrl, onGameClick, isExpansion = false }) => {
   const releaseDate = item.first_release_date
-      ? new Date(item.first_release_date * 1000).toLocaleDateString("fr-FR", {
+    ? new Date(item.first_release_date * 1000).toLocaleDateString("fr-FR", {
         day: "numeric",
         month: "short",
         year: "numeric",
       })
-      : null;
+    : null;
 
   return (
+    <div
+      onClick={() => onGameClick?.(item.id)}
+      style={{
+        display: "flex",
+        alignItems: "center",
+        gap: "14px",
+        padding: "12px 16px",
+        borderRadius: "12px",
+        cursor: "pointer",
+        background: "rgba(255,255,255,0.02)",
+        border: `1px solid ${isExpansion ? "rgba(96,165,250,0.2)" : "rgba(147,51,234,0.2)"}`,
+        transition: "all 0.15s",
+        overflow: "hidden",
+        minWidth: 0,
+        width: "100%",
+        boxSizing: "border-box",
+      }}
+      onMouseEnter={(e) => {
+        e.currentTarget.style.background = isExpansion
+          ? "rgba(96,165,250,0.06)"
+          : "rgba(147,51,234,0.06)";
+        e.currentTarget.style.borderColor = isExpansion
+          ? "rgba(96,165,250,0.4)"
+          : "rgba(147,51,234,0.4)";
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.background = "rgba(255,255,255,0.02)";
+        e.currentTarget.style.borderColor = isExpansion
+          ? "rgba(96,165,250,0.2)"
+          : "rgba(147,51,234,0.2)";
+      }}
+    >
       <div
-          onClick={() => onGameClick?.(item.id)}
+        style={{
+          width: "48px",
+          height: "62px",
+          borderRadius: "6px",
+          overflow: "hidden",
+          flexShrink: 0,
+          background: "#1e293b",
+        }}
+      >
+        <img
+          src={getThumbUrl(item.cover)}
+          alt={item.name}
+          style={{ width: "100%", height: "100%", objectFit: "cover" }}
+        />
+      </div>
+
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div
           style={{
             display: "flex",
             alignItems: "center",
-            gap: "14px",
-            padding: "12px 16px",
-            borderRadius: "12px",
-            cursor: "pointer",
-            background: "rgba(255,255,255,0.02)",
-            border: `1px solid ${isExpansion ? "rgba(96,165,250,0.2)" : "rgba(147,51,234,0.2)"}`,
-            transition: "all 0.15s",
-            overflow: "hidden",
-            minWidth: 0,
-            width: "100%",
-            boxSizing: "border-box",
+            gap: "8px",
+            marginBottom: "4px",
           }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.background = isExpansion
-                ? "rgba(96,165,250,0.06)"
-                : "rgba(147,51,234,0.06)";
-            e.currentTarget.style.borderColor = isExpansion
-                ? "rgba(96,165,250,0.4)"
-                : "rgba(147,51,234,0.4)";
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.background = "rgba(255,255,255,0.02)";
-            e.currentTarget.style.borderColor = isExpansion
-                ? "rgba(96,165,250,0.2)"
-                : "rgba(147,51,234,0.2)";
-          }}
-      >
-        <div
-            style={{
-              width: "48px",
-              height: "62px",
-              borderRadius: "6px",
-              overflow: "hidden",
-              flexShrink: 0,
-              background: "#1e293b",
-            }}
         >
-          <img
-              src={getThumbUrl(item.cover)}
-              alt={item.name}
-              style={{ width: "100%", height: "100%", objectFit: "cover" }}
-          />
-        </div>
-
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "8px",
-                marginBottom: "4px",
-              }}
-          >
           <span
-              style={{
-                fontSize: "0.65rem",
-                fontWeight: "600",
-                padding: "1px 7px",
-                borderRadius: "99px",
-                background: isExpansion
-                    ? "rgba(96,165,250,0.15)"
-                    : "rgba(147,51,234,0.15)",
-                color: isExpansion ? "#60a5fa" : "#c084fc",
-                textTransform: "uppercase",
-                letterSpacing: "0.05em",
-                flexShrink: 0,
-              }}
+            style={{
+              fontSize: "0.65rem",
+              fontWeight: "600",
+              padding: "1px 7px",
+              borderRadius: "99px",
+              background: isExpansion
+                ? "rgba(96,165,250,0.15)"
+                : "rgba(147,51,234,0.15)",
+              color: isExpansion ? "#60a5fa" : "#c084fc",
+              textTransform: "uppercase",
+              letterSpacing: "0.05em",
+              flexShrink: 0,
+            }}
           >
             {isExpansion ? "Expansion" : "DLC"}
           </span>
-            {releaseDate && (
-                <span
-                    style={{ fontSize: "0.72rem", color: "#64748b", flexShrink: 0 }}
-                >
+          {releaseDate && (
+            <span
+              style={{ fontSize: "0.72rem", color: "#64748b", flexShrink: 0 }}
+            >
               {releaseDate}
             </span>
-            )}
-          </div>
-          <p
-              style={{
-                margin: 0,
-                fontSize: "0.9rem",
-                color: "#e2e8f0",
-                fontWeight: "500",
-                whiteSpace: "nowrap",
-                overflow: "hidden",
-                textOverflow: "ellipsis",
-              }}
-          >
-            {item.name}
-          </p>
-          {item.summary && (
-              <p
-                  style={{
-                    margin: "3px 0 0",
-                    fontSize: "0.75rem",
-                    color: "#64748b",
-                    whiteSpace: "nowrap",
-                    overflow: "hidden",
-                    textOverflow: "ellipsis",
-                  }}
-              >
-                {item.summary}
-              </p>
           )}
         </div>
-
-        <svg
-            width="16"
-            height="16"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="#475569"
-            strokeWidth="2"
-            style={{ flexShrink: 0 }}
+        <p
+          style={{
+            margin: 0,
+            fontSize: "0.9rem",
+            color: "#e2e8f0",
+            fontWeight: "500",
+            whiteSpace: "nowrap",
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+          }}
         >
-          <polyline points="9 18 15 12 9 6"></polyline>
-        </svg>
+          {item.name}
+        </p>
+        {item.summary && (
+          <p
+            style={{
+              margin: "3px 0 0",
+              fontSize: "0.75rem",
+              color: "#64748b",
+              whiteSpace: "nowrap",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+            }}
+          >
+            {item.summary}
+          </p>
+        )}
       </div>
+
+      <svg
+        width="16"
+        height="16"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="#475569"
+        strokeWidth="2"
+        style={{ flexShrink: 0 }}
+      >
+        <polyline points="9 18 15 12 9 6"></polyline>
+      </svg>
+    </div>
   );
 };
 
