@@ -22,6 +22,7 @@ import Catalogue from "./pages/Catalogue";
 import ThemeToggle from "./components/ThemeToggle";
 import "../Style/Styles.css";
 import "./Langue/i18n";
+import Parametres from "./pages/Parametres.jsx";
 
 const authAxios = async () => {
   const firebaseUser = auth.currentUser;
@@ -97,6 +98,8 @@ const AppInner = () => {
   }, [navigate]);
 
   const [theme, setTheme] = useState("dark");
+
+  // 🚨 CORRECTION ICI : Retrait de la balise <Route> qui était bloquée dans la fonction
   const toggleTheme = () => {
     const newTheme = theme === "dark" ? "light" : "dark";
     setTheme(newTheme);
@@ -835,115 +838,126 @@ const AppInner = () => {
         </div>
       </nav>
 
-      {/* ══ ROUTES ══════════════════════════════════════════════════════════ */}
-      <main className="main-content-wrapper">
-        <Routes>
-          <Route
-            path="/"
-            element={
-              <Accueil
-                onGameClick={handleShowGame}
-                onUserClick={handleUserClick}
-                searchTerm={searchTerm}
-                user={user}
-                onAdminClick={handleAdminClick}
-                onOpenCatalogue={handleOpenCatalogue}
-              />
-            }
-          />
-          <Route
-            path="/jeu/:gameId"
-            element={
-              <JeuPage
-                user={user}
-                handleShowGame={handleShowGame}
-                handleForumClick={handleForumClick}
-                setProfileRefresh={setProfileRefresh}
-              />
-            }
-          />
-          <Route
-            path="/login"
-            element={
-              <Login
-                onSwitch={() => navigate("/register")}
-                onLoginSuccess={handleLoginSuccess}
-              />
-            }
-          />
-          <Route
-            path="/register"
-            element={<Register onSwitch={() => navigate("/login")} />}
-          />
-          <Route
-            path="/profil"
-            element={
-              user ? (
-                <Utilisateur
-                  key={profileRefresh}
-                  user={user}
-                  onLoginSuccess={(updatedUser) =>
-                    setUser((prev) => ({ ...prev, ...updatedUser }))
-                  }
-                  onLogout={() => {
-                    setUser(null);
-                    auth.signOut();
-                    navigate("/");
-                  }}
-                  onGameClick={handleShowGame}
-                  onAdminClick={handleAdminClick}
-                />
-              ) : (
-                // Pas connecté → redirection login
-                <Login
-                  onSwitch={() => navigate("/register")}
-                  onLoginSuccess={handleLoginSuccess}
-                />
-              )
-            }
-          />
-          <Route
-            path="/profil/:userId"
-            element={
-              <UtilisateurPublicPage
-                user={user}
-                handleOpenMessaging={handleOpenMessaging}
-                handleShowGame={handleShowGame}
-              />
-            }
-          />
-          <Route
-            path="/messagerie"
-            element={
-              <Messagerie
-                user={user}
-                preselectedConversation={preselectedConversation}
-                onConversationOpen={() => setPreselectedConversation(null)}
-                onMessagesRead={fetchUnreadMessageCount}
-              />
-            }
-          />
-          <Route
-            path="/forum"
-            element={<ForumPage user={user} handleShowGame={handleShowGame} />}
-          />
-          <Route
-            path="/catalogue"
-            element={
-              <Catalogue
-                onGameClick={handleShowGame}
-                user={user}
-                searchTerm={searchTerm}
-              />
-            }
-          />
-          <Route
-            path="/admin"
-            element={<AdminDashboard onBack={() => navigate(-1)} />}
-          />
-        </Routes>
-      </main>
-    </div>
+        {/* ══ ROUTES ══════════════════════════════════════════════════════════ */}
+        <main className="main-content-wrapper">
+          <Routes>
+            <Route
+                path="/"
+                element={
+                  <Accueil
+                      onGameClick={handleShowGame}
+                      onUserClick={handleUserClick}
+                      searchTerm={searchTerm}
+                      user={user}
+                      onAdminClick={handleAdminClick}
+                      onOpenCatalogue={handleOpenCatalogue}
+                      theme={theme}
+                      toggleTheme={toggleTheme}
+                  />
+                }
+            />
+            <Route
+                path="/jeu/:gameId"
+                element={
+                  <JeuPage
+                      user={user}
+                      handleShowGame={handleShowGame}
+                      handleForumClick={handleForumClick}
+                      setProfileRefresh={setProfileRefresh}
+                  />
+                }
+            />
+            <Route
+                path="/login"
+                element={
+                  <Login
+                      onSwitch={() => navigate("/register")}
+                      onLoginSuccess={handleLoginSuccess}
+                  />
+                }
+            />
+            <Route
+                path="/register"
+                element={<Register onSwitch={() => navigate("/login")} />}
+            />
+            <Route
+                path="/profil"
+                element={
+                  user ? (
+                      <Utilisateur
+                          key={profileRefresh}
+                          user={user}
+                          onLoginSuccess={(updatedUser) =>
+                              setUser((prev) => ({ ...prev, ...updatedUser }))
+                          }
+                          onLogout={() => {
+                            setUser(null);
+                            auth.signOut();
+                            navigate("/");
+                          }}
+                          onGameClick={handleShowGame}
+                          onAdminClick={handleAdminClick}
+                      />
+                  ) : (
+                      <Login
+                          onSwitch={() => navigate("/register")}
+                          onLoginSuccess={handleLoginSuccess}
+                      />
+                  )
+                }
+            />
+            <Route
+                path="/profil/:userId"
+                element={
+                  <UtilisateurPublicPage
+                      user={user}
+                      handleOpenMessaging={handleOpenMessaging}
+                      handleShowGame={handleShowGame}
+                  />
+                }
+            />
+            <Route
+                path="/messagerie"
+                element={
+                  <Messagerie
+                      user={user}
+                      preselectedConversation={preselectedConversation}
+                      onConversationOpen={() => setPreselectedConversation(null)}
+                      onMessagesRead={fetchUnreadMessageCount}
+                  />
+                }
+            />
+            <Route
+                path="/forum"
+                element={<ForumPage user={user} handleShowGame={handleShowGame} />}
+            />
+            <Route
+                path="/catalogue"
+                element={
+                  <Catalogue
+                      onGameClick={handleShowGame}
+                      user={user}
+                      searchTerm={searchTerm}
+                  />
+                }
+            />
+            <Route
+                path="/admin"
+                element={<AdminDashboard onBack={() => navigate(-1)} />}
+            />
+            <Route
+                path="/parametres"
+                element={
+                  user ? (
+                      <Parametres user={user} />
+                  ) : (
+                      <Login onLoginSuccess={handleLoginSuccess} />
+                  )
+                }
+            />
+          </Routes>
+        </main>
+      </div>
   );
 };
 

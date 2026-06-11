@@ -22,6 +22,13 @@
       <entry key="_C:/Users/Mateo/SUPCONTENT/supcontent-mateo" value="3EhpqdWHv8wM7XqQIYwRy7xmcCH" />
     </persistenceIdMap>
   </component>
+  <component name="FileTemplateManagerImpl">
+    <option name="RECENT_TEMPLATES">
+      <list>
+        <option value="JavaScript File" />
+      </list>
+    </option>
+  </component>
   <component name="Git.Settings">
     <option name="RECENT_BRANCH_BY_REPOSITORY">
       <map>
@@ -90,7 +97,8 @@
       <workItem from="1780640848707" duration="18328000" />
       <workItem from="1780904692077" duration="12684000" />
       <workItem from="1780922650410" duration="5289000" />
-      <workItem from="1780989074451" duration="6151000" />
+      <workItem from="1780989074451" duration="15368000" />
+      <workItem from="1781071320614" duration="15662000" />
     </task>
     <servers />
   </component>
