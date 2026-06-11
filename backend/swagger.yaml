@@ -1,16 +1,13 @@
 openapi: 3.0.1
 info:
-  title: SupContent API
+  title: TGMF API
   version: 1.0.0
   description: |
-    API REST de **SupContent** — plateforme de gestion de bibliothèque de jeux vidéo.
+    API REST de **TGMF** — plateforme de gestion de bibliothèque de jeux vidéo.
 
     ## Authentification
     Firebase JWT requis pour les routes protégées.
     En-tête : `Authorization: Bearer <idToken>`
-
-    ## Rate Limiting
-    200 requêtes par 15 minutes par IP sur `/api/*`
 
     ## Structure
     - Routes publiques : Auth, Games, Search (partiel), Reviews (partiel)
@@ -21,7 +18,7 @@ info:
 servers:
   - url: http://localhost:3000/api
     description: Développement
-  - url: https://api.supcontent.app/api
+  - url: https://api.tgmf.app/api
     description: Production
 
 tags:

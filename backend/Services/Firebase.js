@@ -11,7 +11,7 @@ process.env.FIREBASE_AUTH_EMULATOR_HOST =
 
 if (admin.apps.length === 0) {
   admin.initializeApp({
-    projectId: process.env.FIREBASE_PROJECT_ID || "sup-content-tristan",
+    projectId: process.env.FIREBASE_PROJECT_ID || "sup-content-tgmf",
   });
 }
 

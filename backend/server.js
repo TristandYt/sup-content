@@ -37,30 +37,6 @@ app.use(
   }),
 );
 
-// Limitation du taux de requêtes
-const isProduction = process.env.NODE_ENV === "production";
-const apiLimiter = rateLimit({
-  windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS) || 15 * 60 * 1000,
-  max: parseInt(process.env.RATE_LIMIT_MAX) || (isProduction ? 200 : 1000),
-  message: {
-    success: false,
-    msg: "Trop de requêtes effectuées depuis cette IP ou ce token, veuillez réessayer plus tard.",
-  },
-  standardHeaders: true,
-  legacyHeaders: false,
-  keyGenerator: (req) => {
-    const authHeader = req.headers.authorization || "";
-    if (authHeader.startsWith("Bearer ")) {
-      return authHeader.split("Bearer ")[1];
-    }
-    return req.ip;
-  },
-  skip: () => !isProduction,
-});
-if (isProduction) {
-  app.use("/api", apiLimiter);
-}
-
 app.use(express.json());
 
 // Configuration Swagger
@@ -69,7 +45,7 @@ const swaggerUi = require("swagger-ui-express");
 const swaggerDocument = yaml.load("./swagger.yaml");
 app.use("/swagger", swaggerUi.serve, swaggerUi.setup(swaggerDocument, {
   customCss: ".swagger-ui .topbar { display: none }",
-  customSiteTitle: "SupContent API Docs"
+  customSiteTitle: "TGMF API Docs"
 }));
 
 const authMiddleware = require("./middlewares/auth");
