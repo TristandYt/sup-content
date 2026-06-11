@@ -536,7 +536,6 @@ function RolesPanel({ showToast }) {
   );
 }
 
-// Module Signalements révisé : Charge désormais dynamiquement les données du serveur
 function ReportsPanel({ showToast }) {
   const [reports, setReports] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -708,6 +707,7 @@ function BanFromReportForm({ showToast }) {
     if (!uid.trim()) return;
     try {
       const api = await authAxios();
+      // --- CORRECTION : Alignement de l'URL avec les préfixes du routeur de modération backend ---
       const { data } = await api.post(`/moderation/users/${uid.trim()}/ban`);
       showToast(data.msg, data.success);
       if (data.success) setUid("");
