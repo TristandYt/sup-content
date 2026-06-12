@@ -19,8 +19,8 @@ const PORT = process.env.PORT || 3000;
 app.use(helmet());
 
 // Définition dynamique des origines CORS depuis le fichier .env
-const allowedOrigins = process.env.CORS_ORIGINS
-  ? process.env.CORS_ORIGINS.split(",")
+const allowedOrigins = process.env.CORS_ORIGINS 
+  ? process.env.CORS_ORIGINS.split(",") 
   : [
       "http://localhost:3001",
       "http://127.0.0.1:3001",
@@ -37,33 +37,16 @@ app.use(
   }),
 );
 
-// Limitation du taux de requêtes
-const apiLimiter = rateLimit({
-  windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS) || 15 * 60 * 1000,
-  max: parseInt(process.env.RATE_LIMIT_MAX) || 200,
-  message: {
-    success: false,
-    msg: "Trop de requêtes effectuées depuis cette IP, veuillez réessayer plus tard.",
-  },
-  standardHeaders: true,
-  legacyHeaders: false,
-});
-app.use("/api", apiLimiter);
-
 app.use(express.json());
 
 // Configuration Swagger
 const yaml = require("yamljs");
 const swaggerUi = require("swagger-ui-express");
 const swaggerDocument = yaml.load("./swagger.yaml");
-app.use(
-  "/swagger",
-  swaggerUi.serve,
-  swaggerUi.setup(swaggerDocument, {
-    customCss: ".swagger-ui .topbar { display: none }",
-    customSiteTitle: "SupContent API Docs",
-  }),
-);
+app.use("/swagger", swaggerUi.serve, swaggerUi.setup(swaggerDocument, {
+  customCss: ".swagger-ui .topbar { display: none }",
+  customSiteTitle: "SupContent API Docs"
+}));
 
 const authMiddleware = require("./middlewares/auth");
 const ensureFirestoreProfile = require("./middlewares/ensureFirestoreProfile");
@@ -94,30 +77,10 @@ app.use("/api/users", userRoutes);
 app.use("/api/lists", authMiddleware, ensureFirestoreProfile, listRoutes);
 app.use("/api/follows", authMiddleware, ensureFirestoreProfile, followRoutes);
 app.use("/api/feeds", authMiddleware, ensureFirestoreProfile, feedRoutes);
-app.use(
-  "/api/conversations",
-  authMiddleware,
-  ensureFirestoreProfile,
-  conversationRoutes,
-);
-app.use(
-  "/api/notifications",
-  authMiddleware,
-  ensureFirestoreProfile,
-  notificationRoutes,
-);
-app.use(
-  "/api/moderation",
-  authMiddleware,
-  ensureFirestoreProfile,
-  moderationRoutes,
-);
-app.use(
-  "/api/interactions",
-  authMiddleware,
-  ensureFirestoreProfile,
-  interactionRoutes,
-);
+app.use("/api/conversations",authMiddleware,ensureFirestoreProfile,conversationRoutes,);
+app.use("/api/notifications",authMiddleware,ensureFirestoreProfile,notificationRoutes,);
+app.use("/api/moderation",authMiddleware,ensureFirestoreProfile,moderationRoutes,);
+app.use("/api/interactions",authMiddleware,ensureFirestoreProfile,interactionRoutes,);
 app.use("/api/forum", authMiddleware, ensureFirestoreProfile, forumRoutes);
 
 app.use(errorHandler);
