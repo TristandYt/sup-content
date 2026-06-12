@@ -122,6 +122,7 @@ const Jeu = ({
   const [reportTargetType, setReportTargetType] = useState("comment");
   const [reportReason, setReportReason] = useState("Spam / Publicité");
   const [customReason, setCustomReason] = useState("");
+  const [reportSuccess, setReportSuccess] = useState(false);
 
   const scrollSimilar = (direction) => {
     setSimilarGames((prev) => {
@@ -465,12 +466,7 @@ const Jeu = ({
         reason: finalReason,
       });
       if (res.data.success) {
-        alert(
-          reportTargetType === "review"
-            ? "L'avis a été signalé à l'équipe de modération."
-            : "Le commentaire a été signalé à l'équipe de modération.",
-        );
-        setIsReportModalOpen(false);
+        setReportSuccess(true);
       }
     } catch (_) {
       alert("Une erreur s'est produite lors de l'envoi.");
@@ -1613,7 +1609,10 @@ const Jeu = ({
                 Signaler un abus
               </h3>
               <button
-                onClick={() => setIsReportModalOpen(false)}
+                onClick={() => {
+                  setIsReportModalOpen(false);
+                  setReportSuccess(false);
+                }}
                 style={{
                   background: "none",
                   border: "none",
@@ -1626,88 +1625,137 @@ const Jeu = ({
               </button>
             </div>
 
-            <p
-              style={{
-                color: "#888",
-                fontSize: "0.85rem",
-                marginBottom: "16px",
-                lineHeight: "1.4",
-              }}
-            >
-              {reportTargetType === "review"
-                ? "Veuillez sélectionner la raison pour laquelle vous estimez que cet avis enfreint nos conditions d'utilisation."
-                : "Veuillez sélectionner la raison pour laquelle vous estimez que ce commentaire enfreint nos conditions d'utilisation."}
-            </p>
+            {reportSuccess ? (
+              <div style={{ textAlign: "center", padding: "20px 0 8px" }}>
+                <div style={{ fontSize: "2.5rem", marginBottom: "14px" }}>
+                  <i
+                    className="fa-solid fa-circle-check"
+                    style={{ color: "#22c55e" }}
+                  ></i>
+                </div>
+                <p
+                  style={{
+                    color: "#e2e8f0",
+                    fontSize: "1rem",
+                    fontWeight: 500,
+                    marginBottom: "8px",
+                  }}
+                >
+                  Signalement envoyé
+                </p>
+                <p
+                  style={{
+                    color: "#888",
+                    fontSize: "0.85rem",
+                    marginBottom: "24px",
+                    lineHeight: "1.5",
+                  }}
+                >
+                  {reportTargetType === "review"
+                    ? "L'avis a été signalé à l'équipe de modération."
+                    : "Le commentaire a été signalé à l'équipe de modération."}
+                </p>
+                <button
+                  className="nav-user-btn"
+                  style={{ padding: "8px 32px", margin: "0 auto" }}
+                  onClick={() => {
+                    setIsReportModalOpen(false);
+                    setReportSuccess(false);
+                  }}
+                >
+                  Fermer
+                </button>
+              </div>
+            ) : (
+              <>
+                <p
+                  style={{
+                    color: "#888",
+                    fontSize: "0.85rem",
+                    marginBottom: "16px",
+                    lineHeight: "1.4",
+                  }}
+                >
+                  {reportTargetType === "review"
+                    ? "Veuillez sélectionner la raison pour laquelle vous estimez que cet avis enfreint nos conditions d'utilisation."
+                    : "Veuillez sélectionner la raison pour laquelle vous estimez que ce commentaire enfreint nos conditions d'utilisation."}
+                </p>
 
-            <select
-              value={reportReason}
-              onChange={(e) => setReportReason(e.target.value)}
-              className="filter-select"
-              style={{
-                width: "100%",
-                marginBottom: "16px",
-                height: "42px",
-                background: "#0a0a0f",
-                border: "1px solid #1e1e2a",
-                color: "#ddd",
-                borderRadius: "6px",
-                padding: "0 10px",
-              }}
-            >
-              <option value="Spam / Publicité">Spam / Publicité</option>
-              <option value="Harcèlement / Intimidation">
-                Harcèlement / Intimidation
-              </option>
-              <option value="Propos haineux ou injurieux">
-                Propos haineux ou injurieux
-              </option>
-              <option value="Contenu inapproprié">Contenu inapproprié</option>
-              <option value="Autre">Autre motif (préciser ci-dessous)</option>
-            </select>
+                <select
+                  value={reportReason}
+                  onChange={(e) => setReportReason(e.target.value)}
+                  className="filter-select"
+                  style={{
+                    width: "100%",
+                    marginBottom: "16px",
+                    height: "42px",
+                    background: "#0a0a0f",
+                    border: "1px solid #1e1e2a",
+                    color: "#ddd",
+                    borderRadius: "6px",
+                    padding: "0 10px",
+                  }}
+                >
+                  <option value="Spam / Publicité">Spam / Publicité</option>
+                  <option value="Harcèlement / Intimidation">
+                    Harcèlement / Intimidation
+                  </option>
+                  <option value="Propos haineux ou injurieux">
+                    Propos haineux ou injurieux
+                  </option>
+                  <option value="Contenu inapproprié">
+                    Contenu inapproprié
+                  </option>
+                  <option value="Autre">
+                    Autre motif (préciser ci-dessous)
+                  </option>
+                </select>
 
-            {reportReason === "Autre" && (
-              <textarea
-                value={customReason}
-                onChange={(e) => setCustomReason(e.target.value)}
-                className="filter-select"
-                style={{
-                  width: "100%",
-                  minHeight: "90px",
-                  padding: "10px",
-                  marginBottom: "16px",
-                  background: "#0a0a0f",
-                  border: "1px solid #1e1e2a",
-                  color: "#ddd",
-                  borderRadius: "6px",
-                  resize: "vertical",
-                }}
-                placeholder="Renseignez des détails complémentaires concernant l'infraction..."
-              />
+                {reportReason === "Autre" && (
+                  <textarea
+                    value={customReason}
+                    onChange={(e) => setCustomReason(e.target.value)}
+                    className="filter-select"
+                    style={{
+                      width: "100%",
+                      minHeight: "90px",
+                      padding: "10px",
+                      marginBottom: "16px",
+                      background: "#0a0a0f",
+                      border: "1px solid #1e1e2a",
+                      color: "#ddd",
+                      borderRadius: "6px",
+                      resize: "vertical",
+                    }}
+                    placeholder="Renseignez des détails complémentaires concernant l'infraction..."
+                  />
+                )}
+
+                <div
+                  style={{
+                    display: "flex",
+                    gap: "12px",
+                    justifyContent: "flex-end",
+                    marginTop: "8px",
+                  }}
+                >
+                  <button
+                    className="category-btn"
+                    onClick={() => setIsReportModalOpen(false)}
+                    style={{ padding: "8px 16px" }}
+                  >
+                    Annuler
+                  </button>
+                  <button
+                    className="nav-user-btn"
+                    style={{ background: "#ef4444", padding: "8px 18px" }}
+                    onClick={handleConfirmReport}
+                  >
+                    Envoyer le signalement
+                  </button>
+                </div>
+              </>
             )}
-
-            <div
-              style={{
-                display: "flex",
-                gap: "12px",
-                justifyContent: "flex-end",
-                marginTop: "8px",
-              }}
-            >
-              <button
-                className="category-btn"
-                onClick={() => setIsReportModalOpen(false)}
-                style={{ padding: "8px 16px" }}
-              >
-                Annuler
-              </button>
-              <button
-                className="nav-user-btn"
-                style={{ background: "#ef4444", padding: "8px 18px" }}
-                onClick={handleConfirmReport}
-              >
-                Envoyer le signalement
-              </button>
-            </div>
           </div>
         </div>
       )}

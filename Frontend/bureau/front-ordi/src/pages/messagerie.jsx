@@ -296,6 +296,168 @@ const UserSearchModal = ({ onClose, onSelectConversation }) => {
 };
 
 /* ═══════════════════════════════════════════════════════════
+   MODALE MODIFICATION DE MESSAGE
+═══════════════════════════════════════════════════════════ */
+const EditMessageModal = ({ initialText, onClose, onSave }) => {
+  const [text, setText] = useState(initialText || "");
+  const textareaRef = useRef(null);
+
+  useEffect(() => {
+    textareaRef.current?.focus();
+    const len = textareaRef.current?.value.length || 0;
+    textareaRef.current?.setSelectionRange(len, len);
+  }, []);
+
+  const handleSave = () => {
+    if (!text.trim() || text.trim() === initialText) {
+      onClose();
+      return;
+    }
+    onSave(text.trim());
+  };
+
+  return (
+    <>
+      <div
+        onClick={onClose}
+        style={{
+          position: "fixed",
+          inset: 0,
+          background: "rgba(0,0,0,0.65)",
+          zIndex: 1100,
+          backdropFilter: "blur(4px)",
+        }}
+      />
+      <div
+        style={{
+          position: "fixed",
+          top: "50%",
+          left: "50%",
+          transform: "translate(-50%, -50%)",
+          zIndex: 1101,
+          width: "90%",
+          maxWidth: "420px",
+          background: "#1a1a2e",
+          border: "1px solid rgba(139,92,246,0.3)",
+          borderRadius: "16px",
+          padding: "24px",
+          boxShadow: "0 20px 60px rgba(0,0,0,0.5)",
+        }}
+      >
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            marginBottom: "18px",
+          }}
+        >
+          <h3
+            style={{
+              margin: 0,
+              color: "#e2e8f0",
+              fontSize: "16px",
+              fontWeight: 500,
+              display: "flex",
+              alignItems: "center",
+              gap: "8px",
+            }}
+          >
+            <i
+              className="fa-solid fa-pen"
+              style={{ color: "#9333ea", fontSize: "16px" }}
+            ></i>
+            Modifier le message
+          </h3>
+          <button
+            onClick={onClose}
+            style={{
+              background: "none",
+              border: "none",
+              color: "rgba(255,255,255,0.5)",
+              fontSize: "1.4rem",
+              cursor: "pointer",
+              lineHeight: 1,
+              padding: "0 4px",
+            }}
+          >
+            ×
+          </button>
+        </div>
+
+        <textarea
+          ref={textareaRef}
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && !e.shiftKey) {
+              e.preventDefault();
+              handleSave();
+            }
+            if (e.key === "Escape") onClose();
+          }}
+          style={{
+            width: "100%",
+            height: "100px",
+            background: "rgba(255,255,255,0.06)",
+            border: "1px solid rgba(139,92,246,0.35)",
+            borderRadius: "10px",
+            color: "#e2e8f0",
+            padding: "12px",
+            fontSize: "14px",
+            resize: "vertical",
+            boxSizing: "border-box",
+            outline: "none",
+            fontFamily: "inherit",
+          }}
+        />
+
+        <div style={{ display: "flex", gap: "10px", marginTop: "14px" }}>
+          <button
+            onClick={onClose}
+            style={{
+              flex: 1,
+              padding: "10px",
+              background: "rgba(255,255,255,0.05)",
+              border: "1px solid rgba(255,255,255,0.12)",
+              borderRadius: "8px",
+              color: "#94a3b8",
+              cursor: "pointer",
+              fontSize: "14px",
+            }}
+          >
+            Annuler
+          </button>
+          <button
+            onClick={handleSave}
+            disabled={!text.trim() || text.trim() === initialText}
+            style={{
+              flex: 2,
+              padding: "10px",
+              background:
+                !text.trim() || text.trim() === initialText
+                  ? "rgba(139,92,246,0.3)"
+                  : "#8b5cf6",
+              border: "none",
+              borderRadius: "8px",
+              color: "#fff",
+              cursor:
+                !text.trim() || text.trim() === initialText
+                  ? "default"
+                  : "pointer",
+              fontSize: "14px",
+              fontWeight: 500,
+            }}
+          >
+            Enregistrer
+          </button>
+        </div>
+      </div>
+    </>
+  );
+};
+
+/* ═══════════════════════════════════════════════════════════
    MESSAGERIE PRINCIPALE
 ═══════════════════════════════════════════════════════════ */
 const Messagerie = ({
@@ -315,13 +477,13 @@ const Messagerie = ({
   const [showSearchModal, setShowSearchModal] = useState(false);
   const [activeMenu, setActiveMenu] = useState(null);
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [editModal, setEditModal] = useState(null); // { messageId, text }
 
   const messagesEndRef = useRef(null);
   const selectedConvRef = useRef(null);
 
   const myId = String(user?.uid || user?.id || "");
 
-  // Garde selectedConv en ref pour les intervalles
   useEffect(() => {
     selectedConvRef.current = selectedConv;
   }, [selectedConv]);
@@ -531,32 +693,31 @@ const Messagerie = ({
   };
 
   const handleEditMessage = async (messageId) => {
-    if (!selectedConv?.id) return;
     const msgToEdit = messages.find((m) => m.id === messageId);
     if (!msgToEdit) return;
-    const newText = prompt("Modifier votre message :", msgToEdit?.text);
-    if (!newText || !newText.trim() || newText === msgToEdit.text) {
-      setActiveMenu(null);
-      return;
-    }
+    setActiveMenu(null);
+    setEditModal({ messageId, text: msgToEdit.text });
+  };
+
+  const handleEditSave = async (messageId, newText) => {
+    setEditModal(null);
+    if (!selectedConv?.id) return;
     try {
       const api = await authAxios();
       await api.patch(
         `/conversations/${selectedConv.id}/messages/${messageId}`,
-        { text: newText.trim() },
+        { text: newText },
       );
       setMessages((prev) => {
         const updated = prev.map((m) =>
-          m.id === messageId ? { ...m, text: newText.trim() } : m,
+          m.id === messageId ? { ...m, text: newText } : m,
         );
         const isLast =
           prev.length > 0 && prev[prev.length - 1].id === messageId;
         if (isLast) {
           setConversations((convs) =>
             convs.map((c) =>
-              c.id === selectedConv.id
-                ? { ...c, lastMessage: newText.trim() }
-                : c,
+              c.id === selectedConv.id ? { ...c, lastMessage: newText } : c,
             ),
           );
         }
@@ -564,8 +725,6 @@ const Messagerie = ({
       });
     } catch (err) {
       alert("Erreur lors de la modification.");
-    } finally {
-      setActiveMenu(null);
     }
   };
 
@@ -638,6 +797,13 @@ const Messagerie = ({
             cursor: pointer;
             margin-right: 12px;
             padding: 4px;
+          }
+          .messaging-message-options {
+            opacity: 0;
+            transition: opacity 0.15s;
+          }
+          .messaging-message:hover .messaging-message-options {
+            opacity: 1;
           }
         `}
       </style>
@@ -1037,115 +1203,114 @@ const Messagerie = ({
                               >
                                 {m.text}
                               </p>
-
-                              {/* Menu options message */}
-                              {isMine && !m._pending && (
-                                <div
-                                  className="messaging-message-options"
-                                  style={{
-                                    position: "absolute",
-                                    top: "50%",
-                                    left: "-30px",
-                                    transform: "translateY(-50%)",
-                                  }}
-                                >
-                                  <button
-                                    className="messaging-options-btn"
-                                    style={{
-                                      background: "none",
-                                      color: "currentColor",
-                                      opacity: 0.5,
-                                      border: "none",
-                                      cursor: "pointer",
-                                      padding: "4px",
-                                    }}
-                                    onClick={() =>
-                                      setActiveMenu(
-                                        activeMenu === m.id ? null : m.id,
-                                      )
-                                    }
-                                  >
-                                    <i className="fa-solid fa-ellipsis-vertical"></i>
-                                  </button>
-                                  {activeMenu === m.id && (
-                                    <div
-                                      className="messaging-options-menu game-card-modern"
-                                      style={{
-                                        position: "absolute",
-                                        right: "20px",
-                                        top: "-10px",
-                                        padding: 0,
-                                        borderRadius: "8px",
-                                        overflow: "hidden",
-                                        zIndex: 100,
-                                        boxShadow:
-                                          "0 10px 25px rgba(0,0,0,0.5)",
-                                        width: "120px",
-                                      }}
-                                    >
-                                      <button
-                                        onClick={() => handleEditMessage(m.id)}
-                                        style={{
-                                          display: "flex",
-                                          alignItems: "center",
-                                          gap: "8px",
-                                          width: "100%",
-                                          padding: "10px 12px",
-                                          background: "none",
-                                          border: "none",
-                                          color: "inherit",
-                                          fontSize: "0.85rem",
-                                          cursor: "pointer",
-                                          borderBottom:
-                                            "1px solid rgba(128,128,128,0.2)",
-                                          textAlign: "left",
-                                        }}
-                                        onMouseEnter={(e) =>
-                                          (e.currentTarget.style.background =
-                                            "rgba(128,128,128,0.1)")
-                                        }
-                                        onMouseLeave={(e) =>
-                                          (e.currentTarget.style.background =
-                                            "transparent")
-                                        }
-                                      >
-                                        <i className="fa-solid fa-pen"></i>{" "}
-                                        Modifier
-                                      </button>
-                                      <button
-                                        onClick={() =>
-                                          handleDeleteMessage(m.id)
-                                        }
-                                        style={{
-                                          display: "flex",
-                                          alignItems: "center",
-                                          gap: "8px",
-                                          width: "100%",
-                                          padding: "10px 12px",
-                                          background: "none",
-                                          border: "none",
-                                          color: "#ef4444",
-                                          fontSize: "0.85rem",
-                                          cursor: "pointer",
-                                          textAlign: "left",
-                                        }}
-                                        onMouseEnter={(e) =>
-                                          (e.currentTarget.style.background =
-                                            "rgba(239,68,68,0.1)")
-                                        }
-                                        onMouseLeave={(e) =>
-                                          (e.currentTarget.style.background =
-                                            "transparent")
-                                        }
-                                      >
-                                        <i className="fa-solid fa-trash"></i>{" "}
-                                        Supprimer
-                                      </button>
-                                    </div>
-                                  )}
-                                </div>
-                              )}
                             </div>
+
+                            {/* Menu options message — affiché au hover via CSS */}
+                            {isMine && !m._pending && (
+                              <div
+                                className="messaging-message-options"
+                                style={{
+                                  display: "flex",
+                                  alignItems: "center",
+                                  marginTop: "4px",
+                                  position: "relative",
+                                }}
+                              >
+                                <button
+                                  className="messaging-options-btn"
+                                  style={{
+                                    background: "none",
+                                    color: "currentColor",
+                                    border: "none",
+                                    cursor: "pointer",
+                                    padding: "2px 6px",
+                                    borderRadius: "6px",
+                                    fontSize: "0.8rem",
+                                    opacity: 0.6,
+                                  }}
+                                  onClick={() =>
+                                    setActiveMenu(
+                                      activeMenu === m.id ? null : m.id,
+                                    )
+                                  }
+                                >
+                                  <i className="fa-solid fa-ellipsis"></i>
+                                </button>
+                                {activeMenu === m.id && (
+                                  <div
+                                    className="messaging-options-menu game-card-modern"
+                                    style={{
+                                      position: "absolute",
+                                      bottom: "calc(100% + 4px)",
+                                      right: 0,
+                                      padding: 0,
+                                      borderRadius: "8px",
+                                      overflow: "hidden",
+                                      zIndex: 100,
+                                      boxShadow: "0 10px 25px rgba(0,0,0,0.5)",
+                                      width: "120px",
+                                    }}
+                                  >
+                                    <button
+                                      onClick={() => handleEditMessage(m.id)}
+                                      style={{
+                                        display: "flex",
+                                        alignItems: "center",
+                                        gap: "8px",
+                                        width: "100%",
+                                        padding: "10px 12px",
+                                        background: "none",
+                                        border: "none",
+                                        color: "inherit",
+                                        fontSize: "0.85rem",
+                                        cursor: "pointer",
+                                        borderBottom:
+                                          "1px solid rgba(128,128,128,0.2)",
+                                        textAlign: "left",
+                                      }}
+                                      onMouseEnter={(e) =>
+                                        (e.currentTarget.style.background =
+                                          "rgba(128,128,128,0.1)")
+                                      }
+                                      onMouseLeave={(e) =>
+                                        (e.currentTarget.style.background =
+                                          "transparent")
+                                      }
+                                    >
+                                      <i className="fa-solid fa-pen"></i>{" "}
+                                      Modifier
+                                    </button>
+                                    <button
+                                      onClick={() => handleDeleteMessage(m.id)}
+                                      style={{
+                                        display: "flex",
+                                        alignItems: "center",
+                                        gap: "8px",
+                                        width: "100%",
+                                        padding: "10px 12px",
+                                        background: "none",
+                                        border: "none",
+                                        color: "#ef4444",
+                                        fontSize: "0.85rem",
+                                        cursor: "pointer",
+                                        textAlign: "left",
+                                      }}
+                                      onMouseEnter={(e) =>
+                                        (e.currentTarget.style.background =
+                                          "rgba(239,68,68,0.1)")
+                                      }
+                                      onMouseLeave={(e) =>
+                                        (e.currentTarget.style.background =
+                                          "transparent")
+                                      }
+                                    >
+                                      <i className="fa-solid fa-trash"></i>{" "}
+                                      Supprimer
+                                    </button>
+                                  </div>
+                                )}
+                              </div>
+                            )}
 
                             <div
                               className="messaging-message-footer"
@@ -1320,6 +1485,13 @@ const Messagerie = ({
             });
             selectConversation(enrichedConv);
           }}
+        />
+      )}
+      {editModal && (
+        <EditMessageModal
+          initialText={editModal.text}
+          onClose={() => setEditModal(null)}
+          onSave={(newText) => handleEditSave(editModal.messageId, newText)}
         />
       )}
     </div>
