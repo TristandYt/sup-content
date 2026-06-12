@@ -19,21 +19,21 @@ import Messagerie from "./pages/messagerie";
 import AdminDashboard from "./pages/AdminDashboard";
 import Forum from "./pages/Forum";
 import Catalogue from "./pages/Catalogue";
-import ThemeToggle from "./components/ThemeToggle";
+import Parametres from "./pages/Parametres.jsx";
 import "../Style/Styles.css";
 import "./Langue/i18n";
 
 const authAxios = async () => {
   const firebaseUser = auth.currentUser;
   if (!firebaseUser) return null;
-  const token = await firebaseUser.getIdToken(true); // Force le rafraîchissement du token
+  const token = await firebaseUser.getIdToken(true);
   return axios.create({
     baseURL: "http://localhost:3000/api",
     headers: { Authorization: `Bearer ${token}` },
   });
 };
 
-//  Wrappers de pages pour extraire les params d'URL
+// ── Wrappers de pages pour extraire les params d'URL ──────────────────────────
 
 const JeuPage = ({
   user,
@@ -75,7 +75,7 @@ const UtilisateurPublicPage = ({
   );
 };
 
-//Composant interne avec accès au router
+// ── Composant interne avec accès au router ─────────────────────────────────────
 
 const AppInner = () => {
   const navigate = useNavigate();
@@ -103,14 +103,12 @@ const AppInner = () => {
   const [user, setUser] = useState(null);
   const [authLoading, setAuthLoading] = useState(true);
 
-  // ── onAuthStateChanged : source unique de vérité pour le user ──────────
-  // On charge toujours le profil complet depuis le backend (avec role inclus).
-  // handleLoginSuccess ne fait plus que navigate("/") — pas de setUser manuel.
+  // onAuthStateChanged : source unique de vérité pour le user
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
         try {
-          const token = await firebaseUser.getIdToken(true); // force refresh du token
+          const token = await firebaseUser.getIdToken(true);
           const res = await axios.get(
             "http://localhost:3000/api/users/profile",
             {
@@ -180,7 +178,7 @@ const AppInner = () => {
     }
   }, [location.pathname]);
 
-  // Notifications
+  // ── Notifications ────────────────────────────────────────────────────────
   const [notifications, setNotifications] = useState([]);
   const [showNotifications, setShowNotifications] = useState(false);
   const notifRef = useRef(null);
@@ -205,7 +203,7 @@ const AppInner = () => {
     }
   }, [user?.uid]);
 
-  // Unread messages
+  // ── Unread messages ──────────────────────────────────────────────────────
   const [unreadMessageCount, setUnreadMessageCount] = useState(0);
 
   const fetchUnreadMessageCount = async () => {
@@ -244,10 +242,8 @@ const AppInner = () => {
     return () => document.removeEventListener("mousedown", handle);
   }, []);
 
-  //  Handlers de navigation
-  const handleLoginSuccess = () => {
-    navigate("/");
-  };
+  // ── Handlers de navigation ───────────────────────────────────────────────
+  const handleLoginSuccess = () => navigate("/");
 
   const handleLogout = () => {
     setUser(null);
@@ -320,7 +316,7 @@ const AppInner = () => {
 
   return (
     <div className="app-container">
-      {/* NAVBAR */}
+      {/* ══ NAVBAR ══════════════════════════════════════════════════════════ */}
       <nav className="modern-navbar">
         <div className="navbar-container">
           {!showSearch ? (
@@ -331,7 +327,10 @@ const AppInner = () => {
                   onClick={() => navigate("/")}
                   style={{ cursor: "pointer" }}
                 >
-                  <span className="logo-emoji">🎮</span>
+                  <i
+                    className="fa-solid fa-gamepad"
+                    style={{ color: "white" }}
+                  ></i>
                 </div>
                 <h1
                   className="logo-text"
@@ -348,39 +347,42 @@ const AppInner = () => {
                     className="nav-icon-btn"
                     onClick={() => navigate(-1)}
                     title="Retour"
-                    style={{ color: "#c084fc" }}
+                    style={{ color: "#c084fc", fontSize: "1.2rem" }}
                   >
-                    <svg
-                      width="20"
-                      height="20"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2.5"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    >
-                      <polyline points="15 18 9 12 15 6" />
-                    </svg>
+                    <i className="fa-solid fa-arrow-left"></i>
                   </button>
                 )}
+
+                {/* BOUTON THÈME */}
+                <button
+                  className="nav-icon-btn"
+                  onClick={toggleTheme}
+                  title="Changer de thème"
+                  style={{ fontSize: "1.2rem" }}
+                >
+                  {theme === "dark" ? (
+                    <i
+                      className="fa-regular fa-sun"
+                      style={{ color: "rgb(255, 212, 59)" }}
+                    ></i>
+                  ) : (
+                    <i
+                      className="fa-regular fa-moon"
+                      style={{ color: "rgb(30, 48, 80)" }}
+                    ></i>
+                  )}
+                </button>
 
                 <button
                   className="nav-icon-btn"
                   onClick={() => setShowSearch(true)}
                   title="Rechercher"
+                  style={{
+                    fontSize: "1.2rem",
+                    color: theme === "light" ? "rgb(30, 48, 80)" : "#fff",
+                  }}
                 >
-                  <svg
-                    width="20"
-                    height="20"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                  >
-                    <circle cx="11" cy="11" r="8"></circle>
-                    <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-                  </svg>
+                  <i className="fa-solid fa-magnifying-glass"></i>
                 </button>
 
                 {user && (
@@ -389,19 +391,13 @@ const AppInner = () => {
                       className="nav-icon-btn"
                       onClick={() => setShowNotifications((v) => !v)}
                       title="Notifications"
-                      style={{ position: "relative" }}
+                      style={{
+                        position: "relative",
+                        fontSize: "1.2rem",
+                        color: theme === "light" ? "rgb(30, 48, 80)" : "#fff",
+                      }}
                     >
-                      <svg
-                        width="20"
-                        height="20"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                      >
-                        <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
-                        <path d="M13.73 21a2 2 0 0 1-3.46 0" />
-                      </svg>
+                      <i className="fa-solid fa-bell"></i>
                       {unreadCount > 0 && (
                         <span
                           style={{
@@ -479,17 +475,12 @@ const AppInner = () => {
                               onClick={async () => {
                                 try {
                                   const api = await authAxios();
-                                  if (!api) return; // S'assure que l'instance axios est disponible
+                                  if (!api) return;
                                   await api.patch("/notifications/read-all");
                                   setNotifications((prev) =>
                                     prev.map((n) => ({ ...n, isRead: true })),
                                   );
-                                } catch (error) {
-                                  console.error(
-                                    "Erreur lors du marquage de toutes les notifications comme lues :",
-                                    error,
-                                  );
-                                }
+                                } catch {}
                               }}
                               style={{
                                 background: "none",
@@ -518,7 +509,10 @@ const AppInner = () => {
                                   marginBottom: "8px",
                                 }}
                               >
-                                🔕
+                                <i
+                                  className="fa-solid fa-bell-slash"
+                                  style={{ color: "rgba(255,255,255,0.2)" }}
+                                ></i>
                               </div>
                               <p
                                 style={{
@@ -615,19 +609,13 @@ const AppInner = () => {
                       navigate("/messagerie");
                     }}
                     title="Messagerie"
-                    style={{ position: "relative" }}
+                    style={{
+                      position: "relative",
+                      fontSize: "1.2rem",
+                      color: theme === "light" ? "rgb(30, 48, 80)" : "#fff",
+                    }}
                   >
-                    <svg
-                      width="20"
-                      height="20"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                    >
-                      <line x1="22" y1="2" x2="11" y2="13"></line>
-                      <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
-                    </svg>
+                    <i className="fa-solid fa-message"></i>
                     {unreadMessageCount > 0 && (
                       <span
                         style={{
@@ -655,17 +643,12 @@ const AppInner = () => {
                   className="nav-icon-btn"
                   onClick={handleOpenForum}
                   title="Forum"
+                  style={{
+                    fontSize: "1.2rem",
+                    color: theme === "light" ? "rgb(30, 48, 80)" : "#fff",
+                  }}
                 >
-                  <svg
-                    width="20"
-                    height="20"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                  >
-                    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
-                  </svg>
+                  <i className="fa-solid fa-people-line"></i>
                 </button>
 
                 <div className="profile-dropdown-container" ref={dropdownRef}>
@@ -680,18 +663,7 @@ const AppInner = () => {
                         gap: "8px",
                       }}
                     >
-                      <svg
-                        width="18"
-                        height="18"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                      >
-                        <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"></path>
-                        <polyline points="10 17 15 12 10 7"></polyline>
-                        <line x1="15" y1="12" x2="3" y2="12"></line>
-                      </svg>
+                      <i className="fa-solid fa-arrow-right-to-bracket"></i>
                       <span>S'inscrire / Connexion</span>
                     </button>
                   ) : (
@@ -721,17 +693,7 @@ const AppInner = () => {
                             }}
                           />
                         ) : (
-                          <svg
-                            width="18"
-                            height="18"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="2"
-                          >
-                            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-                            <circle cx="12" cy="7" r="4"></circle>
-                          </svg>
+                          <i className="fa-solid fa-user"></i>
                         )}
                         <span>
                           {user.username || user.pseudo || user.displayName}
@@ -747,29 +709,34 @@ const AppInner = () => {
                               navigate("/profil");
                             }}
                           >
+                            <i
+                              className="fa-solid fa-user"
+                              style={{ marginRight: "8px" }}
+                            ></i>{" "}
                             Profil
                           </button>
                           <button
                             className="dropdown-item"
                             onClick={() => {
                               setDropdownOpened(false);
-                              navigate("/profil");
+                              navigate("/parametres");
                             }}
                           >
+                            <i
+                              className="fa-solid fa-gear"
+                              style={{ marginRight: "8px" }}
+                            ></i>{" "}
                             Paramètres
                           </button>
-                          <div className="dropdown-item">
-                            <span>Thème</span>
-                            <ThemeToggle
-                              theme={theme}
-                              toggleTheme={toggleTheme}
-                            />
-                          </div>
                           <div className="dropdown-divider"></div>
                           <button
                             className="dropdown-item logout-btn"
                             onClick={handleLogout}
                           >
+                            <i
+                              className="fa-solid fa-arrow-right-from-bracket"
+                              style={{ marginRight: "8px" }}
+                            ></i>{" "}
                             Se déconnecter
                           </button>
                         </div>
@@ -791,17 +758,7 @@ const AppInner = () => {
                   className="search-input-modern"
                 />
                 <div className="search-icon-wrapper">
-                  <svg
-                    width="20"
-                    height="20"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2.5"
-                  >
-                    <circle cx="11" cy="11" r="8"></circle>
-                    <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-                  </svg>
+                  <i className="fa-solid fa-magnifying-glass"></i>
                 </div>
               </div>
               <button
@@ -823,7 +780,7 @@ const AppInner = () => {
         </div>
       </nav>
 
-      {/* ROUTES */}
+      {/* ══ ROUTES ══════════════════════════════════════════════════════════ */}
       <main className="main-content-wrapper">
         <Routes>
           <Route
@@ -836,6 +793,8 @@ const AppInner = () => {
                 user={user}
                 onAdminClick={handleAdminClick}
                 onOpenCatalogue={handleOpenCatalogue}
+                theme={theme}
+                toggleTheme={toggleTheme}
               />
             }
           />
@@ -882,7 +841,6 @@ const AppInner = () => {
                   onAdminClick={handleAdminClick}
                 />
               ) : (
-                // Pas connecté → redirection login
                 <Login
                   onSwitch={() => navigate("/register")}
                   onLoginSuccess={handleLoginSuccess}
@@ -929,16 +887,25 @@ const AppInner = () => {
             path="/admin"
             element={<AdminDashboard onBack={() => navigate(-1)} />}
           />
+          <Route
+            path="/parametres"
+            element={
+              user ? (
+                <Parametres user={user} />
+              ) : (
+                <Login onLoginSuccess={handleLoginSuccess} />
+              )
+            }
+          />
         </Routes>
       </main>
     </div>
   );
 };
 
-// Wrapper Forum pour lire le state de location (forumThread)
+// ── Wrapper Forum pour lire le state de location ──────────────────────────────
 const ForumPage = ({ user, handleShowGame }) => {
   const location = useLocation();
-  const navigate = useNavigate();
   const forumThread = location.state?.forumThread || null;
   return (
     <Forum
