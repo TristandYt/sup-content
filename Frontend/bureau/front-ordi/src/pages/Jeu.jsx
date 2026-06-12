@@ -116,9 +116,10 @@ const Jeu = ({
 
   const [gameThread, setGameThread] = useState(null);
 
-  // Nouveaux états locaux pour la fenêtre de dialogue des signalements
+  // États pour la modale de signalement (reviews + commentaires)
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
   const [reportTargetId, setReportTargetId] = useState(null);
+  const [reportTargetType, setReportTargetType] = useState("comment");
   const [reportReason, setReportReason] = useState("Spam / Publicité");
   const [customReason, setCustomReason] = useState("");
 
@@ -438,15 +439,16 @@ const Jeu = ({
     }
   };
 
-  // Ouvre l'overlay et prépare le formulaire de signalement
-  const handleReportComment = (commentId) => {
-    setReportTargetId(commentId);
+  // Ouvre la modale de signalement pour une review ou un commentaire
+  const handleReportContent = (targetId, targetType) => {
+    setReportTargetId(targetId);
+    setReportTargetType(targetType);
     setReportReason("Spam / Publicité");
     setCustomReason("");
     setIsReportModalOpen(true);
   };
 
-  // Traite la soumission finale de l'overlay de signalement vers l'API
+  // Soumet le signalement vers l'API
   const handleConfirmReport = async () => {
     const finalReason =
       reportReason === "Autre" ? customReason.trim() : reportReason;
@@ -459,11 +461,15 @@ const Jeu = ({
       const api = await authAxios();
       const res = await api.post(`/moderation/report`, {
         targetId: reportTargetId,
-        targetType: "comment",
+        targetType: reportTargetType,
         reason: finalReason,
       });
       if (res.data.success) {
-        alert("Le commentaire a été signalé à l'équipe de modération.");
+        alert(
+          reportTargetType === "review"
+            ? "L'avis a été signalé à l'équipe de modération."
+            : "Le commentaire a été signalé à l'équipe de modération.",
+        );
         setIsReportModalOpen(false);
       }
     } catch (_) {
@@ -1127,6 +1133,7 @@ const Jeu = ({
                         )}
                       </div>
 
+                      {/* Barre d'actions : like, répondre, signaler */}
                       <div
                         style={{
                           marginTop: "12px",
@@ -1137,6 +1144,7 @@ const Jeu = ({
                           gap: "15px",
                         }}
                       >
+                        {/* Like */}
                         <button
                           onClick={() => handleLikeReview(r.id)}
                           className="nav-icon-btn"
@@ -1173,6 +1181,8 @@ const Jeu = ({
                           ></i>
                           <span>{r.likedBy?.length || 0}</span>
                         </button>
+
+                        {/* Répondre */}
                         {auth.currentUser && (
                           <button
                             onClick={() => {
@@ -1201,8 +1211,77 @@ const Jeu = ({
                             {isCommenting ? "Annuler" : "Répondre"}
                           </button>
                         )}
+
+                        {/* Signaler la review (pas sur son propre avis) */}
+                        {auth.currentUser && !isMe && (
+                          <button
+                            onClick={() => handleReportContent(r.id, "review")}
+                            className="nav-icon-btn"
+                            style={{
+                              padding: "4px 10px",
+                              display: "flex",
+                              alignItems: "center",
+                              gap: "6px",
+                              color: "#94a3b8",
+                              fontSize: "0.85rem",
+                              fontWeight: "600",
+                              marginLeft: "auto",
+                            }}
+                            title="Signaler cet avis"
+                          >
+                            <i
+                              className="fa-solid fa-flag"
+                              style={{ fontSize: "0.8rem" }}
+                            ></i>
+                            Signaler
+                          </button>
+                        )}
+
+                        {/* Supprimer la review (admin) */}
+                        {user?.role === "admin" && (
+                          <button
+                            onClick={async () => {
+                              if (
+                                !window.confirm(
+                                  "Supprimer définitivement cet avis ?",
+                                )
+                              )
+                                return;
+                              try {
+                                const api = await authAxios();
+                                const res = await api.delete(
+                                  `/moderation/reviews/${r.id}`,
+                                );
+                                if (res.data.success) {
+                                  setReviews((prev) =>
+                                    prev.filter((rv) => rv.id !== r.id),
+                                  );
+                                }
+                              } catch (_) {
+                                alert(
+                                  "Erreur lors de la suppression de l'avis.",
+                                );
+                              }
+                            }}
+                            style={{
+                              background: "none",
+                              border: "none",
+                              color: "#ef4444",
+                              cursor: "pointer",
+                              padding: "4px 8px",
+                              fontSize: "0.8rem",
+                              display: "flex",
+                              alignItems: "center",
+                              gap: "4px",
+                            }}
+                            title="Supprimer (Admin)"
+                          >
+                            <i className="fa-solid fa-trash-can"></i>
+                          </button>
+                        )}
                       </div>
 
+                      {/* Commentaires sous la review */}
                       {r.comments && r.comments.length > 0 && (
                         <div
                           style={{
@@ -1258,9 +1337,12 @@ const Jeu = ({
                                       alignItems: "center",
                                     }}
                                   >
+                                    {/* Signaler le commentaire */}
                                     {auth.currentUser && (
                                       <button
-                                        onClick={() => handleReportComment(cId)}
+                                        onClick={() =>
+                                          handleReportContent(cId, "comment")
+                                        }
                                         style={{
                                           background: "none",
                                           border: "none",
@@ -1276,6 +1358,7 @@ const Jeu = ({
                                         ></i>
                                       </button>
                                     )}
+                                    {/* Supprimer le commentaire (admin) */}
                                     {user?.role === "admin" && (
                                       <button
                                         onClick={() =>
@@ -1304,6 +1387,7 @@ const Jeu = ({
                         </div>
                       )}
 
+                      {/* Zone de réponse */}
                       {isCommenting && (
                         <div
                           style={{
@@ -1481,7 +1565,7 @@ const Jeu = ({
         </div>
       </div>
 
-      {/* Overlay HTML/CSS pour la sélection contrôlée des motifs de signalement */}
+      {/* Modale de signalement (review ou commentaire) */}
       {isReportModalOpen && (
         <div
           style={{
@@ -1550,8 +1634,9 @@ const Jeu = ({
                 lineHeight: "1.4",
               }}
             >
-              Veuillez sélectionner la raison pour laquelle vous estimez que ce
-              commentaire enfreint nos conditions d'utilisation.
+              {reportTargetType === "review"
+                ? "Veuillez sélectionner la raison pour laquelle vous estimez que cet avis enfreint nos conditions d'utilisation."
+                : "Veuillez sélectionner la raison pour laquelle vous estimez que ce commentaire enfreint nos conditions d'utilisation."}
             </p>
 
             <select
