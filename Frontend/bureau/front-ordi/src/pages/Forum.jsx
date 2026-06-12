@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { auth } from "../Service/firebase";
 import "../../Style/Styles.css";
+import Footer from "../components/Footer";
 
 const authAxios = async () => {
   const token = await auth.currentUser?.getIdToken(true);
@@ -463,6 +464,14 @@ const Forum = ({ user, onGameClick, initialThread = null }) => {
   const [newPostContent, setNewPostContent] = useState("");
   const [showCreateModal, setShowCreateModal] = useState(false);
 
+  useEffect(() => {
+    if (view === "detail" && selectedThread) {
+      document.title = `${selectedThread.title} - Forum | TGMF`;
+    } else {
+      document.title = "Forum | TGMF";
+    }
+  }, [view, selectedThread]);
+
   const fetchThreads = async () => {
     setLoading(true);
     try {
@@ -525,16 +534,18 @@ const Forum = ({ user, onGameClick, initialThread = null }) => {
           <>
             <div className="section-header">
               <h3>Discussions récentes</h3>
-              <button
-                className="category-btn active"
-                onClick={() => setShowCreateModal(true)}
-              >
-                <i
-                  className="fa-solid fa-plus"
-                  style={{ marginRight: "6px" }}
-                ></i>{" "}
-                Nouveau sujet
-              </button>
+              {user && (
+                <button
+                  className="category-btn active"
+                  onClick={() => setShowCreateModal(true)}
+                >
+                  <i
+                    className="fa-solid fa-plus"
+                    style={{ marginRight: "6px" }}
+                  ></i>{" "}
+                  Nouveau sujet
+                </button>
+              )}
             </div>
             <div className="comments-list-modern">
               {loading ? (
@@ -866,6 +877,7 @@ const Forum = ({ user, onGameClick, initialThread = null }) => {
           onCreated={fetchThreads}
         />
       )}
+      <Footer />
     </div>
   );
 };

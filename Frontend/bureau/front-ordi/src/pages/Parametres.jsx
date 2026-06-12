@@ -27,6 +27,10 @@ const Parametres = ({ user }) => {
   const [exportLoading, setExportLoading] = useState(false);
 
   useEffect(() => {
+    document.title = "Paramètres | TGMF";
+  }, []);
+
+  useEffect(() => {
     if (user && user.preferences) {
       setPreferences(user.preferences);
     }

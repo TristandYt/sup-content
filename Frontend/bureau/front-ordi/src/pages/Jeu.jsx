@@ -5,6 +5,7 @@ import { auth } from "../Service/firebase";
 import "../../Style/Styles.css";
 import defaultCover from "../assets/fr-default-large_default.jpg";
 import { useNavigate } from "react-router-dom";
+import Footer from "../components/Footer";
 
 const authAxios = async () => {
   const token = await auth.currentUser?.getIdToken(true);
@@ -124,6 +125,14 @@ const Jeu = ({
   const [customReason, setCustomReason] = useState("");
   const [reportSuccess, setReportSuccess] = useState(false);
 
+  useEffect(() => {
+    if (game?.name) {
+      document.title = `${game.name} | TGMF`;
+    } else {
+      document.title = "Jeu | TGMF";
+    }
+  }, [game?.name]);
+
   const scrollSimilar = (direction) => {
     setSimilarGames((prev) => {
       if (prev.length <= 5) return prev;
@@ -153,103 +162,143 @@ const Jeu = ({
   }, [game, i18n.language]);
 
   useEffect(() => {
-    if (!gameId) return;
-    setReviews([]);
-    setAverageRating(null);
-    setGameThread(null);
-    setCommentingReviewId(null);
-    setReviewCommentText("");
-    setDlcs([]);
-    setExpansions([]);
-    setTranslatedSummary("");
-    setGame(null);
-    setGameError(null);
-    window.scrollTo(0, 0);
+  if (!gameId) return;
 
-    const fetchDetails = async () => {
+  let isMounted = true;
+  const abortController = new AbortController();
+
+  // Réinitialisation immédiate des états liés au jeu précédent
+  setIsFavorite(false);
+  setReviews([]);
+  setAverageRating(null);
+  setGameThread(null);
+  setCommentingReviewId(null);
+  setReviewCommentText("");
+  setDlcs([]);
+  setExpansions([]);
+  setTranslatedSummary("");
+  setGame(null);
+  setGameError(null);
+  window.scrollTo(0, 0);
+
+  const fetchDetails = async () => {
+    try {
+      setLoading(true);
+      setGameError(null);
+
+      // 1. Détails du jeu
+      const api = auth.currentUser
+        ? await authAxios()
+        : axios.create({ baseURL: "http://localhost:3000/api" });
+
+      const res = await api.get(`/games/details/${gameId}`, {
+        signal: abortController.signal,
+      });
+      if (!isMounted || res.data?.id !== gameId) return;
+      const g = res.data;
+      setGame(g);
+      if (g.dlcs?.length) setDlcs(g.dlcs);
+      if (g.expansions?.length) setExpansions(g.expansions);
+
+      // 2. Jeux similaires
       try {
-        setLoading(true);
-        setGameError(null);
-        const api = auth.currentUser
+        const similarApi = auth.currentUser
           ? await authAxios()
           : axios.create({ baseURL: "http://localhost:3000/api" });
-        const res = await api.get(`/games/details/${gameId}`);
-        if (res.data) {
-          const g = res.data;
-          setGame(g);
-          if (g.dlcs?.length) setDlcs(g.dlcs);
-          if (g.expansions?.length) setExpansions(g.expansions);
-        }
-
-        try {
-          const api = auth.currentUser
-            ? await authAxios()
-            : axios.create({ baseURL: "http://localhost:3000/api" });
-          const resSimilar = await api.get(`/games/${gameId}/similar`);
+        const resSimilar = await similarApi.get(`/games/${gameId}/similar`, {
+          signal: abortController.signal,
+        });
+        if (isMounted && gameId === gameId) {
           setSimilarGames(resSimilar.data || []);
-        } catch (_) {}
+        }
+      } catch (_) {}
 
-        try {
-          setDlcLoading(true);
-          const api = auth.currentUser
-            ? await authAxios()
-            : axios.create({ baseURL: "http://localhost:3000/api" });
-          const resDlc = await api.get(`/games/${gameId}/dlcs`);
+      // 3. DLC / extensions
+      try {
+        setDlcLoading(true);
+        const dlcApi = auth.currentUser
+          ? await authAxios()
+          : axios.create({ baseURL: "http://localhost:3000/api" });
+        const resDlc = await dlcApi.get(`/games/${gameId}/dlcs`, {
+          signal: abortController.signal,
+        });
+        if (isMounted && gameId === gameId) {
           if (resDlc.data?.success) {
             if (resDlc.data.dlcs?.length) setDlcs(resDlc.data.dlcs);
             if (resDlc.data.expansions?.length)
               setExpansions(resDlc.data.expansions);
           }
-        } catch (_) {
-        } finally {
-          setDlcLoading(false);
         }
+      } catch (_) {
+      } finally {
+        if (isMounted) setDlcLoading(false);
+      }
 
-        if (auth.currentUser) {
-          try {
-            const api = await authAxios();
-            const resLib = await api.get(`/lists/library/${gameId}`);
-            setIsFavorite(resLib.data?.success === true);
-          } catch (_) {}
-        }
-
+      // 4. Vérification du favori 
+      if (auth.currentUser) {
         try {
-          const api = auth.currentUser
-            ? await authAxios()
-            : axios.create({ baseURL: "http://localhost:3000/api" });
-          const resThreads = await api.get(`/forum/threads?gameId=${gameId}`);
+          const favApi = await authAxios();
+          const resLib = await favApi.get(`/lists/library/${gameId}`, {
+            signal: abortController.signal,
+          });
+          if (isMounted && gameId === gameId) {
+            setIsFavorite(resLib.data?.success === true);
+          }
+        } catch (_) {
+          if (isMounted) setIsFavorite(false);
+        }
+      }
+
+      // 5. Fil de discussion forum
+      try {
+        const threadApi = auth.currentUser
+          ? await authAxios()
+          : axios.create({ baseURL: "http://localhost:3000/api" });
+        const resThreads = await threadApi.get(`/forum/threads?gameId=${gameId}`, {
+          signal: abortController.signal,
+        });
+        if (isMounted && gameId === gameId) {
           setGameThread(
             resThreads.data?.success && resThreads.data.threads.length > 0
               ? resThreads.data.threads[0]
-              : false,
+              : false
           );
-        } catch (_) {
-          setGameThread(false);
         }
-      } catch (err) {
-        console.error("Erreur de chargement:", err);
-        const status = err?.response?.status;
+      } catch (_) {
+        if (isMounted) setGameThread(false);
+      }
+    } catch (err) {
+      if (err.name === "AbortError") return;
+      console.error("Erreur de chargement:", err);
+      const status = err?.response?.status;
+      if (isMounted) {
         if (status === 401) {
           setGameError({
             code: 401,
-            msg:
-              err.response.data?.msg || "Connectez-vous pour voir ce contenu.",
+            msg: err.response.data?.msg || "Connectez-vous pour voir ce contenu.",
           });
         } else if (status === 403) {
           setGameError({
             code: 403,
-            msg:
-              err.response.data?.msg || "Vous n'avez pas accès à ce contenu.",
+            msg: err.response.data?.msg || "Vous n'avez pas accès à ce contenu.",
           });
         } else {
           setGameError({ code: 0, msg: "Impossible de charger ce jeu." });
         }
-      } finally {
-        setLoading(false);
       }
-    };
-    fetchDetails();
-  }, [gameId]);
+    } finally {
+      if (isMounted) setLoading(false);
+    }
+  };
+
+  fetchDetails();
+
+  // Nettoyage : annule les requêtes et ignore les mises à jour si le composant est démonté ou si gameId a changé
+  return () => {
+    isMounted = false;
+    abortController.abort();
+  };
+}, [gameId]);
 
   useEffect(() => {
     if (!gameId) return;
@@ -549,6 +598,7 @@ const Jeu = ({
         <div className="loading-container">
           <div className="loading-spinner"></div>
         </div>
+        <Footer />
       </div>
     );
 
@@ -599,6 +649,7 @@ const Jeu = ({
             )}
           </div>
         </div>
+        <Footer />
       </div>
     );
 
@@ -1759,6 +1810,7 @@ const Jeu = ({
           </div>
         </div>
       )}
+      <Footer />
     </div>
   );
 };

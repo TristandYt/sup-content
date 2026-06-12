@@ -71,6 +71,7 @@ app.use("/api/auth", authRoutes);
 app.use("/api/games", gameRoutes);
 app.use("/api/search", searchRoutes);
 app.use("/api/reviews", reviewRoutes);
+app.use("/api/forum", forumRoutes);
 
 // Routes avec auth
 app.use("/api/users", userRoutes);
@@ -81,7 +82,6 @@ app.use("/api/conversations",authMiddleware,ensureFirestoreProfile,conversationR
 app.use("/api/notifications",authMiddleware,ensureFirestoreProfile,notificationRoutes,);
 app.use("/api/moderation",authMiddleware,ensureFirestoreProfile,moderationRoutes,);
 app.use("/api/interactions",authMiddleware,ensureFirestoreProfile,interactionRoutes,);
-app.use("/api/forum", authMiddleware, ensureFirestoreProfile, forumRoutes);
 
 app.use(errorHandler);
 

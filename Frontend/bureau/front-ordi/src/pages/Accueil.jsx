@@ -4,6 +4,7 @@ import axios from "axios";
 import { auth } from "../Service/firebase";
 import "../../Style/Styles.css";
 import defaultCover from "../assets/fr-default-large_default.jpg";
+import Footer from "../components/Footer";
 
 const authAxios = async () => {
   const token = await auth.currentUser?.getIdToken(true);
@@ -36,7 +37,7 @@ const Accueil = ({
   const UPCOMING_PAGE_SIZE = 20;
 
   const [activeCategory, setActiveCategory] = useState("Tous");
-  const PAGE_SIZE = 12;
+  const PAGE_SIZE = 16;
   const [params, setParams] = useState({
     sortBy: "total_rating",
     sortOrder: "desc",
@@ -47,13 +48,9 @@ const Accueil = ({
 
   const upcomingRef = useRef(null);
 
-  const CATEGORIES = [
-    { label: "Tous", value: "", icon: "fa-solid fa-layer-group" },
-    { label: "Combat", value: "4", icon: "fa-solid fa-hand-fist" },
-    { label: "Shooter", value: "5", icon: "fa-solid fa-crosshairs" },
-    { label: "RPG", value: "12", icon: "fa-solid fa-dragon" },
-    { label: "Aventure", value: "31", icon: "fa-solid fa-compass" },
-  ];
+  useEffect(() => {
+    document.title = "Accueil | TGMF";
+  }, []);
 
   const getImageUrl = (game) => {
     if (game.cover && game.cover.image_id) {
@@ -271,94 +268,7 @@ const Accueil = ({
           </button>
         )}
       </div>
-
-      {searchType === "games" && (
-        <div className="categories-nav">
-          {CATEGORIES.map((category) => (
-            <button
-              key={category.value}
-              onClick={() => handleCategoryChange(category.value)}
-              className={`category-btn ${
-                activeCategory === category.label ? "active" : ""
-              }`}
-            >
-              <i className={category.icon} style={{ marginRight: "6px" }}></i>
-              {category.label}
-            </button>
-          ))}
-        </div>
-      )}
-
-      {/* ── FILTRES (On garde les EMOJIS natifs ici car les icônes FontAwesome cassent dans un <select>) ── */}
-      {searchType === "games" && (
-        <div className="filters-section">
-          <div className="filters-container">
-            <select
-              value={params.platform}
-              onChange={(e) =>
-                setParams((prev) => ({ ...prev, platform: e.target.value }))
-              }
-              className="filter-select"
-            >
-              <option value="">🎮 Toutes Plateformes</option>
-              <option value="6">💻 PC (Windows)</option>
-              <option value="48">🎮 PlayStation 4</option>
-              <option value="167">🎮 PlayStation 5</option>
-              <option value="49">🎮 Xbox One</option>
-              <option value="169">🎮 Xbox Series X|S</option>
-              <option value="130">🎮 Nintendo Switch</option>
-            </select>
-
-            <select
-              value={params.style}
-              onChange={(e) =>
-                setParams((prev) => ({ ...prev, style: e.target.value }))
-              }
-              className="filter-select"
-            >
-              <option value="">🎭 Tous les Styles</option>
-              <option value="1">💥 Action</option>
-              <option value="18">🚀 Science-Fiction</option>
-              <option value="19">👻 Horreur</option>
-              <option value="21">🏕️ Survie</option>
-              <option value="22">🌍 Open World</option>
-            </select>
-
-            <select
-              value={params.sortBy}
-              onChange={(e) =>
-                setParams((prev) => ({ ...prev, sortBy: e.target.value }))
-              }
-              className="filter-select"
-            >
-              <option value="total_rating">⭐ Note</option>
-              <option value="name">📝 Nom</option>
-              <option value="first_release_date">📅 Date de sortie</option>
-            </select>
-
-            <button
-              onClick={() =>
-                setParams((prev) => ({
-                  ...prev,
-                  sortOrder: prev.sortOrder === "asc" ? "desc" : "asc",
-                }))
-              }
-              className="filter-select sort-btn"
-              style={{ display: "flex", alignItems: "center", gap: "6px" }}
-            >
-              <i
-                className={
-                  params.sortOrder === "asc"
-                    ? "fa-solid fa-arrow-up-wide-short"
-                    : "fa-solid fa-arrow-down-wide-short"
-                }
-              ></i>
-              {params.sortOrder === "asc" ? "Croissant" : "Décroissant"}
-            </button>
-          </div>
-        </div>
-      )}
-
+      
       <div className="section-header">
         <div className="section-icon">
           {searchType === "games" ? (
@@ -735,6 +645,7 @@ const Accueil = ({
       <style>{`
         div[style*="overflowX: auto"]::-webkit-scrollbar { display: none; }
       `}</style>
+      <Footer />
     </div>
   );
 };

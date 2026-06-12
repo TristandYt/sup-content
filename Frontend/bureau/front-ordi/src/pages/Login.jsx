@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import axios from "axios";
 import { signInWithEmailAndPassword } from "firebase/auth";
@@ -26,6 +26,10 @@ const Login = ({ onSwitch, onLoginSuccess }) => {
     "auth/invalid-credential": "Email ou mot de passe incorrect.",
     "auth/too-many-requests": "Trop de tentatives. Réessaie plus tard.",
   };
+
+  useEffect(() => {
+    document.title = "Connexion | TGMF";
+  }, []);
 
   const handleLogin = async () => {
     if (!email.trim() || !password.trim()) {

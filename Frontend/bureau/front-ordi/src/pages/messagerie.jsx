@@ -485,6 +485,10 @@ const Messagerie = ({
   const myId = String(user?.uid || user?.id || "");
 
   useEffect(() => {
+    document.title = "Messagerie | TGMF";
+  }, []);
+
+  useEffect(() => {
     selectedConvRef.current = selectedConv;
   }, [selectedConv]);
 

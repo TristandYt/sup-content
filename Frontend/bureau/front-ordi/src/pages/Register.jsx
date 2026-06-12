@@ -1,5 +1,5 @@
 // src/pages/Register.jsx
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { createUserWithEmailAndPassword, updateProfile } from "firebase/auth";
 import { auth } from "../Service/firebase";
@@ -31,6 +31,10 @@ const Register = ({ onSwitch, onLoginSuccess }) => {
     "auth/weak-password": "Mot de passe trop faible (8 caractères min.).",
     "auth/too-many-requests": "Trop de tentatives. Réessaie plus tard.",
   };
+
+  useEffect(() => {
+    document.title = "Inscription | TGMF";
+  }, []);
 
   const validateForm = () => {
     const { pseudo, email, pass, confirm } = formData;

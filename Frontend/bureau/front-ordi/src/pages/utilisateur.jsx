@@ -2,9 +2,11 @@ import React, { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import axios from "axios";
 import { auth } from "../Service/firebase";
+import { updateProfile } from "firebase/auth";
 import { statusConfig } from "../Utils/icons";
 import "../../Style/Styles.css";
 import defaultCover from "../assets/fr-default-large_default.jpg";
+import Footer from "../components/Footer";
 
 const authAxios = async () => {
   const firebaseUser = auth.currentUser;
@@ -37,8 +39,22 @@ const PublicProfile = ({
   const [customLists, setCustomLists] = useState([]);
   const [activeListId, setActiveListId] = useState(null);
 
+  const [toast, setToast] = useState(null);
+  const showToast = (msg, type = "error") => {
+    setToast({ msg, type });
+    setTimeout(() => setToast(null), 3000);
+  };
+
   const myId = String(currentUser?.uid || currentUser?.id || "");
   const isMe = myId !== "" && myId === String(targetUserId);
+
+  useEffect(() => {
+    if (profile?.username) {
+      document.title = `Profil de ${profile.username} | TGMF`;
+    } else {
+      document.title = "Profil | TGMF";
+    }
+  }, [profile?.username]);
 
   useEffect(() => {
     fetchAll();
@@ -162,7 +178,7 @@ const PublicProfile = ({
       onOpenMessaging(res.data.conversation);
     } catch (err) {
       console.error("Erreur conversation:", err);
-      alert(err.response?.data?.msg || "Impossible d'ouvrir la conversation.");
+      showToast(err.response?.data?.msg || "Impossible d'ouvrir la conversation.");
     } finally {
       setMsgLoading(false);
     }
@@ -214,6 +230,7 @@ const PublicProfile = ({
         <p className="loading-text" style={{ marginTop: "16px" }}>
           Chargement du profil…
         </p>
+        <Footer />
       </div>
     );
   }
@@ -239,6 +256,7 @@ const PublicProfile = ({
         >
           Retour
         </button>
+        <Footer />
       </div>
     );
   }
@@ -817,6 +835,7 @@ const PublicProfile = ({
           </>
         )}
       </div>
+      <Footer />
     </div>
   );
 };
@@ -839,6 +858,13 @@ const CustomLists = ({ onGameClick }) => {
   const [gameResults, setGameResults] = useState([]);
   const [searchingGames, setSearchingGames] = useState(false);
   const [activeListId, setActiveListId] = useState(null);
+
+  const [toast, setToast] = useState(null);
+  const [confirmDialog, setConfirmDialog] = useState(null);
+  const showToast = (msg, type = "error") => {
+    setToast({ msg, type });
+    setTimeout(() => setToast(null), 3000);
+  };
 
   useEffect(() => {
     fetchLists();
@@ -907,13 +933,20 @@ const CustomLists = ({ onGameClick }) => {
     }
   };
 
-  const handleDeleteList = async (id) => {
-    if (!window.confirm("Supprimer cette liste ?")) return;
-    try {
-      const api = await authAxios();
-      await api.delete(`/lists/custom/${id}`);
-      setLists((prev) => prev.filter((l) => l.id !== id));
-    } catch (err) {}
+  const handleDeleteList = (id) => {
+    setConfirmDialog({
+      message: "Voulez-vous vraiment supprimer cette liste ?",
+      onConfirm: async () => {
+        try {
+          const api = await authAxios();
+          await api.delete(`/lists/custom/${id}`);
+          setLists((prev) => prev.filter((l) => l.id !== id));
+          showToast("Liste supprimée avec succès.", "success");
+        } catch (err) {
+          showToast("Erreur lors de la suppression de la liste.");
+        }
+      }
+    });
   };
 
   const handleAddGame = async (list, game) => {
@@ -1455,6 +1488,33 @@ const CustomLists = ({ onGameClick }) => {
           })}
         </div>
       )}
+      {toast && (
+        <div style={{
+          position: "fixed", bottom: "20px", right: "20px",
+          background: toast.type === "success" ? "#22c55e" : "#ef4444",
+          color: "#fff", padding: "12px 24px", borderRadius: "8px",
+          boxShadow: "0 4px 12px rgba(0,0,0,0.5)", zIndex: 99999,
+          animation: "slideUp 0.3s ease-out"
+        }}>
+          <i className={`fa-solid ${toast.type === "success" ? "fa-check" : "fa-circle-exclamation"}`} style={{marginRight: "8px"}}></i>
+          {toast.msg}
+        </div>
+      )}
+      {confirmDialog && (
+        <div style={{
+          position: "fixed", top: 0, left: 0, right: 0, bottom: 0,
+          background: "rgba(0,0,0,0.85)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100000, padding: "20px"
+        }}>
+          <div style={{ background: "#111118", border: "1px solid #1e1e2a", borderRadius: "12px", padding: "24px", maxWidth: "400px", width: "100%", animation: "fadeIn 0.2s ease" }}>
+            <h3 style={{ margin: "0 0 16px 0", color: "#e8e8f0", fontSize: "1.1rem" }}>Confirmation</h3>
+            <p style={{ color: "#9ca3af", marginBottom: "24px", fontSize: "0.95rem" }}>{confirmDialog.message}</p>
+            <div style={{ display: "flex", gap: "12px", justifyContent: "flex-end" }}>
+              <button className="category-btn" onClick={() => setConfirmDialog(null)}>Annuler</button>
+              <button className="nav-user-btn" style={{ background: "#ef4444" }} onClick={() => { confirmDialog.onConfirm(); setConfirmDialog(null); }}>Confirmer</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
@@ -1466,7 +1526,6 @@ const MyProfile = ({ user, onLoginSuccess, onLogout, onGameClick }) => {
   const { t, i18n } = useTranslation();
   const [isEditing, setIsEditing] = useState(false);
 
-  // Gère uniquement les informations publiques du profil (pas les préférences)
   const [profileData, setProfileData] = useState({
     uid: user?.uid || user?.id || "",
     pseudo: user?.username || user?.pseudo || user?.displayName || "Joueur",
@@ -1476,7 +1535,7 @@ const MyProfile = ({ user, onLoginSuccess, onLogout, onGameClick }) => {
     birthDate: user?.birthDate || "",
     followersCount: 0,
     followingCount: 0,
-    isPrivate: user?.isPrivate || false, // Affichage uniquement
+    isPrivate: user?.isPrivate || false,
     avatar:
       user?.avatar ||
       user?.photoURL ||
@@ -1486,6 +1545,10 @@ const MyProfile = ({ user, onLoginSuccess, onLogout, onGameClick }) => {
   const [favorites, setFavorites] = useState([]);
   const [filter, setFilter] = useState("Tous");
   const [saveStatus, setSaveStatus] = useState("");
+
+  useEffect(() => {
+    document.title = "Mon Profil | SupContent";
+  }, []);
 
   useEffect(() => {
     if (user) {
@@ -1535,7 +1598,17 @@ const MyProfile = ({ user, onLoginSuccess, onLogout, onGameClick }) => {
           followingCount: actualFollowingCount,
         };
         setProfileData(fullProfile);
-        if (onLoginSuccess) onLoginSuccess(fullProfile);
+      if (onLoginSuccess) {
+        onLoginSuccess({
+          ...user,
+          ...fullProfile,
+          pseudo: fullProfile.pseudo,
+          username: fullProfile.pseudo,
+          displayName: fullProfile.pseudo,
+          avatarUrl: fullProfile.avatar,
+          photoURL: fullProfile.avatar
+        });
+      }
       }
     } catch (err) {
       console.warn("Erreur fetch profile perso", err);
@@ -1579,19 +1652,46 @@ const MyProfile = ({ user, onLoginSuccess, onLogout, onGameClick }) => {
       const api = await authAxios();
       if (!api) throw new Error("Erreur authentification");
 
-      await api.put("/users/profile", {
-        username: profileData.pseudo || profileData.username,
+      // On nettoie le payload pour ne pas envoyer de chaînes vides bloquantes (Zod errors)
+      const payload = {
+        username: profileData.pseudo,
         bio: profileData.bio,
-        website: profileData.website,
-        avatarUrl: profileData.avatar,
-        birthDate: profileData.birthDate,
-      });
+      };
+      if (profileData.website) payload.website = profileData.website;
+      // On accepte désormais les liens classiques OU les images encodées en base64 compressées
+      if (profileData.avatar && (profileData.avatar.startsWith("http") || profileData.avatar.startsWith("data:image/"))) payload.avatarUrl = profileData.avatar;
+      if (profileData.birthDate) payload.birthDate = profileData.birthDate;
 
-      if (onLoginSuccess) onLoginSuccess(profileData);
+      await api.put("/users/profile", payload);
+
+      if (auth.currentUser) {
+        await updateProfile(auth.currentUser, {
+          displayName: profileData.pseudo,
+          photoURL: profileData.avatar && profileData.avatar.startsWith("http") ? profileData.avatar : auth.currentUser.photoURL
+        });
+        await auth.currentUser.reload();
+      }
+
+      if (onLoginSuccess) {
+        onLoginSuccess({
+          ...user,
+          ...profileData,
+          pseudo: profileData.pseudo,
+          username: profileData.pseudo,
+          displayName: profileData.pseudo,
+          avatarUrl: profileData.avatar,
+          photoURL: profileData.avatar
+        });
+      }
       setSaveStatus("saved");
       setTimeout(() => {
         setSaveStatus("");
         setIsEditing(false);
+        
+        // Force la mise à jour du Header si l'application principale n'écoute pas l'événement dynamique
+        if (!onLoginSuccess) {
+          window.location.reload();
+        }
       }, 1500);
     } catch (err) {
       console.error("Erreur update profil", err);
@@ -1606,12 +1706,38 @@ const MyProfile = ({ user, onLoginSuccess, onLogout, onGameClick }) => {
     else setProfileData({ ...profileData, [name]: value });
   };
 
+  // Fonction pour traiter, redimensionner et compresser l'image avant l'envoi
   const handleAvatarChange = (e) => {
     const file = e.target.files[0];
     if (file && file.type.startsWith("image/")) {
       const reader = new FileReader();
-      reader.onload = (event) =>
-        setProfileData({ ...profileData, avatar: event.target.result });
+      reader.onload = (event) => {
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement("canvas");
+          const MAX_SIZE = 250; // Taille maximale en pixels
+          let width = img.width;
+          let height = img.height;
+
+          // Calcul des nouvelles dimensions en conservant le ratio
+          if (width > height) {
+            if (width > MAX_SIZE) { height *= MAX_SIZE / width; width = MAX_SIZE; }
+          } else {
+            if (height > MAX_SIZE) { width *= MAX_SIZE / height; height = MAX_SIZE; }
+          }
+          
+          canvas.width = width;
+          canvas.height = height;
+          
+          const ctx = canvas.getContext("2d");
+          ctx.drawImage(img, 0, 0, width, height);
+          
+          // Compression à 70% de qualité JPEG pour garantir une très petite taille de payload
+          const dataUrl = canvas.toDataURL("image/jpeg", 0.7);
+          setProfileData({ ...profileData, avatar: dataUrl });
+        };
+        img.src = event.target.result;
+      };
       reader.readAsDataURL(file);
     }
   };
@@ -1644,6 +1770,16 @@ const MyProfile = ({ user, onLoginSuccess, onLogout, onGameClick }) => {
       return `https://images.igdb.com/igdb/image/upload/t_cover_big/${cover.image_id}.jpg`;
     if (typeof cover === "string" && cover.startsWith("http")) return cover;
     return defaultCover;
+  };
+
+  // Calcul des effectifs par statut
+  const totalGames = favorites.length;
+  const countByStatus = {
+    Tous: totalGames,
+    "A faire": favorites.filter(g => g.status === "to_play").length,
+    "En cours": favorites.filter(g => g.status === "playing").length,
+    "Fini": favorites.filter(g => g.status === "finished").length,
+    "Abandonné": favorites.filter(g => g.status === "dropped").length,
   };
 
   const saveLabel = {
@@ -1739,7 +1875,6 @@ const MyProfile = ({ user, onLoginSuccess, onLogout, onGameClick }) => {
               )}
             </h2>
 
-            {/* Badge d'indication si le profil est privé (purement informatif) */}
             {profileData.isPrivate && (
               <div style={{ marginBottom: "10px" }}>
                 <span
@@ -1908,7 +2043,7 @@ const MyProfile = ({ user, onLoginSuccess, onLogout, onGameClick }) => {
                   className="game-genre"
                   style={{ display: "block", marginBottom: "8px" }}
                 >
-                  Photo de profil (Avatar)
+                  Photo de profil (Fichier image)
                 </label>
                 <input
                   type="file"
@@ -1991,33 +2126,18 @@ const MyProfile = ({ user, onLoginSuccess, onLogout, onGameClick }) => {
                 >
                   {saveLabel}
                 </button>
-                <button
-                  className="category-btn"
-                  onClick={onLogout}
-                  style={{
-                    justifyContent: "center",
-                    borderColor: "rgba(239, 68, 68, 0.5)",
-                    color: "#ef4444",
-                    marginTop: "10px",
-                  }}
-                >
-                  <i
-                    className="fa-solid fa-arrow-right-from-bracket"
-                    style={{ marginRight: "6px" }}
-                  ></i>{" "}
-                  Déconnexion
-                </button>
               </div>
             </div>
           </div>
         )}
 
+        {/* ========== SECTION COLLECTION  ========== */}
         <div style={{ marginTop: "40px" }}>
           <div className="section-header" style={{ marginBottom: "20px" }}>
             <h2 className="section-title">Ma Collection</h2>
-            <span className="section-count">{favorites.length}</span>
           </div>
 
+          {/* Filtres avec effectifs dans chaque bouton */}
           <div className="filters-container" style={{ marginBottom: "30px" }}>
             {["Tous", "A faire", "En cours", "Fini", "Abandonné"].map((s) => (
               <button
@@ -2025,19 +2145,16 @@ const MyProfile = ({ user, onLoginSuccess, onLogout, onGameClick }) => {
                 className={`category-btn ${filter === s ? "active" : ""}`}
                 onClick={() => setFilter(s)}
               >
-                {s}
+                {s} ({countByStatus[s]})
               </button>
             ))}
           </div>
 
+          {/* Grille des jeux filtrés */}
           {filteredGames.length === 0 ? (
             <div
               className="game-card-modern"
-              style={{
-                padding: "40px",
-                textAlign: "center",
-                cursor: "default",
-              }}
+              style={{ padding: "40px", textAlign: "center", cursor: "default" }}
             >
               <p className="hero-subtitle">
                 {favorites.length === 0
@@ -2086,11 +2203,11 @@ const MyProfile = ({ user, onLoginSuccess, onLogout, onGameClick }) => {
             </div>
           )}
         </div>
-
         <div style={{ marginTop: "40px" }}>
           <CustomLists onGameClick={onGameClick} />
         </div>
       </div>
+      <Footer />
     </div>
   );
 };

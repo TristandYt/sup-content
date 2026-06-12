@@ -1084,6 +1084,10 @@ export default function AdminDashboard({ onBack }) {
     deleted: null,
   });
 
+  useEffect(() => {
+    document.title = "Administration | TGMF";
+  }, []);
+
   const showToast = useCallback((msg, ok = true) => {
     setToast({ msg, ok });
     setTimeout(() => setToast(null), 3500);

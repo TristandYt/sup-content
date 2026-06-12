@@ -4,6 +4,7 @@ import axios from "axios";
 import { auth } from "../Service/firebase";
 import "../../Style/Styles.css";
 import defaultCover from "../assets/fr-default-large_default.jpg";
+import Footer from "../components/Footer";
 
 const authAxios = async () => {
   const token = await auth.currentUser?.getIdToken(true);
@@ -13,7 +14,7 @@ const authAxios = async () => {
   });
 };
 
-const PAGE_SIZE = 35;
+const PAGE_SIZE = 24;
 
 const PaginationBar = ({
   page,
@@ -94,15 +95,9 @@ const Catalogue = ({ onGameClick, user, searchTerm }) => {
   ];
   const [activeCategory, setActiveCategory] = useState("Tous");
 
-  const paramsRef = useRef(params);
-  const searchTermRef = useRef(searchTerm);
-
   useEffect(() => {
-    paramsRef.current = params;
-  }, [params]);
-  useEffect(() => {
-    searchTermRef.current = searchTerm;
-  }, [searchTerm]);
+    document.title = "Catalogue | TGMF";
+  }, []);
 
   const getImageUrl = (game) => {
     if (game.cover?.image_id)
@@ -118,39 +113,61 @@ const Catalogue = ({ onGameClick, user, searchTerm }) => {
       const api = auth.currentUser
         ? await authAxios()
         : axios.create({ baseURL: "http://localhost:3000/api" });
-      const hasSearchTerm = searchTermRef.current?.trim() !== "";
+      const hasSearchTerm = searchTerm && searchTerm.trim() !== "";
+      const hasCustomSort = params.sortBy !== "total_rating" || params.sortOrder !== "desc";
       const endpoint = hasSearchTerm
         ? "search"
-        : paramsRef.current.genre ||
-            paramsRef.current.platform ||
-            paramsRef.current.style
+        : params.genre || params.platform || params.style || hasCustomSort
           ? "filtered"
           : "popular";
 
-      const res = await api.get(`/games/${endpoint}`, {
-        params: {
-          page: targetPage,
-          limit: PAGE_SIZE,
-          sortBy: paramsRef.current.sortBy,
-          sortOrder: paramsRef.current.sortOrder,
-          ...(hasSearchTerm && { q: searchTermRef.current.trim() }),
-          ...paramsRef.current,
-        },
-      });
+      const queryParams = {
+        page: targetPage,
+        limit: PAGE_SIZE,
+        sortBy: params.sortBy || "total_rating",
+        order: params.sortOrder || "desc",
+        sort: params.sortBy || "total_rating",
+        sortOrder: params.sortOrder || "desc",
+      };
+
+      if (hasSearchTerm) queryParams.q = searchTerm.trim();
+      if (params.genre) queryParams.genre = params.genre;
+      if (params.platform) queryParams.platform = params.platform;
+      if (params.style) queryParams.style = params.style;
+
+      const res = await api.get(`/games/${endpoint}`, { params: queryParams });
       const data = res.data.games || res.data.results || res.data;
-      setGames(Array.isArray(data) ? data : []);
-      setHasMore(data.length === PAGE_SIZE);
+      let gamesList = Array.isArray(data) ? data : [];
+      
+      setGames(gamesList);
+      
+      // On assouplit la condition hasMore pour gérer les limites imposées par le backend (connecté ou non)
+      setHasMore(gamesList.length >= 10);
       setPage(targetPage);
     } catch (err) {
       setError("Impossible de charger les jeux.");
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [params, searchTerm]);
 
   useEffect(() => {
     fetchGames(1);
-  }, [params, searchTerm]);
+  }, [fetchGames]);
+
+  // Fonction pour afficher des labels clairs plutôt que "Croissant/Décroissant"
+  const getOrderLabel = () => {
+    if (params.sortBy === "name") return params.sortOrder === "asc" ? "De A à Z" : "De Z à A";
+    if (params.sortBy === "first_release_date") return params.sortOrder === "asc" ? "Plus anciens" : "Plus récents";
+    return params.sortOrder === "asc" ? "Moins bien notés" : "Mieux notés";
+  };
+
+  // Fonction pour appliquer un tri intelligent par défaut selon le critère choisi
+  const handleSortByChange = (e) => {
+    const newSortBy = e.target.value;
+    const newOrder = newSortBy === "name" ? "asc" : "desc"; // Par défaut: A-Z pour les noms, Décroissant pour le reste
+    setParams((p) => ({ ...p, sortBy: newSortBy, sortOrder: newOrder }));
+  };
 
   return (
     <div className="accueil-container">
@@ -217,9 +234,7 @@ const Catalogue = ({ onGameClick, user, searchTerm }) => {
           </select>
           <select
             value={params.sortBy}
-            onChange={(e) =>
-              setParams((p) => ({ ...p, sortBy: e.target.value }))
-            }
+            onChange={handleSortByChange}
             className="filter-select"
           >
             <option value="total_rating">⭐ Note</option>
@@ -243,7 +258,7 @@ const Catalogue = ({ onGameClick, user, searchTerm }) => {
                   : "fa-solid fa-arrow-down-wide-short"
               }
             ></i>
-            {params.sortOrder === "asc" ? "Croissant" : "Décroissant"}
+            {getOrderLabel()}
           </button>
         </div>
       </div>
@@ -251,6 +266,14 @@ const Catalogue = ({ onGameClick, user, searchTerm }) => {
       {loading ? (
         <div className="loading-container">
           <div className="loading-spinner" />
+        </div>
+      ) : games.length === 0 ? (
+        <div className="empty-state" style={{ margin: "40px auto", textAlign: "center" }}>
+          <div className="empty-icon" style={{ fontSize: "3rem", opacity: 0.5, marginBottom: "1rem" }}>
+            <i className="fa-solid fa-ghost"></i>
+          </div>
+          <h3 className="empty-title">Aucun jeu trouvé</h3>
+          <p className="empty-text">Il n'y a plus de résultats ou la recherche est vide.</p>
         </div>
       ) : (
         <div className="games-grid">
@@ -275,6 +298,16 @@ const Catalogue = ({ onGameClick, user, searchTerm }) => {
               </div>
               <div className="game-content">
                 <h3 className="game-title">{game.name}</h3>
+                <div className="game-meta">
+                  <span className="game-year">
+                    {game.first_release_date
+                      ? new Date(game.first_release_date * 1000).getFullYear()
+                      : "TBA"}
+                  </span>
+                  {game.genres && game.genres.length > 0 && (
+                  <span className="game-genre">{game.genres[0].name}</span>
+                  )}
+                </div>
               </div>
             </div>
           ))}
@@ -289,6 +322,7 @@ const Catalogue = ({ onGameClick, user, searchTerm }) => {
           onPageChange={fetchGames}
         />
       </div>
+      <Footer />
     </div>
   );
 };
