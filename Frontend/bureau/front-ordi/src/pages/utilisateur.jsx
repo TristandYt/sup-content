@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import axios from "axios";
 import { auth } from "../Service/firebase";
+import { statusConfig } from "../Utils/icons";
 import "../../Style/Styles.css";
 import defaultCover from "../assets/fr-default-large_default.jpg";
 
@@ -15,7 +16,9 @@ const authAxios = async () => {
   });
 };
 
-/* VUE PROFIL PUBLIC  */
+/* ═══════════════════════════════════════════════════════════
+   VUE PROFIL PUBLIC — isPublic === true
+═══════════════════════════════════════════════════════════ */
 const PublicProfile = ({
   targetUserId,
   currentUser,
@@ -32,6 +35,7 @@ const PublicProfile = ({
   const [error, setError] = useState("");
   const [library, setLibrary] = useState([]);
   const [customLists, setCustomLists] = useState([]);
+  const [activeListId, setActiveListId] = useState(null);
 
   const myId = String(currentUser?.uid || currentUser?.id || "");
   const isMe = myId !== "" && myId === String(targetUserId);
@@ -57,9 +61,7 @@ const PublicProfile = ({
       const libraryReq = api
         .get(`/lists/library?userId=${targetUserId}`)
         .catch(() => ({ data: { library: [] } }));
-      const customListsReq = api
-        .get(`/lists/custom?userId=${targetUserId}`)
-        .catch(() => ({ data: { lists: [] } }));
+
       const followingReq = api
         .get("/follows/me/following")
         .catch(() => ({ data: { following: [] } }));
@@ -67,19 +69,21 @@ const PublicProfile = ({
         .get("/follows/me/followers")
         .catch(() => ({ data: { followers: [] } }));
 
-      const [
-        profileRes,
-        libraryRes,
-        customListsRes,
-        followingRes,
-        followersRes,
-      ] = await Promise.all([
-        profileReq,
-        libraryReq,
-        customListsReq,
-        followingReq,
-        followersReq,
-      ]);
+      let customListsReq;
+      try {
+        customListsReq = await api.get(`/lists/custom/user/${targetUserId}`);
+      } catch (err) {
+        try {
+          customListsReq = await api.get(
+            `/lists/custom?userId=${targetUserId}`,
+          );
+        } catch (err2) {
+          customListsReq = { data: { lists: [] } };
+        }
+      }
+
+      const [profileRes, libraryRes, followingRes, followersRes] =
+        await Promise.all([profileReq, libraryReq, followingReq, followersReq]);
 
       const data = profileRes.data;
       const userData = data?.user || data;
@@ -89,16 +93,22 @@ const PublicProfile = ({
         username: userData.username || userData.pseudo || "Utilisateur",
         bio: userData.bio || "",
         website: userData.website || "",
-        avatar: userData.avatar || userData.photoURL || null,
+        avatar:
+          userData.avatar ||
+          userData.profileData?.avatarUrl ||
+          userData.photoURL ||
+          null,
         followersCount: userData.followersCount || 0,
         followingCount: userData.followingCount || 0,
         gamesCount: lib.length,
         isCertified: userData.isCertified || false,
+        isPrivate: userData.isPrivate || false,
       });
 
       setLibrary(lib);
+      // On filtre les listes privées dans la vue publique
       setCustomLists(
-        (customListsRes.data?.lists || []).filter((l) => !l.isPrivate),
+        (customListsReq.data?.lists || []).filter((l) => !l.isPrivate),
       );
 
       const myFollowing = followingRes.data?.following || [];
@@ -175,11 +185,17 @@ const PublicProfile = ({
     return defaultCover;
   };
 
-  const statusMapping = {
-    to_play: "⏳ À faire",
-    playing: "🎮 En cours",
-    finished: "✅ Fini",
-    dropped: "❌ Abandonné",
+  const renderStatus = (status) => {
+    const cfg = statusConfig[status] || statusConfig.to_play;
+    return (
+      <span style={{ display: "inline-flex", alignItems: "center" }}>
+        <i
+          className={cfg.icon}
+          style={{ color: cfg.color, marginRight: "8px" }}
+        ></i>
+        {cfg.label}
+      </span>
+    );
   };
 
   if (loading) {
@@ -208,7 +224,12 @@ const PublicProfile = ({
         className="accueil-container"
         style={{ textAlign: "center", paddingTop: "80px" }}
       >
-        <div className="empty-icon">😕</div>
+        <div className="empty-icon">
+          <i
+            className="fa-solid fa-ghost"
+            style={{ color: "rgb(148, 163, 184)" }}
+          ></i>
+        </div>
         <h3 className="empty-title">Profil introuvable</h3>
         <p className="empty-text">{error}</p>
         <button
@@ -216,7 +237,7 @@ const PublicProfile = ({
           onClick={onBack}
           style={{ marginTop: "20px" }}
         >
-          ← Retour
+          Retour
         </button>
       </div>
     );
@@ -230,7 +251,7 @@ const PublicProfile = ({
           onClick={onBack}
           style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}
         >
-          ← Retour
+          <i className="fa-solid fa-arrow-left"></i> Retour
         </button>
       </div>
 
@@ -293,12 +314,13 @@ const PublicProfile = ({
                   style={{
                     marginLeft: "10px",
                     fontSize: "1.2rem",
-                    color: "#60a5fa",
                     verticalAlign: "middle",
-                    textShadow: "0 0 8px rgba(96,165,250,0.5)",
                   }}
                 >
-                  ⭐
+                  <i
+                    className="fa-solid fa-star"
+                    style={{ color: "rgb(255, 212, 59)" }}
+                  ></i>
                 </span>
               )}
             </h2>
@@ -324,7 +346,11 @@ const PublicProfile = ({
                     fontWeight: "600",
                   }}
                 >
-                  ✓ Abonnement mutuel
+                  <i
+                    className="fa-solid fa-check"
+                    style={{ color: "rgb(34, 197, 94)", marginRight: "4px" }}
+                  ></i>{" "}
+                  Abonnement mutuel
                 </span>
               )}
               {!isMutual && theyFollowMe && (
@@ -368,29 +394,6 @@ const PublicProfile = ({
               >
                 "{profile.bio}"
               </p>
-            )}
-
-            {profile.website && (
-              <a
-                href={
-                  profile.website.startsWith("http")
-                    ? profile.website
-                    : `https://${profile.website}`
-                }
-                target="_blank"
-                rel="noopener noreferrer"
-                style={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: "6px",
-                  marginTop: "8px",
-                  fontSize: "0.85rem",
-                  color: "#60a5fa",
-                  textDecoration: "none",
-                }}
-              >
-                🔗 {profile.website.replace(/^https?:\/\//, "")}
-              </a>
             )}
 
             <div
@@ -452,17 +455,33 @@ const PublicProfile = ({
                     minWidth: "150px",
                     justifyContent: "center",
                     opacity: followLoading ? 0.6 : 1,
-                    transition: "all 0.2s",
                     ...(iFollow
                       ? { borderColor: "rgba(239,68,68,0.5)", color: "#f87171" }
                       : {}),
                   }}
                 >
-                  {followLoading
-                    ? "…"
-                    : iFollow
-                      ? "✗ Se désabonner"
-                      : "✚ Suivre"}
+                  {followLoading ? (
+                    "…"
+                  ) : iFollow ? (
+                    <>
+                      <i
+                        className="fa-solid fa-xmark"
+                        style={{
+                          color: "rgb(239, 68, 68)",
+                          marginRight: "5px",
+                        }}
+                      ></i>{" "}
+                      Se désabonner
+                    </>
+                  ) : (
+                    <>
+                      <i
+                        className="fa-solid fa-user-plus"
+                        style={{ marginRight: "5px" }}
+                      ></i>{" "}
+                      Suivre
+                    </>
+                  )}
                 </button>
                 {isMutual && (
                   <button
@@ -477,178 +496,334 @@ const PublicProfile = ({
                       borderColor: "rgba(139,92,246,0.5)",
                     }}
                   >
-                    {msgLoading ? "…" : "💬 Envoyer un message"}
+                    {msgLoading ? (
+                      "…"
+                    ) : (
+                      <>
+                        <i
+                          className="fa-solid fa-message"
+                          style={{ color: "#c084fc", marginRight: "5px" }}
+                        ></i>{" "}
+                        Envoyer un message
+                      </>
+                    )}
                   </button>
                 )}
               </div>
-            ) : !currentUser ? (
-              <p
-                className="game-genre"
-                style={{ opacity: 0.6, fontSize: "0.85rem" }}
-              >
-                Connectez-vous pour interagir avec cet utilisateur.
-              </p>
             ) : null}
-
-            {currentUser && !isMe && iFollow && !theyFollowMe && (
-              <p
-                style={{
-                  marginTop: "14px",
-                  fontSize: "0.78rem",
-                  color: "rgba(255,255,255,0.35)",
-                }}
-              >
-                En attente qu'il vous suive en retour pour pouvoir lui écrire.
-              </p>
-            )}
           </div>
         </div>
 
-        {/* ── Collection publique ── */}
-        <div style={{ marginTop: "40px" }}>
-          <div className="section-header" style={{ marginBottom: "20px" }}>
-            <h3 className="section-title">Sa Collection</h3>
-          </div>
-          {library.length === 0 ? (
-            <p
-              className="empty-text"
-              style={{ textAlign: "center", padding: "20px" }}
-            >
-              Cet utilisateur n'a pas encore ajouté de jeux.
-            </p>
-          ) : (
-            <div className="game-grid">
-              {library.map((game) => (
-                <div
-                  key={game.gameId}
-                  className="game-card-modern"
-                  style={{ cursor: "pointer" }}
-                  onClick={() => onGameClick && onGameClick(game.gameId)}
-                >
-                  <div className="game-image-container">
-                    <img
-                      src={getCoverUrl(game.gameCover || game.cover)}
-                      alt={game.gameName || game.name}
-                      className="game-image"
-                    />
-                  </div>
-                  <div className="game-content">
-                    <h4 className="game-title">{game.gameName || game.name}</h4>
-                    <span
-                      className="game-genre"
-                      style={{ fontSize: "0.7rem", opacity: 0.8 }}
-                    >
-                      {statusMapping[game.status] || "Prévu"}
-                    </span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* ── Listes personnalisées publiques ── */}
-        {customLists.length > 0 && (
-          <div style={{ marginTop: "40px" }}>
-            <div className="section-header" style={{ marginBottom: "20px" }}>
-              <h3 className="section-title">Ses Listes</h3>
-              <span className="section-count">{customLists.length}</span>
-            </div>
+        {/* ── GESTION DE LA CONFIDENTIALITÉ ── */}
+        {profile.isPrivate && !isMutual ? (
+          <div
+            className="game-card-modern"
+            style={{
+              marginTop: "40px",
+              padding: "60px 20px",
+              textAlign: "center",
+              cursor: "default",
+            }}
+          >
             <div
-              style={{ display: "flex", flexDirection: "column", gap: "12px" }}
+              style={{ fontSize: "3.5rem", marginBottom: "16px", opacity: 0.8 }}
             >
-              {customLists.map((list) => (
-                <div
-                  key={list.id}
-                  className="game-card-modern"
-                  style={{ padding: "16px", cursor: "default" }}
+              <i
+                className="fa-solid fa-lock"
+                style={{ color: "rgb(148, 163, 184)" }}
+              ></i>
+            </div>
+            <h3
+              className="section-title"
+              style={{
+                fontSize: "1.5rem",
+                marginBottom: "8px",
+                justifyContent: "center",
+                border: "none",
+              }}
+            >
+              Ce compte est privé
+            </h3>
+            <p
+              className="hero-subtitle"
+              style={{ fontSize: "0.95rem", margin: 0, opacity: 0.7 }}
+            >
+              Abonnez-vous mutuellement pour découvrir sa collection et ses
+              listes.
+            </p>
+          </div>
+        ) : (
+          <>
+            {/* ── Collection publique ── */}
+            <div style={{ marginTop: "40px" }}>
+              <div className="section-header" style={{ marginBottom: "20px" }}>
+                <h3 className="section-title">Sa Collection</h3>
+              </div>
+              {library.length === 0 ? (
+                <p
+                  className="empty-text"
+                  style={{ textAlign: "center", padding: "20px" }}
                 >
-                  <div
-                    style={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                      alignItems: "center",
-                      marginBottom: "8px",
-                    }}
-                  >
-                    <h4 className="game-title" style={{ margin: 0 }}>
-                      {list.name}
-                    </h4>
-                    <span
-                      className="section-count"
-                      style={{ fontSize: "0.75rem" }}
+                  Cet utilisateur n'a pas encore ajouté de jeux.
+                </p>
+              ) : (
+                <div className="game-grid">
+                  {library.map((game) => (
+                    <div
+                      key={game.gameId}
+                      className="game-card-modern"
+                      style={{ cursor: "pointer" }}
+                      onClick={() => onGameClick && onGameClick(game.gameId)}
                     >
-                      {(list.games || []).length} jeux
-                    </span>
-                  </div>
-                  {list.description && (
-                    <p
-                      style={{
-                        fontSize: "0.82rem",
-                        color: "#94a3b8",
-                        margin: "0 0 10px",
-                      }}
-                    >
-                      {list.description}
-                    </p>
-                  )}
-                  <div
-                    style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}
-                  >
-                    {(list.games || []).slice(0, 5).map((g) => (
-                      <div
-                        key={g.gameId}
-                        onClick={() => onGameClick && onGameClick(g.gameId)}
-                        style={{
-                          width: "50px",
-                          height: "65px",
-                          borderRadius: "6px",
-                          overflow: "hidden",
-                          cursor: "pointer",
-                          flexShrink: 0,
-                        }}
-                      >
+                      <div className="game-image-container">
                         <img
-                          src={getCoverUrl(g.gameCover)}
-                          alt={g.gameName}
-                          style={{
-                            width: "100%",
-                            height: "100%",
-                            objectFit: "cover",
-                          }}
+                          src={getCoverUrl(game.gameCover || game.cover)}
+                          alt={game.gameName || game.name}
+                          className="game-image"
                         />
                       </div>
-                    ))}
-                    {(list.games || []).length > 5 && (
+                      <div className="game-content">
+                        <h4 className="game-title">
+                          {game.gameName || game.name}
+                        </h4>
+                        <span
+                          className="game-genre"
+                          style={{ fontSize: "0.7rem", opacity: 0.8 }}
+                        >
+                          {renderStatus(game.status)}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* ── Listes personnalisées publiques ── */}
+            {customLists.length > 0 && (
+              <div style={{ marginTop: "40px" }}>
+                <div
+                  className="section-header"
+                  style={{ marginBottom: "20px" }}
+                >
+                  <h3 className="section-title">Ses Listes</h3>
+                  <span className="section-count">{customLists.length}</span>
+                </div>
+                <div
+                  style={{
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: "12px",
+                  }}
+                >
+                  {customLists.map((list) => {
+                    const isOpen = activeListId === list.id;
+
+                    return (
                       <div
+                        key={list.id}
+                        className="game-card-modern"
                         style={{
-                          width: "50px",
-                          height: "65px",
-                          borderRadius: "6px",
-                          background: "rgba(147,51,234,0.2)",
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          fontSize: "0.75rem",
-                          color: "#c084fc",
-                          fontWeight: "600",
+                          padding: "0",
+                          cursor: "default",
+                          position: "relative",
+                          zIndex: isOpen ? 50 : 1,
                         }}
                       >
-                        +{list.games.length - 5}
+                        <div
+                          onClick={() =>
+                            setActiveListId(isOpen ? null : list.id)
+                          }
+                          style={{
+                            display: "flex",
+                            justifyContent: "space-between",
+                            alignItems: "center",
+                            padding: "16px 20px",
+                            cursor: "pointer",
+                          }}
+                        >
+                          <div>
+                            <h4
+                              className="game-title"
+                              style={{
+                                margin: 0,
+                                display: "flex",
+                                alignItems: "center",
+                                gap: "8px",
+                              }}
+                            >
+                              {list.name}
+                            </h4>
+                            {list.description && (
+                              <p
+                                style={{
+                                  fontSize: "0.82rem",
+                                  color: "#94a3b8",
+                                  margin: "4px 0 0",
+                                }}
+                              >
+                                {list.description}
+                              </p>
+                            )}
+                          </div>
+                          <div
+                            style={{
+                              display: "flex",
+                              alignItems: "center",
+                              gap: "10px",
+                            }}
+                          >
+                            <span
+                              className="section-count"
+                              style={{ fontSize: "0.75rem" }}
+                            >
+                              {(list.games || []).length} jeux
+                            </span>
+                            <i
+                              className={
+                                isOpen
+                                  ? "fa-solid fa-chevron-up"
+                                  : "fa-solid fa-chevron-down"
+                              }
+                              style={{ color: "#9333ea" }}
+                            ></i>
+                          </div>
+                        </div>
+
+                        {isOpen ? (
+                          <div
+                            style={{
+                              padding: "0 20px 20px",
+                              borderTop: "1px solid rgba(255,255,255,0.06)",
+                            }}
+                          >
+                            {(list.games || []).length === 0 ? (
+                              <p
+                                style={{
+                                  fontSize: "0.85rem",
+                                  color: "#64748b",
+                                  paddingTop: "16px",
+                                  textAlign: "center",
+                                }}
+                              >
+                                Cette liste est vide.
+                              </p>
+                            ) : (
+                              <div
+                                style={{
+                                  display: "flex",
+                                  gap: "12px",
+                                  flexWrap: "wrap",
+                                  paddingTop: "16px",
+                                }}
+                              >
+                                {(list.games || []).map((g) => (
+                                  <div
+                                    key={g.gameId}
+                                    onClick={() =>
+                                      onGameClick && onGameClick(g.gameId)
+                                    }
+                                    style={{ width: "70px", cursor: "pointer" }}
+                                  >
+                                    <img
+                                      src={getCoverUrl(g.gameCover)}
+                                      alt={g.gameName}
+                                      style={{
+                                        width: "70px",
+                                        height: "90px",
+                                        borderRadius: "8px",
+                                        objectFit: "cover",
+                                      }}
+                                    />
+                                    <p
+                                      style={{
+                                        fontSize: "0.65rem",
+                                        color: "#94a3b8",
+                                        margin: "6px 0 0",
+                                        textAlign: "center",
+                                        overflow: "hidden",
+                                        textOverflow: "ellipsis",
+                                        whiteSpace: "nowrap",
+                                      }}
+                                    >
+                                      {g.gameName}
+                                    </p>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        ) : (
+                          <div
+                            style={{
+                              padding: "0 20px 20px",
+                              display: "flex",
+                              gap: "8px",
+                              flexWrap: "wrap",
+                            }}
+                          >
+                            {(list.games || []).slice(0, 5).map((g) => (
+                              <div
+                                key={g.gameId}
+                                onClick={() =>
+                                  onGameClick && onGameClick(g.gameId)
+                                }
+                                style={{
+                                  width: "50px",
+                                  height: "65px",
+                                  borderRadius: "6px",
+                                  overflow: "hidden",
+                                  cursor: "pointer",
+                                  flexShrink: 0,
+                                }}
+                              >
+                                <img
+                                  src={getCoverUrl(g.gameCover)}
+                                  alt={g.gameName}
+                                  style={{
+                                    width: "100%",
+                                    height: "100%",
+                                    objectFit: "cover",
+                                  }}
+                                />
+                              </div>
+                            ))}
+                            {(list.games || []).length > 5 && (
+                              <div
+                                style={{
+                                  width: "50px",
+                                  height: "65px",
+                                  borderRadius: "6px",
+                                  background: "rgba(147,51,234,0.2)",
+                                  display: "flex",
+                                  alignItems: "center",
+                                  justifyContent: "center",
+                                  fontSize: "0.75rem",
+                                  color: "#c084fc",
+                                  fontWeight: "600",
+                                }}
+                              >
+                                +{(list.games || []).length - 5}
+                              </div>
+                            )}
+                          </div>
+                        )}
                       </div>
-                    )}
-                  </div>
+                    );
+                  })}
                 </div>
-              ))}
-            </div>
-          </div>
+              </div>
+            )}
+          </>
         )}
       </div>
     </div>
   );
 };
 
-/*CUSTOM LISTS */
+/* ═══════════════════════════════════════════════════════════
+   CUSTOM LISTS — sous-composant de MyProfile
+═══════════════════════════════════════════════════════════ */
 const CustomLists = ({ onGameClick }) => {
   const [lists, setLists] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -717,12 +892,10 @@ const CustomLists = ({ onGameClick }) => {
         );
       } else {
         const res = await api.post("/lists/custom", formData);
-        const newList = {
-          id: res.data.listId,
-          ...formData,
-          games: [],
-        };
-        setLists((prev) => [...prev, newList]);
+        setLists((prev) => [
+          ...prev,
+          { id: res.data.listId, ...formData, games: [] },
+        ]);
       }
       setShowForm(false);
       setEditingList(null);
@@ -740,9 +913,7 @@ const CustomLists = ({ onGameClick }) => {
       const api = await authAxios();
       await api.delete(`/lists/custom/${id}`);
       setLists((prev) => prev.filter((l) => l.id !== id));
-    } catch (err) {
-      console.error("Erreur delete list:", err);
-    }
+    } catch (err) {}
   };
 
   const handleAddGame = async (list, game) => {
@@ -784,9 +955,7 @@ const CustomLists = ({ onGameClick }) => {
             : l,
         ),
       );
-    } catch (err) {
-      console.error("Erreur removeGame:", err);
-    }
+    } catch (err) {}
   };
 
   const openEdit = (list) => {
@@ -809,7 +978,6 @@ const CustomLists = ({ onGameClick }) => {
 
   return (
     <div>
-      {/* Header */}
       <div className="section-header" style={{ marginBottom: "20px" }}>
         <h2 className="section-title">Mes Listes</h2>
         <button
@@ -820,11 +988,26 @@ const CustomLists = ({ onGameClick }) => {
             setFormData({ name: "", description: "", isPrivate: false });
           }}
         >
-          {showForm && !editingList ? "Annuler" : "+ Nouvelle liste"}
+          {showForm && !editingList ? (
+            <>
+              <i
+                className="fa-solid fa-xmark"
+                style={{ marginRight: "6px" }}
+              ></i>{" "}
+              Annuler
+            </>
+          ) : (
+            <>
+              <i
+                className="fa-solid fa-plus"
+                style={{ marginRight: "6px" }}
+              ></i>{" "}
+              Nouvelle liste
+            </>
+          )}
         </button>
       </div>
 
-      {/* Formulaire création/édition */}
       {showForm && (
         <div
           className="game-card-modern"
@@ -876,7 +1059,11 @@ const CustomLists = ({ onGameClick }) => {
               className="game-genre"
               style={{ cursor: "pointer", margin: 0 }}
             >
-              🔒 Liste privée (visible uniquement par moi)
+              <i
+                className="fa-solid fa-lock"
+                style={{ color: "inherit", opacity: 0.6, marginRight: "6px" }}
+              ></i>{" "}
+              Liste privée (visible uniquement par moi)
             </label>
           </div>
           <button
@@ -889,16 +1076,29 @@ const CustomLists = ({ onGameClick }) => {
             onClick={handleSaveList}
             disabled={saving}
           >
-            {saving
-              ? "Sauvegarde..."
-              : editingList
-                ? "Mettre à jour"
-                : "Créer la liste"}
+            {saving ? (
+              "Sauvegarde..."
+            ) : editingList ? (
+              <>
+                <i
+                  className="fa-solid fa-pen-to-square"
+                  style={{ marginRight: "6px" }}
+                ></i>{" "}
+                Mettre à jour
+              </>
+            ) : (
+              <>
+                <i
+                  className="fa-solid fa-check"
+                  style={{ marginRight: "6px" }}
+                ></i>{" "}
+                Créer la liste
+              </>
+            )}
           </button>
         </div>
       )}
 
-      {/* Liste vide */}
       {loading ? (
         <div className="loading-container">
           <div className="loading-spinner" />
@@ -908,13 +1108,10 @@ const CustomLists = ({ onGameClick }) => {
           className="game-card-modern"
           style={{ padding: "40px", textAlign: "center", cursor: "default" }}
         >
-          <p style={{ fontSize: "2rem", marginBottom: "12px" }}>📋</p>
-          <p className="hero-subtitle">Aucune liste pour l'instant.</p>
-          <p
-            style={{ fontSize: "0.85rem", color: "#64748b", marginTop: "6px" }}
-          >
-            Crée ta première liste : Horreur, RPG, Coop…
+          <p style={{ fontSize: "2rem", marginBottom: "12px", opacity: 0.6 }}>
+            <i className="fa-solid fa-clipboard-list"></i>
           </p>
+          <p className="hero-subtitle">Aucune liste pour l'instant.</p>
         </div>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
@@ -924,9 +1121,14 @@ const CustomLists = ({ onGameClick }) => {
               <div
                 key={list.id}
                 className="game-card-modern"
-                style={{ padding: "0", cursor: "default", overflow: "visible" }}
+                style={{
+                  padding: "0",
+                  cursor: "default",
+                  overflow: "visible",
+                  position: "relative",
+                  zIndex: isOpen ? 9999 : 1,
+                }}
               >
-                {/* Header de la liste */}
                 <div
                   onClick={() => setActiveListId(isOpen ? null : list.id)}
                   style={{
@@ -951,9 +1153,39 @@ const CustomLists = ({ onGameClick }) => {
                       >
                         {list.name}
                       </h4>
-                      {list.isPrivate && (
-                        <span style={{ fontSize: "0.7rem", color: "#94a3b8" }}>
-                          🔒
+                      {list.isPrivate ? (
+                        <span
+                          style={{
+                            fontSize: "0.65rem",
+                            backgroundColor: "rgba(239, 68, 68, 0.15)",
+                            color: "#ef4444",
+                            padding: "2px 6px",
+                            borderRadius: "4px",
+                            border: "1px solid rgba(239, 68, 68, 0.3)",
+                          }}
+                        >
+                          <i
+                            className="fa-solid fa-lock"
+                            style={{ marginRight: "4px" }}
+                          ></i>
+                          Privée
+                        </span>
+                      ) : (
+                        <span
+                          style={{
+                            fontSize: "0.65rem",
+                            backgroundColor: "rgba(34, 197, 94, 0.15)",
+                            color: "#22c55e",
+                            padding: "2px 6px",
+                            borderRadius: "4px",
+                            border: "1px solid rgba(34, 197, 94, 0.3)",
+                          }}
+                        >
+                          <i
+                            className="fa-solid fa-earth-americas"
+                            style={{ marginRight: "4px" }}
+                          ></i>
+                          Publique
                         </span>
                       )}
                       <span
@@ -963,17 +1195,6 @@ const CustomLists = ({ onGameClick }) => {
                         {(list.games || []).length} jeux
                       </span>
                     </div>
-                    {list.description && (
-                      <p
-                        style={{
-                          margin: "4px 0 0",
-                          fontSize: "0.8rem",
-                          color: "#64748b",
-                        }}
-                      >
-                        {list.description}
-                      </p>
-                    )}
                   </div>
                   <div
                     style={{
@@ -986,44 +1207,59 @@ const CustomLists = ({ onGameClick }) => {
                   >
                     <button
                       className="category-btn"
-                      style={{ padding: "4px 10px", fontSize: "0.75rem" }}
+                      style={{
+                        padding: "4px 10px",
+                        fontSize: "0.75rem",
+                        borderColor: "rgba(59, 130, 246, 0.5)",
+                        background: "rgba(59, 130, 246, 0.1)",
+                      }}
                       onClick={(e) => {
                         e.stopPropagation();
                         openEdit(list);
                       }}
                     >
-                      ✏️
+                      <i
+                        className="fa-solid fa-pen-to-square"
+                        style={{ color: "#3b82f6" }}
+                      ></i>
                     </button>
+
                     <button
                       className="category-btn"
                       style={{
                         padding: "4px 10px",
                         fontSize: "0.75rem",
-                        borderColor: "#ef4444",
-                        color: "#f87171",
+                        borderColor: "rgba(239, 68, 68, 0.5)",
+                        background: "rgba(239, 68, 68, 0.1)",
                       }}
                       onClick={(e) => {
                         e.stopPropagation();
                         handleDeleteList(list.id);
                       }}
                     >
-                      🗑️
+                      <i
+                        className="fa-solid fa-trash"
+                        style={{ color: "#ef4444" }}
+                      ></i>
                     </button>
-                    <span style={{ color: "#9333ea", fontSize: "1.2rem" }}>
-                      {isOpen ? "▾" : "▸"}
-                    </span>
+                    <i
+                      className={
+                        isOpen
+                          ? "fa-solid fa-chevron-up"
+                          : "fa-solid fa-chevron-down"
+                      }
+                      style={{ color: "#9333ea", marginLeft: "6px" }}
+                    ></i>
                   </div>
                 </div>
 
-                {/* Contenu déroulable */}
                 {isOpen && (
                   <div
                     style={{
                       padding: "0 20px 20px",
-                      borderTop: "1px solid rgba(255,255,255,0.06)",
+                      borderTop: "1px solid rgba(128,128,128,0.1)",
                     }}
                   >
-                    {/* Jeux de la liste */}
                     {(list.games || []).length === 0 ? (
                       <p
                         style={{
@@ -1094,7 +1330,7 @@ const CustomLists = ({ onGameClick }) => {
                                 lineHeight: 1,
                               }}
                             >
-                              ✕
+                              <i className="fa-solid fa-xmark"></i>
                             </button>
                             <p
                               style={{
@@ -1114,12 +1350,11 @@ const CustomLists = ({ onGameClick }) => {
                       </div>
                     )}
 
-                    {/* Recherche jeu à ajouter */}
                     <div style={{ position: "relative", marginTop: "8px" }}>
                       <input
                         className="filter-select"
                         style={{ width: "100%" }}
-                        placeholder="🔍 Ajouter un jeu à cette liste…"
+                        placeholder="Ajouter un jeu à cette liste…"
                         value={gameSearch}
                         onChange={(e) => setGameSearch(e.target.value)}
                         onBlur={() => setTimeout(() => setGameResults([]), 200)}
@@ -1145,12 +1380,13 @@ const CustomLists = ({ onGameClick }) => {
                             top: "calc(100% + 6px)",
                             left: 0,
                             right: 0,
-                            background: "#1e293b",
+                            background: "var(--bg-secondary, #1a1a2e)",
                             border: "1px solid rgba(147,51,234,0.3)",
                             borderRadius: "10px",
-                            zIndex: 100,
+                            zIndex: 99999,
+                            pointerEvents: "auto",
                             overflow: "hidden",
-                            boxShadow: "0 8px 32px rgba(0,0,0,0.4)",
+                            boxShadow: "0 15px 40px rgba(0,0,0,0.8)",
                           }}
                         >
                           {gameResults.map((g) => (
@@ -1186,7 +1422,7 @@ const CustomLists = ({ onGameClick }) => {
                                 />
                               )}
                               <span
-                                style={{ color: "#e2e8f0", fontSize: "0.9rem" }}
+                                style={{ color: "inherit", fontSize: "0.9rem" }}
                               >
                                 {g.name}
                               </span>
@@ -1200,7 +1436,11 @@ const CustomLists = ({ onGameClick }) => {
                                     fontSize: "0.75rem",
                                   }}
                                 >
-                                  ✓ Ajouté
+                                  <i
+                                    className="fa-solid fa-check"
+                                    style={{ marginRight: "4px" }}
+                                  ></i>{" "}
+                                  Ajouté
                                 </span>
                               )}
                             </div>
@@ -1222,30 +1462,21 @@ const CustomLists = ({ onGameClick }) => {
 /* ═══════════════════════════════════════════════════════════
    MON PROFIL PERSONNEL — isPublic !== true
 ═══════════════════════════════════════════════════════════ */
-const MyProfile = ({
-  user,
-  onLoginSuccess,
-  onLogout,
-  onGameClick,
-  onAdminClick,
-}) => {
+const MyProfile = ({ user, onLoginSuccess, onLogout, onGameClick }) => {
   const { t, i18n } = useTranslation();
-  const [activeTab, setActiveTab] = useState("collection");
+  const [isEditing, setIsEditing] = useState(false);
 
+  // Gère uniquement les informations publiques du profil (pas les préférences)
   const [profileData, setProfileData] = useState({
     uid: user?.uid || user?.id || "",
     pseudo: user?.username || user?.pseudo || user?.displayName || "Joueur",
     email: user?.email || "",
     bio: user?.bio || "",
     website: user?.profileData?.website || "",
-    role: user?.role || "",
     birthDate: user?.birthDate || "",
-    preferences: user?.preferences || {
-      notifications: true,
-      privateProfile: false,
-      theme: "dark",
-      showAdultGames: false,
-    },
+    followersCount: 0,
+    followingCount: 0,
+    isPrivate: user?.isPrivate || false, // Affichage uniquement
     avatar:
       user?.avatar ||
       user?.photoURL ||
@@ -1266,9 +1497,30 @@ const MyProfile = ({
   const fetchMyFullProfile = async () => {
     try {
       const api = await authAxios();
-      const res = await api.get("/users/profile");
+      if (!api) return;
+
+      const profileReq = api.get("/users/profile");
+      const followingReq = api
+        .get("/follows/me/following")
+        .catch(() => ({ data: { following: [] } }));
+      const followersReq = api
+        .get("/follows/me/followers")
+        .catch(() => ({ data: { followers: [] } }));
+
+      const [res, followingRes, followersRes] = await Promise.all([
+        profileReq,
+        followingReq,
+        followersReq,
+      ]);
+
       if (res.data.success && res.data.user) {
         const u = res.data.user;
+
+        const actualFollowersCount =
+          followersRes.data?.followers?.length || u.followersCount || 0;
+        const actualFollowingCount =
+          followingRes.data?.following?.length || u.followingCount || 0;
+
         const fullProfile = {
           uid: u.uid || u.userId || profileData.uid,
           ...profileData,
@@ -1276,10 +1528,11 @@ const MyProfile = ({
           bio: u.bio || profileData.bio,
           website: u.profileData?.website || "",
           avatar: u.avatar || u.photoURL || profileData.avatar,
-          role: u.role || "",
           birthDate: u.birthDate || "",
           isCertified: u.isCertified || false,
-          preferences: u.preferences || profileData.preferences,
+          isPrivate: u.isPrivate || u.preferences?.privateProfile || false,
+          followersCount: actualFollowersCount,
+          followingCount: actualFollowingCount,
         };
         setProfileData(fullProfile);
         if (onLoginSuccess) onLoginSuccess(fullProfile);
@@ -1292,6 +1545,7 @@ const MyProfile = ({
   const fetchLibrary = async () => {
     try {
       const api = await authAxios();
+      if (!api) return;
       const res = await api.get(`/lists/library`);
       setFavorites(res.data?.library || []);
     } catch (err) {
@@ -1302,6 +1556,7 @@ const MyProfile = ({
   const handleStatusUpdate = async (gameId, newStatus, gameName, gameCover) => {
     try {
       const api = await authAxios();
+      if (!api) return;
       await api.post("/lists/status", {
         gameId: String(gameId),
         status: newStatus,
@@ -1318,48 +1573,26 @@ const MyProfile = ({
     }
   };
 
-  const statusMapping = {
-    to_play: "A faire",
-    playing: "En cours",
-    finished: "Fini",
-    dropped: "Abandonné",
-  };
-
-  const filteredGames = favorites.filter((game) => {
-    if (filter === "Tous") return true;
-    return statusMapping[game.status] === filter;
-  });
-
-  const getCoverUrl = (cover) => {
-    if (!cover) return defaultCover;
-    if (cover.image_id)
-      return `https://images.igdb.com/igdb/image/upload/t_cover_big/${cover.image_id}.jpg`;
-    if (
-      typeof cover === "string" &&
-      cover.trim() !== "" &&
-      !cover.includes("undefined")
-    ) {
-      if (cover.startsWith("http")) return cover;
-      return `https://images.igdb.com/igdb/image/upload/t_cover_big/${cover}.jpg`;
-    }
-    return defaultCover;
-  };
-
   const handleUpdate = async () => {
     setSaveStatus("saving");
     try {
       const api = await authAxios();
+      if (!api) throw new Error("Erreur authentification");
+
       await api.put("/users/profile", {
         username: profileData.pseudo || profileData.username,
         bio: profileData.bio,
         website: profileData.website,
-        avatar: profileData.avatar,
+        avatarUrl: profileData.avatar,
         birthDate: profileData.birthDate,
-        preferences: profileData.preferences,
       });
+
       if (onLoginSuccess) onLoginSuccess(profileData);
       setSaveStatus("saved");
-      setTimeout(() => setSaveStatus(""), 2000);
+      setTimeout(() => {
+        setSaveStatus("");
+        setIsEditing(false);
+      }, 1500);
     } catch (err) {
       console.error("Erreur update profil", err);
       setSaveStatus("error");
@@ -1373,13 +1606,6 @@ const MyProfile = ({
     else setProfileData({ ...profileData, [name]: value });
   };
 
-  const handlePreferenceChange = (key, value) => {
-    setProfileData((prev) => ({
-      ...prev,
-      preferences: { ...prev.preferences, [key]: value },
-    }));
-  };
-
   const handleAvatarChange = (e) => {
     const file = e.target.files[0];
     if (file && file.type.startsWith("image/")) {
@@ -1390,377 +1616,327 @@ const MyProfile = ({
     }
   };
 
+  const getAge = (birthDateString) => {
+    if (!birthDateString) return null;
+    const today = new Date();
+    const birthDate = new Date(birthDateString);
+    let age = today.getFullYear() - birthDate.getFullYear();
+    const m = today.getMonth() - birthDate.getMonth();
+    if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) age--;
+    return age;
+  };
+  const userAge = getAge(profileData.birthDate);
+
+  const filteredGames = favorites.filter((game) => {
+    if (filter === "Tous") return true;
+    const filterMapping = {
+      to_play: "A faire",
+      playing: "En cours",
+      finished: "Fini",
+      dropped: "Abandonné",
+    };
+    return filterMapping[game.status] === filter;
+  });
+
+  const getCoverUrl = (cover) => {
+    if (!cover) return defaultCover;
+    if (cover.image_id)
+      return `https://images.igdb.com/igdb/image/upload/t_cover_big/${cover.image_id}.jpg`;
+    if (typeof cover === "string" && cover.startsWith("http")) return cover;
+    return defaultCover;
+  };
+
   const saveLabel = {
     saving: "Sauvegarde...",
-    saved: "✅ Sauvegardé !",
-    error: "❌ Erreur",
-    "": t("btnUpdate"),
+    saved: (
+      <>
+        <i
+          className="fa-solid fa-check"
+          style={{ color: "rgb(34, 197, 94)", marginRight: "5px" }}
+        ></i>{" "}
+        Sauvegardé !
+      </>
+    ),
+    error: (
+      <>
+        <i
+          className="fa-solid fa-xmark"
+          style={{ color: "rgb(239, 68, 68)", marginRight: "5px" }}
+        ></i>{" "}
+        Erreur
+      </>
+    ),
+    "": "Sauvegarder les modifications",
   }[saveStatus];
 
-  const TABS = [
-    { id: "collection", label: "🎮 Collection" },
-    { id: "lists", label: "📋 Mes Listes" },
-    { id: "settings", label: "⚙️ Paramètres" },
-  ];
-
   return (
-    <div className="app-container">
-      <div className="hero-gradient"></div>
-      <div className="main-content-wrapper profile-layout">
-        {/* ── Sidebar profil ── */}
-        <div className="profile-sidebar">
+    <div className="accueil-container">
+      <div
+        className="hero-section"
+        style={{
+          minHeight: "160px",
+          background:
+            "linear-gradient(135deg, rgba(139,92,246,0.25) 0%, rgba(59,130,246,0.1) 100%)",
+        }}
+      >
+        <div className="hero-gradient" />
+      </div>
+
+      <div
+        style={{
+          maxWidth: "800px",
+          margin: "-80px auto 0",
+          padding: "0 20px 60px",
+        }}
+      >
+        <div
+          className="game-card-modern"
+          style={{
+            padding: "0",
+            cursor: "default",
+            overflow: "visible",
+            position: "relative",
+          }}
+        >
           <div
-            className="game-card-modern profile-main-card"
-            style={{ cursor: "default", padding: "30px" }}
+            style={{
+              display: "flex",
+              justifyContent: "center",
+              marginTop: "-50px",
+            }}
           >
-            <div className="avatar-section-centered">
-              <div className="avatar-wrapper-v2">
-                <img
-                  src={profileData.avatar}
-                  alt="Avatar"
-                  className="avatar-img-v2"
-                />
-                <label htmlFor="avatar-input" className="edit-badge-v2">
-                  ✏️
-                  <input
-                    id="avatar-input"
-                    type="file"
-                    accept="image/*"
-                    hidden
-                    onChange={handleAvatarChange}
-                  />
-                </label>
-              </div>
-              <h3
-                className="hero-title"
-                style={{ fontSize: "1.8rem", marginTop: "15px" }}
-              >
-                {profileData.pseudo}
-                {profileData.isCertified && (
-                  <span
-                    title="Profil certifié"
-                    style={{
-                      marginLeft: "10px",
-                      fontSize: "1.2rem",
-                      color: "#60a5fa",
-                      verticalAlign: "middle",
-                      textShadow: "0 0 8px rgba(96,165,250,0.5)",
-                    }}
-                  >
-                    ⭐
-                  </span>
-                )}
-              </h3>
-              <p className="game-year">{t("identifiedAs")}</p>
-            </div>
+            <img
+              src={profileData.avatar}
+              alt="Avatar"
+              style={{
+                width: "110px",
+                height: "110px",
+                borderRadius: "50%",
+                border: "4px solid rgba(139, 92, 246, 0.6)",
+                boxShadow: "0 0 30px rgba(139, 92, 246, 0.25)",
+                objectFit: "cover",
+                background: "var(--bg-secondary, #1a1a2e)",
+              }}
+            />
+          </div>
 
-            <div className="profile-form-modern" style={{ marginTop: "25px" }}>
-              <label
-                className="game-genre"
-                style={{ display: "block", marginBottom: "8px" }}
-              >
-                Bio
-              </label>
-              <textarea
-                name="bio"
-                className="filter-select"
-                style={{
-                  width: "100%",
-                  minHeight: "80px",
-                  padding: "12px",
-                  background: "rgba(0,0,0,0.2)",
-                }}
-                value={profileData.bio}
-                onChange={handleChange}
-                placeholder={t("placeholderBio")}
-              />
-
-              <label
-                className="game-genre"
-                style={{ display: "block", margin: "16px 0 8px" }}
-              >
-                {t("websiteLabel")}
-              </label>
-              <textarea
-                name="website"
-                className="filter-select"
-                style={{
-                  width: "100%",
-                  minHeight: "80px",
-                  padding: "12px",
-                  background: "rgba(0,0,0,0.2)",
-                }}
-                value={profileData.website}
-                onChange={handleChange}
-                placeholder={t("placeholderWebsite")}
-              />
-
-              <label
-                className="game-genre"
-                style={{ display: "block", margin: "16px 0 8px" }}
-              >
-                {t("langLabel")}
-              </label>
-              <select
-                name="lang"
-                className="filter-select"
-                style={{ width: "100%" }}
-                value={i18n.language}
-                onChange={handleChange}
-              >
-                <option value="fr">Français 🇫🇷</option>
-                <option value="en">English 🇬🇧</option>
-              </select>
-
-              <div
-                style={{
-                  marginTop: "24px",
-                  display: "flex",
-                  flexDirection: "column",
-                  gap: "10px",
-                }}
-              >
-                <button
-                  className="nav-user-btn"
-                  style={{
-                    width: "100%",
-                    justifyContent: "center",
-                    opacity: saveStatus === "saving" ? 0.7 : 1,
-                  }}
-                  onClick={handleUpdate}
-                  disabled={saveStatus === "saving"}
+          <div style={{ padding: "16px 30px 30px", textAlign: "center" }}>
+            <h2
+              className="hero-title"
+              style={{ fontSize: "1.8rem", margin: "10px 0 4px" }}
+            >
+              {profileData.pseudo}
+              {profileData.isCertified && (
+                <span
+                  title="Profil certifié"
+                  style={{ marginLeft: "10px", fontSize: "1.2rem" }}
                 >
-                  {saveLabel}
-                </button>
-                {profileData.role === "admin" && (
-                  <button
-                    className="nav-user-btn"
-                    style={{
-                      width: "100%",
-                      justifyContent: "center",
-                      background: "rgba(167,139,250,0.2)",
-                      borderColor: "#a78bfa",
-                    }}
-                    onClick={onAdminClick}
-                  >
-                    🛡️ Dashboard Admin
-                  </button>
-                )}
-                <button
-                  className="category-btn"
+                  <i
+                    className="fa-solid fa-star"
+                    style={{ color: "rgb(255, 212, 59)" }}
+                  ></i>
+                </span>
+              )}
+            </h2>
+
+            {/* Badge d'indication si le profil est privé (purement informatif) */}
+            {profileData.isPrivate && (
+              <div style={{ marginBottom: "10px" }}>
+                <span
                   style={{
-                    width: "100%",
-                    justifyContent: "center",
-                    borderColor: "#ef4444",
+                    fontSize: "0.75rem",
+                    backgroundColor: "rgba(239, 68, 68, 0.15)",
                     color: "#ef4444",
+                    padding: "3px 8px",
+                    borderRadius: "12px",
+                    border: "1px solid rgba(239, 68, 68, 0.3)",
+                    display: "inline-flex",
+                    alignItems: "center",
                   }}
-                  onClick={onLogout}
                 >
-                  {t("btnLogout")}
-                </button>
+                  <i
+                    className="fa-solid fa-lock"
+                    style={{ marginRight: "6px" }}
+                  ></i>{" "}
+                  Votre compte est en mode privé
+                </span>
               </div>
+            )}
+
+            {userAge && (
+              <p
+                style={{
+                  color: "#a78bfa",
+                  fontSize: "0.95rem",
+                  margin: "0 0 10px 0",
+                  fontWeight: "600",
+                }}
+              >
+                {userAge} ans
+              </p>
+            )}
+
+            {profileData.bio ? (
+              <p
+                className="hero-subtitle"
+                style={{
+                  fontSize: "0.95rem",
+                  fontStyle: "italic",
+                  opacity: 0.8,
+                }}
+              >
+                "{profileData.bio}"
+              </p>
+            ) : (
+              <p
+                className="hero-subtitle"
+                style={{
+                  fontSize: "0.9rem",
+                  fontStyle: "italic",
+                  opacity: 0.5,
+                }}
+              >
+                Aucune bio renseignée.
+              </p>
+            )}
+
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "center",
+                margin: "24px 0",
+                borderTop: "1px solid rgba(128,128,128,0.1)",
+                borderBottom: "1px solid rgba(128,128,128,0.1)",
+              }}
+            >
+              {[
+                { label: "Abonnés", value: profileData.followersCount },
+                { label: "Abonnements", value: profileData.followingCount },
+                { label: "Jeux Favoris", value: favorites.length },
+              ].map((stat, i) => (
+                <div
+                  key={stat.label}
+                  style={{
+                    flex: 1,
+                    padding: "18px 8px",
+                    borderRight:
+                      i < 2 ? "1px solid rgba(128,128,128,0.1)" : "none",
+                  }}
+                >
+                  <p
+                    className="hero-title"
+                    style={{
+                      fontSize: "1.4rem",
+                      margin: "0 0 4px",
+                      fontWeight: "700",
+                    }}
+                  >
+                    {stat.value}
+                  </p>
+                  <p
+                    className="game-genre"
+                    style={{ margin: 0, fontSize: "0.75rem", opacity: 0.6 }}
+                  >
+                    {stat.label}
+                  </p>
+                </div>
+              ))}
             </div>
+
+            <button
+              className="nav-user-btn"
+              onClick={() => setIsEditing(!isEditing)}
+              style={{
+                minWidth: "220px",
+                justifyContent: "center",
+                margin: "0 auto",
+                padding: "10px 20px",
+                fontSize: "0.95rem",
+                fontWeight: "600",
+                border: "none",
+                transition: "all 0.3s ease",
+                background: isEditing
+                  ? "rgba(128,128,128,0.2)"
+                  : "linear-gradient(135deg, #9333ea 0%, #3b82f6 100%)",
+                color: isEditing ? "currentColor" : "#ffffff",
+                boxShadow: isEditing
+                  ? "none"
+                  : "0 4px 15px rgba(147, 51, 234, 0.35)",
+              }}
+            >
+              {isEditing ? (
+                <>
+                  <i
+                    className="fa-solid fa-xmark"
+                    style={{ marginRight: "5px" }}
+                  ></i>{" "}
+                  Fermer l'édition
+                </>
+              ) : (
+                <>
+                  <i
+                    className="fa-solid fa-pen-to-square"
+                    style={{ marginRight: "5px" }}
+                  ></i>{" "}
+                  Éditer le profil
+                </>
+              )}
+            </button>
           </div>
         </div>
 
-        {/* ── Contenu principal avec onglets ── */}
-        <div className="profile-content">
-          {/* Onglets */}
-          <div className="categories-nav" style={{ marginBottom: "24px" }}>
-            {TABS.map((tab) => (
-              <button
-                key={tab.id}
-                className={`category-btn ${activeTab === tab.id ? "active" : ""}`}
-                onClick={() => setActiveTab(tab.id)}
-              >
-                {tab.label}
-              </button>
-            ))}
-          </div>
+        {isEditing && (
+          <div
+            className="game-card-modern"
+            style={{
+              padding: "24px",
+              marginTop: "24px",
+              cursor: "default",
+              animation: "slideUp 0.3s ease-out",
+            }}
+          >
+            <h3
+              className="section-title"
+              style={{ fontSize: "1.3rem", marginBottom: "20px" }}
+            >
+              Modifier les informations
+            </h3>
 
-          {/* ── Onglet Collection ── */}
-          {activeTab === "collection" && (
-            <>
-              <div className="section-header" style={{ marginBottom: "20px" }}>
-                <h2 className="section-title">Ma Collection</h2>
-                <span className="section-count">{filteredGames.length}</span>
+            <div style={{ display: "grid", gap: "20px" }}>
+              <div>
+                <label
+                  className="game-genre"
+                  style={{ display: "block", marginBottom: "8px" }}
+                >
+                  Photo de profil (Avatar)
+                </label>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleAvatarChange}
+                  className="filter-select"
+                  style={{ width: "100%", padding: "10px" }}
+                />
               </div>
-              <div
-                className="filters-container"
-                style={{ marginBottom: "30px" }}
-              >
-                {["Tous", "A faire", "En cours", "Fini", "Abandonné"].map(
-                  (s) => (
-                    <button
-                      key={s}
-                      className={`category-btn ${filter === s ? "active" : ""}`}
-                      onClick={() => setFilter(s)}
-                    >
-                      {s}
-                    </button>
-                  ),
-                )}
-              </div>
-              {filteredGames.length === 0 ? (
-                <div
-                  className="game-card-modern"
-                  style={{
-                    padding: "40px",
-                    textAlign: "center",
-                    cursor: "default",
-                  }}
-                >
-                  <p className="hero-subtitle">
-                    {favorites.length === 0
-                      ? "La bibliothèque est vide..."
-                      : `Aucun jeu dans la catégorie "${filter}"`}
-                  </p>
-                </div>
-              ) : (
-                <div className="game-grid">
-                  {filteredGames.map((game) => (
-                    <div
-                      key={game.gameId}
-                      className="game-card-modern"
-                      onClick={() => onGameClick && onGameClick(game.gameId)}
-                    >
-                      <div className="game-image-container">
-                        <img
-                          src={getCoverUrl(game.gameCover || game.cover)}
-                          alt={game.gameName || game.name}
-                          className="game-image"
-                        />
-                      </div>
-                      <div className="game-content">
-                        <h4 className="game-title">
-                          {game.gameName || game.name}
-                        </h4>
-                        <select
-                          className={`status-select ${statusMapping[game.status]?.toLowerCase().replace(" ", "-") || ""}`}
-                          value={game.status || "to_play"}
-                          onClick={(e) => e.stopPropagation()}
-                          onChange={(e) =>
-                            handleStatusUpdate(
-                              game.gameId,
-                              e.target.value,
-                              game.gameName || game.name,
-                              game.gameCover || game.cover,
-                            )
-                          }
-                        >
-                          <option value="to_play">⏳ À faire</option>
-                          <option value="playing">🎮 En cours</option>
-                          <option value="finished">✅ Fini</option>
-                          <option value="dropped">❌ Abandonné</option>
-                        </select>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </>
-          )}
 
-          {/* ── Onglet Mes Listes ── */}
-          {activeTab === "lists" && <CustomLists onGameClick={onGameClick} />}
-
-          {/* ── Onglet Paramètres ── */}
-          {activeTab === "settings" && (
-            <div>
-              <div
-                className="game-card-modern"
-                style={{ padding: "20px", cursor: "default" }}
-              >
-                <h4
-                  className="game-title"
-                  style={{ marginBottom: "16px", fontSize: "0.95rem" }}
-                >
-                  🔞 Contenu Adulte
-                </h4>
-                <div
-                  style={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "center",
-                    padding: "10px 0",
-                  }}
-                >
-                  <div>
-                    <p
-                      style={{
-                        margin: 0,
-                        fontSize: "0.9rem",
-                        color: "#e2e8f0",
-                      }}
-                    >
-                      Afficher les jeux +18
-                    </p>
-                    <p
-                      style={{
-                        margin: 0,
-                        fontSize: "0.75rem",
-                        color: "#64748b",
-                      }}
-                    >
-                      Autoriser l'affichage du contenu classé mature
-                    </p>
-                  </div>
-                  <div
-                    onClick={() =>
-                      handlePreferenceChange(
-                        "showAdultGames",
-                        !profileData.preferences?.showAdultGames,
-                      )
-                    }
-                    style={{
-                      width: "42px",
-                      height: "24px",
-                      borderRadius: "99px",
-                      cursor: "pointer",
-                      flexShrink: 0,
-                      background: profileData.preferences?.showAdultGames
-                        ? "#9333ea"
-                        : "rgba(255,255,255,0.1)",
-                      position: "relative",
-                      transition: "background 0.2s",
-                    }}
+              <div style={{ display: "flex", gap: "16px", flexWrap: "wrap" }}>
+                <div style={{ flex: 1, minWidth: "200px" }}>
+                  <label
+                    className="game-genre"
+                    style={{ display: "block", marginBottom: "8px" }}
                   >
-                    <div
-                      style={{
-                        position: "absolute",
-                        top: "3px",
-                        width: "18px",
-                        height: "18px",
-                        borderRadius: "50%",
-                        background: "#fff",
-                        transition: "left 0.2s",
-                        left: profileData.preferences?.showAdultGames
-                          ? "21px"
-                          : "3px",
-                      }}
-                    />
-                  </div>
+                    Pseudo
+                  </label>
+                  <input
+                    type="text"
+                    name="pseudo"
+                    value={profileData.pseudo}
+                    onChange={handleChange}
+                    className="filter-select"
+                    style={{ width: "100%" }}
+                  />
                 </div>
-              </div>
-
-              <div
-                style={{
-                  display: "flex",
-                  flexDirection: "column",
-                  gap: "16px",
-                }}
-              >
-                {/* Date de naissance */}
-                <div
-                  className="game-card-modern"
-                  style={{ padding: "20px", cursor: "default" }}
-                >
-                  <h4
-                    className="game-title"
-                    style={{ marginBottom: "16px", fontSize: "0.95rem" }}
-                  >
-                    👤 Informations personnelles
-                  </h4>
+                <div style={{ flex: 1, minWidth: "200px" }}>
                   <label
                     className="game-genre"
                     style={{ display: "block", marginBottom: "8px" }}
@@ -1770,235 +1946,149 @@ const MyProfile = ({
                   <input
                     type="date"
                     name="birthDate"
-                    className="filter-select"
-                    style={{ width: "100%" }}
                     value={profileData.birthDate}
                     onChange={handleChange}
+                    className="filter-select"
+                    style={{ width: "100%" }}
                   />
-                  <p
-                    style={{
-                      fontSize: "0.75rem",
-                      color: "#64748b",
-                      marginTop: "6px",
-                    }}
-                  >
-                    Utilisée pour adapter le contenu à ton âge. Non visible
-                    publiquement.
-                  </p>
                 </div>
+              </div>
 
-                {/* Préférences notifications */}
-                <div
-                  className="game-card-modern"
-                  style={{ padding: "20px", cursor: "default" }}
+              <div>
+                <label
+                  className="game-genre"
+                  style={{ display: "block", marginBottom: "8px" }}
                 >
-                  <h4
-                    className="game-title"
-                    style={{ marginBottom: "16px", fontSize: "0.95rem" }}
-                  >
-                    🔔 Notifications
-                  </h4>
-                  {[
-                    {
-                      key: "notifFollow",
-                      label: "Nouveaux abonnés",
-                      desc: "Quand quelqu'un commence à te suivre",
-                    },
-                    {
-                      key: "notifLike",
-                      label: "Likes sur tes avis",
-                      desc: "Quand un avis reçoit un like",
-                    },
-                    {
-                      key: "notifComment",
-                      label: "Commentaires",
-                      desc: "Quand quelqu'un commente tes avis",
-                    },
-                    {
-                      key: "notifMessage",
-                      label: "Messages privés",
-                      desc: "Quand tu reçois un nouveau message",
-                    },
-                  ].map(({ key, label, desc }) => (
-                    <div
-                      key={key}
-                      style={{
-                        display: "flex",
-                        justifyContent: "space-between",
-                        alignItems: "center",
-                        padding: "10px 0",
-                        borderBottom: "1px solid rgba(255,255,255,0.05)",
-                      }}
-                    >
-                      <div>
-                        <p
-                          style={{
-                            margin: 0,
-                            fontSize: "0.9rem",
-                            color: "#e2e8f0",
-                          }}
-                        >
-                          {label}
-                        </p>
-                        <p
-                          style={{
-                            margin: 0,
-                            fontSize: "0.75rem",
-                            color: "#64748b",
-                          }}
-                        >
-                          {desc}
-                        </p>
-                      </div>
-                      <div
-                        onClick={() =>
-                          handlePreferenceChange(
-                            key,
-                            !profileData.preferences?.[key],
-                          )
-                        }
-                        style={{
-                          width: "42px",
-                          height: "24px",
-                          borderRadius: "99px",
-                          cursor: "pointer",
-                          flexShrink: 0,
-                          background:
-                            profileData.preferences?.[key] !== false
-                              ? "#9333ea"
-                              : "rgba(255,255,255,0.1)",
-                          position: "relative",
-                          transition: "background 0.2s",
-                        }}
-                      >
-                        <div
-                          style={{
-                            position: "absolute",
-                            top: "3px",
-                            width: "18px",
-                            height: "18px",
-                            borderRadius: "50%",
-                            background: "#fff",
-                            transition: "left 0.2s",
-                            left:
-                              profileData.preferences?.[key] !== false
-                                ? "21px"
-                                : "3px",
-                          }}
-                        />
-                      </div>
-                    </div>
-                  ))}
-                </div>
-
-                {/* Préférences confidentialité */}
-                <div
-                  className="game-card-modern"
-                  style={{ padding: "20px", cursor: "default" }}
-                >
-                  <h4
-                    className="game-title"
-                    style={{ marginBottom: "16px", fontSize: "0.95rem" }}
-                  >
-                    🔒 Confidentialité
-                  </h4>
-                  {[
-                    {
-                      key: "privateProfile",
-                      label: "Profil privé",
-                      desc: "Seuls tes abonnés mutuels peuvent voir ta collection",
-                    },
-                    {
-                      key: "privateLibrary",
-                      label: "Collection privée",
-                      desc: "Ta collection n'est pas visible publiquement",
-                    },
-                  ].map(({ key, label, desc }) => (
-                    <div
-                      key={key}
-                      style={{
-                        display: "flex",
-                        justifyContent: "space-between",
-                        alignItems: "center",
-                        padding: "10px 0",
-                        borderBottom: "1px solid rgba(255,255,255,0.05)",
-                      }}
-                    >
-                      <div>
-                        <p
-                          style={{
-                            margin: 0,
-                            fontSize: "0.9rem",
-                            color: "#e2e8f0",
-                          }}
-                        >
-                          {label}
-                        </p>
-                        <p
-                          style={{
-                            margin: 0,
-                            fontSize: "0.75rem",
-                            color: "#64748b",
-                          }}
-                        >
-                          {desc}
-                        </p>
-                      </div>
-                      <div
-                        onClick={() =>
-                          handlePreferenceChange(
-                            key,
-                            !profileData.preferences?.[key],
-                          )
-                        }
-                        style={{
-                          width: "42px",
-                          height: "24px",
-                          borderRadius: "99px",
-                          cursor: "pointer",
-                          flexShrink: 0,
-                          background: profileData.preferences?.[key]
-                            ? "#9333ea"
-                            : "rgba(255,255,255,0.1)",
-                          position: "relative",
-                          transition: "background 0.2s",
-                        }}
-                      >
-                        <div
-                          style={{
-                            position: "absolute",
-                            top: "3px",
-                            width: "18px",
-                            height: "18px",
-                            borderRadius: "50%",
-                            background: "#fff",
-                            transition: "left 0.2s",
-                            left: profileData.preferences?.[key]
-                              ? "21px"
-                              : "3px",
-                          }}
-                        />
-                      </div>
-                    </div>
-                  ))}
-                </div>
-
-                {/* Bouton sauvegarder */}
-                <button
-                  className="nav-user-btn"
+                  Bio
+                </label>
+                <textarea
+                  name="bio"
+                  value={profileData.bio}
+                  onChange={handleChange}
+                  className="filter-select"
                   style={{
                     width: "100%",
-                    justifyContent: "center",
-                    opacity: saveStatus === "saving" ? 0.7 : 1,
+                    minHeight: "80px",
+                    paddingTop: "10px",
                   }}
+                  placeholder="Parle un peu de toi..."
+                />
+              </div>
+
+              <div
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: "10px",
+                  marginTop: "10px",
+                }}
+              >
+                <button
+                  className="nav-user-btn"
                   onClick={handleUpdate}
                   disabled={saveStatus === "saving"}
+                  style={{ justifyContent: "center", padding: "12px" }}
                 >
                   {saveLabel}
                 </button>
+                <button
+                  className="category-btn"
+                  onClick={onLogout}
+                  style={{
+                    justifyContent: "center",
+                    borderColor: "rgba(239, 68, 68, 0.5)",
+                    color: "#ef4444",
+                    marginTop: "10px",
+                  }}
+                >
+                  <i
+                    className="fa-solid fa-arrow-right-from-bracket"
+                    style={{ marginRight: "6px" }}
+                  ></i>{" "}
+                  Déconnexion
+                </button>
               </div>
             </div>
+          </div>
+        )}
+
+        <div style={{ marginTop: "40px" }}>
+          <div className="section-header" style={{ marginBottom: "20px" }}>
+            <h2 className="section-title">Ma Collection</h2>
+            <span className="section-count">{favorites.length}</span>
+          </div>
+
+          <div className="filters-container" style={{ marginBottom: "30px" }}>
+            {["Tous", "A faire", "En cours", "Fini", "Abandonné"].map((s) => (
+              <button
+                key={s}
+                className={`category-btn ${filter === s ? "active" : ""}`}
+                onClick={() => setFilter(s)}
+              >
+                {s}
+              </button>
+            ))}
+          </div>
+
+          {filteredGames.length === 0 ? (
+            <div
+              className="game-card-modern"
+              style={{
+                padding: "40px",
+                textAlign: "center",
+                cursor: "default",
+              }}
+            >
+              <p className="hero-subtitle">
+                {favorites.length === 0
+                  ? "Ta bibliothèque est vide. Ajoute des jeux pour les voir ici !"
+                  : `Aucun jeu dans la catégorie "${filter}"`}
+              </p>
+            </div>
+          ) : (
+            <div className="game-grid">
+              {filteredGames.map((game) => (
+                <div
+                  key={game.gameId}
+                  className="game-card-modern"
+                  onClick={() => onGameClick && onGameClick(game.gameId)}
+                >
+                  <div className="game-image-container">
+                    <img
+                      src={getCoverUrl(game.gameCover || game.cover)}
+                      alt={game.gameName || game.name}
+                      className="game-image"
+                    />
+                  </div>
+                  <div className="game-content">
+                    <h4 className="game-title">{game.gameName || game.name}</h4>
+                    <select
+                      className={`status-select ${game.status}`}
+                      value={game.status || "to_play"}
+                      onClick={(e) => e.stopPropagation()}
+                      onChange={(e) =>
+                        handleStatusUpdate(
+                          game.gameId,
+                          e.target.value,
+                          game.gameName || game.name,
+                          game.gameCover || game.cover,
+                        )
+                      }
+                    >
+                      <option value="to_play">À faire</option>
+                      <option value="playing">En cours</option>
+                      <option value="finished">Fini</option>
+                      <option value="dropped">Abandonné</option>
+                    </select>
+                  </div>
+                </div>
+              ))}
+            </div>
           )}
+        </div>
+
+        <div style={{ marginTop: "40px" }}>
+          <CustomLists onGameClick={onGameClick} />
         </div>
       </div>
     </div>
@@ -2006,7 +2096,7 @@ const MyProfile = ({
 };
 
 /* ═══════════════════════════════════════════════════════════
-   NOTIFICATIONS — composant cloche à intégrer dans la navbar
+   NOTIFICATIONS
 ═══════════════════════════════════════════════════════════ */
 export const Notificationsbell = ({ user, onUserClick, onGameClick }) => {
   const [notifs, setNotifs] = useState([]);
@@ -2016,12 +2106,66 @@ export const Notificationsbell = ({ user, onUserClick, onGameClick }) => {
   const unread = notifs.filter((n) => !n.isRead).length;
 
   const TYPE_CONFIG = {
-    follow: { icon: "👤", label: "vous suit", color: "#a78bfa" },
-    like: { icon: "❤️", label: "a aimé votre avis", color: "#f87171" },
-    comment: { icon: "💬", label: "a commenté", color: "#60a5fa" },
-    review: { icon: "⭐", label: "a noté le jeu", color: "#fbbf24" },
-    message: { icon: "✉️", label: "vous a écrit", color: "#34d399" },
-    thread_reply: { icon: "🗨️", label: "a répondu au fil", color: "#c084fc" },
+    follow: {
+      icon: (
+        <i
+          className="fa-solid fa-user"
+          style={{ color: "rgb(148, 163, 184)" }}
+        ></i>
+      ),
+      label: "vous suit",
+      color: "#a78bfa",
+    },
+    like: {
+      icon: (
+        <i
+          className="fa-solid fa-heart"
+          style={{ color: "rgb(239, 68, 68)" }}
+        ></i>
+      ),
+      label: "a aimé votre avis",
+      color: "#f87171",
+    },
+    comment: {
+      icon: (
+        <i
+          className="fa-solid fa-message"
+          style={{ color: "rgb(96, 165, 250)" }}
+        ></i>
+      ),
+      label: "a commenté",
+      color: "#60a5fa",
+    },
+    review: {
+      icon: (
+        <i
+          className="fa-solid fa-star"
+          style={{ color: "rgb(255, 212, 59)" }}
+        ></i>
+      ),
+      label: "a noté le jeu",
+      color: "#fbbf24",
+    },
+    message: {
+      icon: (
+        <i
+          className="fa-solid fa-message"
+          style={{ color: "rgb(52, 211, 153)" }}
+        ></i>
+      ),
+      label: "vous a écrit",
+      color: "#34d399",
+    },
+    thread_reply: {
+      icon: (
+        <i
+          className="fa-solid fa-reply"
+          style={{ color: "rgb(192, 132, 252)" }}
+        ></i>
+      ),
+      label: "a répondu au fil",
+      color: "#c084fc",
+    },
   };
 
   const timeAgo = (ts) => {
@@ -2100,7 +2244,7 @@ export const Notificationsbell = ({ user, onUserClick, onGameClick }) => {
         title="Notifications"
         style={{ position: "relative" }}
       >
-        🔔
+        <i className="fa-solid fa-bell" style={{ color: "currentColor" }}></i>
         {unread > 0 && (
           <span
             style={{
@@ -2131,7 +2275,7 @@ export const Notificationsbell = ({ user, onUserClick, onGameClick }) => {
             right: 0,
             width: "340px",
             maxHeight: "480px",
-            background: "#1a1a2e",
+            background: "var(--bg-secondary, #1a1a2e)",
             border: "1px solid rgba(147,51,234,0.3)",
             borderRadius: "16px",
             boxShadow: "0 20px 60px rgba(0,0,0,0.5)",
@@ -2147,17 +2291,11 @@ export const Notificationsbell = ({ user, onUserClick, onGameClick }) => {
               justifyContent: "space-between",
               alignItems: "center",
               padding: "14px 16px",
-              borderBottom: "1px solid rgba(255,255,255,0.07)",
+              borderBottom: "1px solid rgba(128,128,128,0.2)",
             }}
           >
-            <span
-              style={{
-                fontWeight: "600",
-                fontSize: "0.95rem",
-                color: "#e2e8f0",
-              }}
-            >
-              Notifications
+            <span style={{ fontWeight: "600", fontSize: "0.95rem" }}>
+              Notifications{" "}
               {unread > 0 && (
                 <span
                   style={{
@@ -2196,20 +2334,23 @@ export const Notificationsbell = ({ user, onUserClick, onGameClick }) => {
               </div>
             ) : notifs.length === 0 ? (
               <div style={{ padding: "40px 20px", textAlign: "center" }}>
-                <div style={{ fontSize: "2rem", marginBottom: "8px" }}>🔕</div>
-                <p
+                <div
                   style={{
-                    color: "rgba(255,255,255,0.35)",
-                    fontSize: "0.85rem",
+                    fontSize: "2rem",
+                    marginBottom: "8px",
+                    opacity: 0.5,
                   }}
                 >
+                  <i className="fa-solid fa-bell-slash"></i>
+                </div>
+                <p style={{ opacity: 0.6, fontSize: "0.85rem" }}>
                   Aucune notification pour le moment
                 </p>
               </div>
             ) : (
               notifs.map((n) => {
                 const cfg = TYPE_CONFIG[n.type] || {
-                  icon: "📣",
+                  icon: <i className="fa-solid fa-bell"></i>,
                   label: n.type,
                   color: "#888",
                 };
@@ -2225,12 +2366,12 @@ export const Notificationsbell = ({ user, onUserClick, onGameClick }) => {
                       background: n.isRead
                         ? "transparent"
                         : "rgba(147,51,234,0.07)",
-                      borderBottom: "1px solid rgba(255,255,255,0.04)",
+                      borderBottom: "1px solid rgba(128,128,128,0.1)",
                       cursor: "pointer",
                     }}
                     onMouseEnter={(e) =>
                       (e.currentTarget.style.background =
-                        "rgba(255,255,255,0.04)")
+                        "rgba(128,128,128,0.1)")
                     }
                     onMouseLeave={(e) =>
                       (e.currentTarget.style.background = n.isRead
@@ -2258,7 +2399,6 @@ export const Notificationsbell = ({ user, onUserClick, onGameClick }) => {
                         style={{
                           margin: 0,
                           fontSize: "0.82rem",
-                          color: "#cbd5e1",
                           lineHeight: "1.4",
                         }}
                       >
@@ -2278,7 +2418,7 @@ export const Notificationsbell = ({ user, onUserClick, onGameClick }) => {
                           style={{
                             margin: "3px 0 0",
                             fontSize: "0.75rem",
-                            color: "rgba(255,255,255,0.35)",
+                            opacity: 0.6,
                             overflow: "hidden",
                             textOverflow: "ellipsis",
                             whiteSpace: "nowrap",
@@ -2290,7 +2430,7 @@ export const Notificationsbell = ({ user, onUserClick, onGameClick }) => {
                       <span
                         style={{
                           fontSize: "0.7rem",
-                          color: "rgba(255,255,255,0.25)",
+                          opacity: 0.5,
                           marginTop: "4px",
                           display: "block",
                         }}
