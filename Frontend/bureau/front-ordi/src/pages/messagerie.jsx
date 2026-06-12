@@ -14,177 +14,9 @@ const authAxios = async () => {
   });
 };
 
-/* ── MODALE ÉDITION MESSAGE ── */
-const EditMessageModal = ({ initialText, onConfirm, onClose }) => {
-  const [text, setText] = useState(initialText || "");
-
-  useEffect(() => {
-    const handleKey = (e) => {
-      if (e.key === "Escape") onClose();
-    };
-    window.addEventListener("keydown", handleKey);
-    return () => window.removeEventListener("keydown", handleKey);
-  }, [onClose]);
-
-  return (
-    <>
-      {/* Overlay */}
-      <div
-        onClick={onClose}
-        style={{
-          position: "fixed",
-          inset: 0,
-          background: "rgba(0,0,0,0.65)",
-          zIndex: 2000,
-          backdropFilter: "blur(4px)",
-        }}
-      />
-      {/* Modale */}
-      <div
-        style={{
-          position: "fixed",
-          top: "50%",
-          left: "50%",
-          transform: "translate(-50%, -50%)",
-          zIndex: 2001,
-          width: "90%",
-          maxWidth: "420px",
-          background: "#1a1a2e",
-          border: "1px solid rgba(139,92,246,0.3)",
-          borderRadius: "16px",
-          padding: "24px",
-          boxShadow: "0 20px 60px rgba(0,0,0,0.5)",
-        }}
-      >
-        {/* En-tête */}
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            marginBottom: "18px",
-          }}
-        >
-          <h3
-            style={{
-              margin: 0,
-              color: "#e2e8f0",
-              fontSize: "16px",
-              fontWeight: 500,
-              display: "flex",
-              alignItems: "center",
-              gap: "8px",
-            }}
-          >
-            <i
-              className="fa-solid fa-pen-to-square"
-              style={{ color: "#9333ea", fontSize: "16px" }}
-              aria-hidden="true"
-            />
-            Modifier le message
-          </h3>
-          <button
-            onClick={onClose}
-            style={{
-              background: "none",
-              border: "none",
-              color: "rgba(255,255,255,0.5)",
-              fontSize: "1.4rem",
-              cursor: "pointer",
-              lineHeight: 1,
-              padding: "0 4px",
-            }}
-          >
-            ×
-          </button>
-        </div>
-
-        {/* Textarea */}
-        <textarea
-          autoFocus
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
-              e.preventDefault();
-              if (text.trim()) onConfirm(text.trim());
-            }
-          }}
-          style={{
-            width: "100%",
-            height: "100px",
-            background: "rgba(255,255,255,0.06)",
-            border: "1px solid rgba(139,92,246,0.35)",
-            borderRadius: "10px",
-            color: "#e2e8f0",
-            padding: "12px",
-            fontSize: "14px",
-            resize: "vertical",
-            boxSizing: "border-box",
-            outline: "none",
-            fontFamily: "inherit",
-            lineHeight: "1.5",
-          }}
-        />
-        <p
-          style={{
-            fontSize: "0.72rem",
-            color: "rgba(255,255,255,0.3)",
-            margin: "6px 0 14px",
-            textAlign: "right",
-          }}
-        >
-          Ctrl+Entrée pour valider
-        </p>
-
-        {/* Actions */}
-        <div style={{ display: "flex", gap: "10px" }}>
-          <button
-            onClick={onClose}
-            style={{
-              flex: 1,
-              padding: "10px",
-              background: "rgba(255,255,255,0.05)",
-              border: "1px solid rgba(255,255,255,0.12)",
-              borderRadius: "8px",
-              color: "#94a3b8",
-              cursor: "pointer",
-              fontSize: "14px",
-            }}
-          >
-            Annuler
-          </button>
-          <button
-            onClick={() => text.trim() && onConfirm(text.trim())}
-            disabled={!text.trim() || text.trim() === initialText?.trim()}
-            style={{
-              flex: 2,
-              padding: "10px",
-              background:
-                !text.trim() || text.trim() === initialText?.trim()
-                  ? "rgba(139,92,246,0.4)"
-                  : "#8b5cf6",
-              border: "none",
-              borderRadius: "8px",
-              color: "#fff",
-              cursor:
-                !text.trim() || text.trim() === initialText?.trim()
-                  ? "not-allowed"
-                  : "pointer",
-              fontSize: "14px",
-              fontWeight: 500,
-              transition: "background 0.15s",
-            }}
-          >
-            Enregistrer
-          </button>
-        </div>
-      </div>
-    </>
-  );
-};
-
-/* ── MODALE RECHERCHE UTILISATEUR ── */
+/* ═══════════════════════════════════════════════════════════
+   MODALE RECHERCHE UTILISATEUR
+═══════════════════════════════════════════════════════════ */
 const UserSearchModal = ({ onClose, onSelectConversation }) => {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState([]);
@@ -289,6 +121,7 @@ const UserSearchModal = ({ onClose, onSelectConversation }) => {
         }}
       />
       <div
+        className="game-card-modern"
         style={{
           position: "fixed",
           top: "50%",
@@ -297,11 +130,10 @@ const UserSearchModal = ({ onClose, onSelectConversation }) => {
           zIndex: 1001,
           width: "90%",
           maxWidth: "460px",
-          background: "#1a1a2e",
-          border: "1px solid rgba(139,92,246,0.3)",
           borderRadius: "16px",
           padding: "24px",
           boxShadow: "0 20px 60px rgba(0,0,0,0.5)",
+          cursor: "default",
         }}
       >
         <div
@@ -312,60 +144,89 @@ const UserSearchModal = ({ onClose, onSelectConversation }) => {
             marginBottom: "20px",
           }}
         >
-          <h3 className="section-title" style={{ margin: 0 }}>
+          <h3
+            className="section-title"
+            style={{ margin: 0, borderBottom: "none" }}
+          >
+            <i
+              className="fa-solid fa-pen-to-square"
+              style={{ color: "#c084fc", marginRight: "8px" }}
+            ></i>
             Nouvelle conversation
           </h3>
           <button
             onClick={onClose}
+            className="nav-icon-btn"
             style={{
               background: "none",
               border: "none",
-              color: "rgba(255,255,255,0.5)",
-              fontSize: "1.5rem",
+              fontSize: "1.2rem",
               cursor: "pointer",
-              lineHeight: 1,
-              padding: "0 4px",
+              padding: 0,
             }}
           >
-            ×
+            <i className="fa-solid fa-xmark"></i>
           </button>
         </div>
-        <input
-          ref={inputRef}
-          type="text"
-          className="messaging-input"
-          placeholder="Rechercher un utilisateur…"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          style={{
-            width: "100%",
-            marginBottom: "12px",
-            boxSizing: "border-box",
-          }}
-        />
-        {error && (
-          <p
+
+        <div style={{ position: "relative" }}>
+          <input
+            ref={inputRef}
+            type="text"
+            className="messaging-input filter-select"
+            placeholder="Rechercher un utilisateur…"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
             style={{
-              fontSize: "0.8rem",
-              color: "#f87171",
-              background: "rgba(239,68,68,0.1)",
-              border: "1px solid rgba(239,68,68,0.25)",
-              borderRadius: "8px",
-              padding: "8px 12px",
+              width: "100%",
               marginBottom: "12px",
+              boxSizing: "border-box",
+              paddingLeft: "36px",
+            }}
+          />
+          <i
+            className="fa-solid fa-magnifying-glass"
+            style={{
+              position: "absolute",
+              left: "12px",
+              top: "12px",
+              opacity: 0.5,
+            }}
+          ></i>
+        </div>
+
+        {error && (
+          <div
+            style={{
+              color: "#ef4444",
+              background: "rgba(239, 68, 68, 0.1)",
+              padding: "8px 12px",
+              borderRadius: "8px",
+              marginBottom: "12px",
+              fontSize: "0.85rem",
+              display: "flex",
+              alignItems: "center",
+              gap: "8px",
+              border: "1px solid rgba(239, 68, 68, 0.3)",
             }}
           >
-            {error}
-          </p>
+            <i className="fa-solid fa-circle-xmark"></i> {error}
+          </div>
         )}
-        <div style={{ maxHeight: "320px", overflowY: "auto" }}>
+        <div
+          style={{ maxHeight: "320px", overflowY: "auto", paddingRight: "4px" }}
+        >
           {loading && (
             <div style={{ textAlign: "center", padding: "24px" }}>
               <div className="loading-spinner" style={{ margin: "0 auto" }} />
             </div>
           )}
           {!loading && results.length === 0 && query.trim() && !error && (
-            <div style={{ textAlign: "center", padding: "30px" }}>
+            <div style={{ textAlign: "center", padding: "30px", opacity: 0.5 }}>
+              <i
+                className="fa-solid fa-user-slash"
+                style={{ fontSize: "1.5rem", marginBottom: "8px" }}
+              ></i>
               <p className="empty-text">Aucun utilisateur trouvé</p>
             </div>
           )}
@@ -402,19 +263,29 @@ const UserSearchModal = ({ onClose, onSelectConversation }) => {
                   <span className="messaging-contact-name">
                     {u.username || u.pseudo}
                   </span>
-                  <span className="messaging-contact-status">
+                  <span
+                    className="messaging-contact-status"
+                    style={{ opacity: 0.7 }}
+                  >
                     {u.bio || "Joueur passionné"}
                   </span>
                 </div>
                 <span
                   style={{
-                    color: "rgba(139,92,246,0.8)",
+                    color: "#c084fc",
                     fontSize: "1rem",
                     marginLeft: "auto",
                     flexShrink: 0,
                   }}
                 >
-                  {actionLoading === (u.id || u.uid) ? "…" : "→"}
+                  {actionLoading === (u.id || u.uid) ? (
+                    <div
+                      className="loading-spinner"
+                      style={{ width: "16px", height: "16px" }}
+                    ></div>
+                  ) : (
+                    <i className="fa-solid fa-chevron-right"></i>
+                  )}
                 </span>
               </div>
             ))}
@@ -424,7 +295,9 @@ const UserSearchModal = ({ onClose, onSelectConversation }) => {
   );
 };
 
-/* ── MESSAGERIE PRINCIPALE ── */
+/* ═══════════════════════════════════════════════════════════
+   MESSAGERIE PRINCIPALE
+═══════════════════════════════════════════════════════════ */
 const Messagerie = ({
   user,
   preselectedConversation,
@@ -441,15 +314,14 @@ const Messagerie = ({
   const [sendLoading, setSendLoading] = useState(false);
   const [showSearchModal, setShowSearchModal] = useState(false);
   const [activeMenu, setActiveMenu] = useState(null);
-
-  // État pour la modale d'édition
-  const [editModal, setEditModal] = useState(null); // { messageId, text } | null
+  const [sidebarOpen, setSidebarOpen] = useState(true);
 
   const messagesEndRef = useRef(null);
   const selectedConvRef = useRef(null);
 
   const myId = String(user?.uid || user?.id || "");
 
+  // Garde selectedConv en ref pour les intervalles
   useEffect(() => {
     selectedConvRef.current = selectedConv;
   }, [selectedConv]);
@@ -477,6 +349,12 @@ const Messagerie = ({
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages.length, selectedConv?.id]);
+
+  useEffect(() => {
+    if (selectedConv && window.innerWidth <= 768) {
+      setSidebarOpen(false);
+    }
+  }, [selectedConv]);
 
   useEffect(() => {
     if (!selectedConv) return;
@@ -526,7 +404,7 @@ const Messagerie = ({
       const res = await api.get("/conversations");
       const convs = res.data.conversations || [];
 
-      setConversations(() => {
+      setConversations((prev) => {
         const currentId = selectedConvRef.current?.id;
         return convs.map((c) =>
           c.id === currentId ? { ...c, unreadCount: 0 } : c,
@@ -554,7 +432,6 @@ const Messagerie = ({
     setSelectedConv(conv);
     setMessages([]);
     setActiveMenu(null);
-    setEditModal(null);
     setLoadingMsgs(true);
 
     setConversations((prev) =>
@@ -653,39 +530,33 @@ const Messagerie = ({
     }
   };
 
-  // Ouvre la modale d'édition au lieu du prompt()
-  const handleEditMessage = (messageId) => {
-    const msgToEdit = messages.find((m) => m.id === messageId);
-    if (!msgToEdit) return;
-    setActiveMenu(null);
-    setEditModal({ messageId, text: msgToEdit.text });
-  };
-
-  // Appelé quand l'utilisateur valide la modale
-  const handleConfirmEdit = async (newText) => {
-    const { messageId } = editModal;
-    setEditModal(null);
-
+  const handleEditMessage = async (messageId) => {
     if (!selectedConv?.id) return;
     const msgToEdit = messages.find((m) => m.id === messageId);
-    if (!msgToEdit || newText === msgToEdit.text) return;
-
+    if (!msgToEdit) return;
+    const newText = prompt("Modifier votre message :", msgToEdit?.text);
+    if (!newText || !newText.trim() || newText === msgToEdit.text) {
+      setActiveMenu(null);
+      return;
+    }
     try {
       const api = await authAxios();
       await api.patch(
         `/conversations/${selectedConv.id}/messages/${messageId}`,
-        { text: newText },
+        { text: newText.trim() },
       );
       setMessages((prev) => {
         const updated = prev.map((m) =>
-          m.id === messageId ? { ...m, text: newText } : m,
+          m.id === messageId ? { ...m, text: newText.trim() } : m,
         );
         const isLast =
           prev.length > 0 && prev[prev.length - 1].id === messageId;
         if (isLast) {
           setConversations((convs) =>
             convs.map((c) =>
-              c.id === selectedConv.id ? { ...c, lastMessage: newText } : c,
+              c.id === selectedConv.id
+                ? { ...c, lastMessage: newText.trim() }
+                : c,
             ),
           );
         }
@@ -693,6 +564,8 @@ const Messagerie = ({
       });
     } catch (err) {
       alert("Erreur lors de la modification.");
+    } finally {
+      setActiveMenu(null);
     }
   };
 
@@ -731,15 +604,93 @@ const Messagerie = ({
   const otherUser = getOtherUser(selectedConv);
 
   return (
-    <div className="messaging-container">
+    <div className="messaging-container" style={{ position: "relative" }}>
       <div className="messaging-gradient"></div>
-      <div className="messaging-layout">
+
+      <style>
+        {`
+          @media (max-width: 768px) {
+            .messaging-layout {
+              display: flex;
+              flex-direction: column !important;
+            }
+            .messaging-sidebar {
+              width: 100% !important;
+              max-width: 100% !important;
+              border-right: none !important;
+              border-bottom: 1px solid rgba(128,128,128,0.2) !important;
+              display: ${sidebarOpen ? "flex" : "none"} !important;
+              height: ${sidebarOpen ? "100%" : "auto"} !important;
+            }
+            .messaging-main {
+              display: ${sidebarOpen ? "none" : "flex"} !important;
+            }
+            .mobile-back-btn {
+              display: flex !important;
+            }
+          }
+          .mobile-back-btn {
+            display: none;
+            background: none;
+            border: none;
+            color: #c084fc;
+            font-size: 1.2rem;
+            cursor: pointer;
+            margin-right: 12px;
+            padding: 4px;
+          }
+        `}
+      </style>
+
+      <div
+        className="messaging-layout game-card-modern"
+        style={{
+          display: "flex",
+          width: "100%",
+          height: "80vh",
+          minHeight: "500px",
+          padding: 0,
+          position: "relative",
+          zIndex: 10,
+          overflow: "hidden",
+        }}
+      >
         {/* ── SIDEBAR ── */}
-        <aside className="messaging-sidebar">
-          <div className="messaging-sidebar-header">
-            <div className="messaging-header-content">
-              <div className="messaging-icon">💬</div>
-              <h3 className="messaging-title">Messages</h3>
+        <aside
+          className="messaging-sidebar"
+          style={{
+            width: "320px",
+            display: "flex",
+            flexDirection: "column",
+            borderRight: "1px solid rgba(128,128,128,0.2)",
+          }}
+        >
+          <div
+            className="messaging-sidebar-header"
+            style={{
+              padding: "20px",
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              borderBottom: "1px solid rgba(128,128,128,0.2)",
+            }}
+          >
+            <div
+              className="messaging-header-content"
+              style={{ display: "flex", alignItems: "center", gap: "10px" }}
+            >
+              <div
+                className="messaging-icon"
+                style={{ fontSize: "1.2rem", color: "#c084fc" }}
+              >
+                <i className="fa-solid fa-comments"></i>
+              </div>
+              <h3
+                className="messaging-title"
+                style={{ margin: 0, fontSize: "1.2rem" }}
+              >
+                Messages
+              </h3>
             </div>
             <button
               className="messaging-new-btn"
@@ -749,40 +700,44 @@ const Messagerie = ({
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
-                background: "#8b5cf6",
-                width: "56px",
-                height: "36px",
-                borderRadius: "8px",
+                background: "#9333ea",
+                width: "40px",
+                height: "40px",
+                borderRadius: "10px",
                 border: "none",
                 cursor: "pointer",
+                color: "white",
+                fontSize: "1.2rem",
+                boxShadow: "0 4px 15px rgba(147, 51, 234, 0.3)",
               }}
             >
-              <svg
-                width="20"
-                height="20"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="white"
-                strokeWidth="3"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <line x1="12" y1="5" x2="12" y2="19"></line>
-                <line x1="5" y1="12" x2="19" y2="12"></line>
-              </svg>
+              <i className="fa-solid fa-plus"></i>
             </button>
           </div>
 
-          <div className="messaging-contacts-list">
+          <div
+            className="messaging-contacts-list"
+            style={{ flex: 1, overflowY: "auto", padding: "10px" }}
+          >
             {loadingConvs ? (
               <div style={{ textAlign: "center", padding: "30px" }}>
                 <div className="loading-spinner" style={{ margin: "0 auto" }} />
               </div>
             ) : conversations.length === 0 ? (
               <div style={{ textAlign: "center", padding: "40px 20px" }}>
+                <i
+                  className="fa-regular fa-comments"
+                  style={{
+                    fontSize: "2.5rem",
+                    color: "currentColor",
+                    opacity: 0.15,
+                    marginBottom: "10px",
+                  }}
+                ></i>
                 <p
                   style={{
-                    color: "rgba(255,255,255,0.35)",
+                    color: "currentColor",
+                    opacity: 0.5,
                     fontSize: "0.85rem",
                     lineHeight: "1.5",
                   }}
@@ -803,12 +758,45 @@ const Messagerie = ({
                     key={conv.id}
                     className={`messaging-contact-item ${isActive ? "active" : ""}`}
                     onClick={() => selectConversation(conv)}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      padding: "12px",
+                      borderRadius: "10px",
+                      cursor: "pointer",
+                      marginBottom: "4px",
+                      background: isActive
+                        ? "rgba(147,51,234,0.15)"
+                        : "transparent",
+                      border: isActive
+                        ? "1px solid rgba(147,51,234,0.3)"
+                        : "1px solid transparent",
+                      transition: "all 0.2s",
+                    }}
+                    onMouseEnter={(e) => {
+                      if (!isActive)
+                        e.currentTarget.style.background =
+                          "rgba(128,128,128,0.1)";
+                    }}
+                    onMouseLeave={(e) => {
+                      if (!isActive)
+                        e.currentTarget.style.background = "transparent";
+                    }}
                   >
-                    <div className="messaging-contact-avatar-wrapper">
+                    <div
+                      className="messaging-contact-avatar-wrapper"
+                      style={{ position: "relative", marginRight: "12px" }}
+                    >
                       <img
                         src={other.avatar}
                         alt={other.pseudo}
                         className="messaging-contact-avatar"
+                        style={{
+                          width: "46px",
+                          height: "46px",
+                          borderRadius: "50%",
+                          objectFit: "cover",
+                        }}
                       />
                       {badge > 0 && (
                         <span
@@ -816,7 +804,7 @@ const Messagerie = ({
                             position: "absolute",
                             top: "-2px",
                             right: "-2px",
-                            background: "#9333ea",
+                            background: "#ef4444",
                             color: "#fff",
                             borderRadius: "50%",
                             minWidth: "18px",
@@ -834,23 +822,31 @@ const Messagerie = ({
                         </span>
                       )}
                     </div>
-                    <div className="messaging-contact-info">
+                    <div
+                      className="messaging-contact-info"
+                      style={{ flex: 1, minWidth: 0 }}
+                    >
                       <span
                         className="messaging-contact-name"
-                        style={{ fontWeight: badge > 0 ? "700" : "normal" }}
+                        style={{
+                          fontWeight: badge > 0 ? "700" : "500",
+                          display: "block",
+                          marginBottom: "4px",
+                        }}
                       >
                         {other.pseudo}
                       </span>
                       <span
                         className="messaging-contact-status"
                         style={{
-                          maxWidth: "140px",
                           overflow: "hidden",
                           textOverflow: "ellipsis",
                           whiteSpace: "nowrap",
                           display: "block",
+                          fontSize: "0.85rem",
                           fontWeight: badge > 0 ? "600" : "normal",
-                          color: badge > 0 ? "#c4b5fd" : undefined,
+                          color: badge > 0 ? "#c084fc" : "currentColor",
+                          opacity: badge > 0 ? 1 : 0.6,
                         }}
                       >
                         {conv.lastMessage || "Démarrer la conversation"}
@@ -864,26 +860,72 @@ const Messagerie = ({
         </aside>
 
         {/* ── ZONE CHAT ── */}
-        <main className="messaging-main">
+        <main
+          className="messaging-main"
+          style={{
+            flex: 1,
+            display: "flex",
+            flexDirection: "column",
+            height: "100%",
+          }}
+        >
           {selectedConv ? (
             <>
-              <div className="messaging-chat-header">
-                <div className="messaging-chat-header-info">
+              <div
+                className="messaging-chat-header"
+                style={{
+                  padding: "16px 24px",
+                  display: "flex",
+                  alignItems: "center",
+                  borderBottom: "1px solid rgba(128,128,128,0.2)",
+                }}
+              >
+                <button
+                  className="mobile-back-btn"
+                  onClick={() => {
+                    setSelectedConv(null);
+                    setSidebarOpen(true);
+                  }}
+                >
+                  <i className="fa-solid fa-arrow-left"></i>
+                </button>
+
+                <div
+                  className="messaging-chat-header-info"
+                  style={{ display: "flex", alignItems: "center", gap: "12px" }}
+                >
                   <img
                     src={otherUser.avatar}
                     alt={otherUser.pseudo}
                     className="messaging-header-avatar"
+                    style={{
+                      width: "40px",
+                      height: "40px",
+                      borderRadius: "50%",
+                      objectFit: "cover",
+                    }}
                   />
                   <div>
-                    <h4 className="messaging-header-name">
+                    <h4
+                      className="messaging-header-name"
+                      style={{ margin: 0, fontSize: "1.1rem" }}
+                    >
                       {otherUser.pseudo}
                     </h4>
                   </div>
                 </div>
-                <div className="messaging-chat-actions"></div>
               </div>
 
-              <div className="messaging-messages-area">
+              <div
+                className="messaging-messages-area"
+                style={{
+                  flex: 1,
+                  overflowY: "auto",
+                  padding: "20px",
+                  display: "flex",
+                  flexDirection: "column",
+                }}
+              >
                 {loadingMsgs ? (
                   <div
                     style={{
@@ -896,13 +938,37 @@ const Messagerie = ({
                     <div className="loading-spinner" />
                   </div>
                 ) : messages.length === 0 ? (
-                  <div className="messaging-no-messages">
-                    <div className="messaging-no-messages-icon">💬</div>
-                    <p className="messaging-no-messages-text">
+                  <div
+                    className="messaging-no-messages"
+                    style={{
+                      margin: "auto",
+                      textAlign: "center",
+                      opacity: 0.6,
+                    }}
+                  >
+                    <div
+                      className="messaging-no-messages-icon"
+                      style={{
+                        fontSize: "3rem",
+                        marginBottom: "16px",
+                        color: "#a78bfa",
+                        opacity: 0.6,
+                      }}
+                    >
+                      <i className="fa-solid fa-comments"></i>
+                    </div>
+                    <p
+                      className="messaging-no-messages-text"
+                      style={{ fontSize: "1.1rem", marginBottom: "8px" }}
+                    >
                       Aucun message pour le moment
                     </p>
-                    <p className="messaging-no-messages-subtext">
-                      Envoyez un message pour démarrer la conversation
+                    <p
+                      className="messaging-no-messages-subtext"
+                      style={{ fontSize: "0.9rem", opacity: 0.7 }}
+                    >
+                      Envoyez un message pour démarrer la conversation avec{" "}
+                      {otherUser.pseudo}
                     </p>
                   </div>
                 ) : (
@@ -916,8 +982,12 @@ const Messagerie = ({
                           className={`messaging-message ${isMine ? "sent" : "received"}`}
                           style={{
                             opacity: m._pending ? 0.6 : 1,
-                            position: "relative",
-                            zIndex: activeMenu === m.id ? 50 : 1,
+                            display: "flex",
+                            flexDirection: isMine ? "row-reverse" : "row",
+                            gap: "12px",
+                            marginBottom: "16px",
+                            alignSelf: isMine ? "flex-end" : "flex-start",
+                            maxWidth: "75%",
                           }}
                         >
                           {!isMine && (
@@ -925,29 +995,69 @@ const Messagerie = ({
                               src={otherUser.avatar}
                               alt=""
                               className="messaging-message-avatar"
+                              style={{
+                                width: "32px",
+                                height: "32px",
+                                borderRadius: "50%",
+                                alignSelf: "flex-end",
+                              }}
                             />
                           )}
-                          <div className="messaging-message-content">
-                            <div className="messaging-message-bubble">
-                              <p className="messaging-message-text">{m.text}</p>
-                            </div>
-                            <div className="messaging-message-footer">
-                              <span className="messaging-message-time">
-                                {formatTime(m.createdAt)}
-                              </span>
+                          <div
+                            className="messaging-message-content"
+                            style={{
+                              display: "flex",
+                              flexDirection: "column",
+                              alignItems: isMine ? "flex-end" : "flex-start",
+                            }}
+                          >
+                            <div
+                              className="messaging-message-bubble"
+                              style={{
+                                background: isMine
+                                  ? "linear-gradient(135deg, #9333ea 0%, #7e22ce 100%)"
+                                  : "var(--bg-secondary, rgba(128,128,128,0.15))",
+                                color: isMine ? "#fff" : "inherit",
+                                padding: "12px 16px",
+                                borderRadius: isMine
+                                  ? "16px 16px 4px 16px"
+                                  : "16px 16px 16px 4px",
+                                boxShadow: "0 4px 15px rgba(0,0,0,0.1)",
+                                position: "relative",
+                              }}
+                            >
+                              <p
+                                className="messaging-message-text"
+                                style={{
+                                  margin: 0,
+                                  lineHeight: "1.5",
+                                  fontSize: "0.95rem",
+                                  wordBreak: "break-word",
+                                }}
+                              >
+                                {m.text}
+                              </p>
+
+                              {/* Menu options message */}
                               {isMine && !m._pending && (
-                                <div className="messaging-message-options">
+                                <div
+                                  className="messaging-message-options"
+                                  style={{
+                                    position: "absolute",
+                                    top: "50%",
+                                    left: "-30px",
+                                    transform: "translateY(-50%)",
+                                  }}
+                                >
                                   <button
                                     className="messaging-options-btn"
                                     style={{
                                       background: "none",
+                                      color: "currentColor",
+                                      opacity: 0.5,
                                       border: "none",
-                                      display: "flex",
-                                      alignItems: "center",
-                                      justifyContent: "center",
                                       cursor: "pointer",
-                                      marginLeft: "8px",
-                                      fontSize: "1.1rem",
+                                      padding: "4px",
                                     }}
                                     onClick={() =>
                                       setActiveMenu(
@@ -955,44 +1065,80 @@ const Messagerie = ({
                                       )
                                     }
                                   >
-                                    ...
+                                    <i className="fa-solid fa-ellipsis-vertical"></i>
                                   </button>
                                   {activeMenu === m.id && (
-                                    <div className="messaging-options-menu">
+                                    <div
+                                      className="messaging-options-menu game-card-modern"
+                                      style={{
+                                        position: "absolute",
+                                        right: "20px",
+                                        top: "-10px",
+                                        padding: 0,
+                                        borderRadius: "8px",
+                                        overflow: "hidden",
+                                        zIndex: 100,
+                                        boxShadow:
+                                          "0 10px 25px rgba(0,0,0,0.5)",
+                                        width: "120px",
+                                      }}
+                                    >
                                       <button
                                         onClick={() => handleEditMessage(m.id)}
-                                        className="messaging-option-item"
+                                        style={{
+                                          display: "flex",
+                                          alignItems: "center",
+                                          gap: "8px",
+                                          width: "100%",
+                                          padding: "10px 12px",
+                                          background: "none",
+                                          border: "none",
+                                          color: "inherit",
+                                          fontSize: "0.85rem",
+                                          cursor: "pointer",
+                                          borderBottom:
+                                            "1px solid rgba(128,128,128,0.2)",
+                                          textAlign: "left",
+                                        }}
+                                        onMouseEnter={(e) =>
+                                          (e.currentTarget.style.background =
+                                            "rgba(128,128,128,0.1)")
+                                        }
+                                        onMouseLeave={(e) =>
+                                          (e.currentTarget.style.background =
+                                            "transparent")
+                                        }
                                       >
-                                        <svg
-                                          width="16"
-                                          height="16"
-                                          viewBox="0 0 24 24"
-                                          fill="none"
-                                          stroke="currentColor"
-                                          strokeWidth="2"
-                                        >
-                                          <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
-                                          <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
-                                        </svg>
+                                        <i className="fa-solid fa-pen"></i>{" "}
                                         Modifier
                                       </button>
                                       <button
                                         onClick={() =>
                                           handleDeleteMessage(m.id)
                                         }
-                                        className="messaging-option-item delete"
+                                        style={{
+                                          display: "flex",
+                                          alignItems: "center",
+                                          gap: "8px",
+                                          width: "100%",
+                                          padding: "10px 12px",
+                                          background: "none",
+                                          border: "none",
+                                          color: "#ef4444",
+                                          fontSize: "0.85rem",
+                                          cursor: "pointer",
+                                          textAlign: "left",
+                                        }}
+                                        onMouseEnter={(e) =>
+                                          (e.currentTarget.style.background =
+                                            "rgba(239,68,68,0.1)")
+                                        }
+                                        onMouseLeave={(e) =>
+                                          (e.currentTarget.style.background =
+                                            "transparent")
+                                        }
                                       >
-                                        <svg
-                                          width="16"
-                                          height="16"
-                                          viewBox="0 0 24 24"
-                                          fill="none"
-                                          stroke="currentColor"
-                                          strokeWidth="2"
-                                        >
-                                          <polyline points="3 6 5 6 21 6"></polyline>
-                                          <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-                                        </svg>
+                                        <i className="fa-solid fa-trash"></i>{" "}
                                         Supprimer
                                       </button>
                                     </div>
@@ -1000,24 +1146,42 @@ const Messagerie = ({
                                 </div>
                               )}
                             </div>
-                            {isMine &&
-                              isLastMessage &&
-                              !m._pending &&
-                              m.readBy?.length > 1 && (
-                                <div
-                                  style={{
-                                    textAlign: "right",
-                                    fontSize: "0.72rem",
-                                    color: "#ffffff",
-                                    marginTop: "4px",
-                                    fontWeight: "700",
-                                    paddingRight: "4px",
-                                    textShadow: "0 1px 2px rgba(0,0,0,0.5)",
-                                  }}
-                                >
-                                  Vu
-                                </div>
-                              )}
+
+                            <div
+                              className="messaging-message-footer"
+                              style={{
+                                marginTop: "4px",
+                                display: "flex",
+                                alignItems: "center",
+                                gap: "6px",
+                              }}
+                            >
+                              <span
+                                className="messaging-message-time"
+                                style={{ fontSize: "0.7rem", opacity: 0.5 }}
+                              >
+                                {formatTime(m.createdAt)}
+                              </span>
+
+                              {isMine &&
+                                isLastMessage &&
+                                !m._pending &&
+                                m.readBy?.length > 1 && (
+                                  <div
+                                    style={{
+                                      fontSize: "0.7rem",
+                                      color: "#c4b5fd",
+                                      fontWeight: "600",
+                                      display: "flex",
+                                      alignItems: "center",
+                                      gap: "4px",
+                                    }}
+                                  >
+                                    <i className="fa-solid fa-check-double"></i>{" "}
+                                    Vu
+                                  </div>
+                                )}
+                            </div>
                           </div>
                         </div>
                       );
@@ -1030,17 +1194,30 @@ const Messagerie = ({
               <form
                 className="messaging-input-area"
                 onSubmit={handleSendMessage}
+                style={{
+                  padding: "20px",
+                  borderTop: "1px solid rgba(128,128,128,0.2)",
+                  display: "flex",
+                  gap: "12px",
+                  alignItems: "center",
+                }}
               >
                 <input
                   autoFocus
                   type="text"
-                  className="messaging-input"
+                  className="messaging-input filter-select"
                   value={newMessage}
                   onChange={(e) => setNewMessage(e.target.value)}
                   onKeyDown={(e) => {
                     if (e.key === "Enter") handleSendMessage(e);
                   }}
                   placeholder="Écrivez votre message…"
+                  style={{
+                    flex: 1,
+                    margin: 0,
+                    padding: "14px 20px",
+                    borderRadius: "99px",
+                  }}
                 />
                 <button
                   type="submit"
@@ -1050,47 +1227,75 @@ const Messagerie = ({
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
-                    background: "#8b5cf6",
-                    width: "52px",
-                    height: "42px",
+                    background:
+                      !newMessage.trim() || sendLoading
+                        ? "rgba(147,51,234,0.3)"
+                        : "linear-gradient(135deg, #9333ea 0%, #3b82f6 100%)",
+                    width: "48px",
+                    height: "48px",
                     borderRadius: "50%",
                     border: "none",
-                    cursor: "pointer",
-                    opacity: !newMessage.trim() || sendLoading ? 0.5 : 1,
+                    cursor:
+                      !newMessage.trim() || sendLoading ? "default" : "pointer",
+                    color: "white",
+                    fontSize: "1.2rem",
+                    transition: "all 0.2s",
+                    flexShrink: 0,
                   }}
                 >
-                  <svg
-                    viewBox="0 0 24 24"
-                    width="22"
-                    height="22"
-                    fill="none"
-                    stroke="white"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    style={{
-                      transform: "rotate(45deg) translate(-2px, 2px)",
-                      width: "28px",
-                      height: "28px",
-                      display: "block",
-                    }}
-                  >
-                    <line x1="22" y1="2" x2="11" y2="13"></line>
-                    <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
-                  </svg>
+                  {sendLoading ? (
+                    <div
+                      className="loading-spinner"
+                      style={{ width: "20px", height: "20px" }}
+                    ></div>
+                  ) : (
+                    <i className="fa-solid fa-paper-plane"></i>
+                  )}
                 </button>
               </form>
             </>
           ) : (
-            <div className="messaging-empty-state">
-              <div className="messaging-empty-content">
-                <div className="messaging-empty-icon">💬</div>
-                <h3 className="messaging-empty-title">
+            <div
+              className="messaging-empty-state"
+              style={{
+                height: "100%",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              <div
+                className="messaging-empty-content"
+                style={{ textAlign: "center" }}
+              >
+                <div
+                  className="messaging-empty-icon"
+                  style={{
+                    fontSize: "4rem",
+                    color: "#a78bfa",
+                    opacity: 0.6,
+                    marginBottom: "20px",
+                  }}
+                >
+                  <i className="fa-solid fa-comments"></i>
+                </div>
+                <h3
+                  className="messaging-empty-title"
+                  style={{ fontSize: "1.5rem", marginBottom: "10px" }}
+                >
                   Sélectionnez une conversation
                 </h3>
-                <p className="messaging-empty-text">
-                  Choisissez un contact dans la liste ou appuyez sur + pour
-                  démarrer une nouvelle conversation
+                <p
+                  className="messaging-empty-text"
+                  style={{
+                    opacity: 0.7,
+                    maxWidth: "300px",
+                    margin: "0 auto",
+                    lineHeight: "1.6",
+                  }}
+                >
+                  Choisissez un contact dans la liste à gauche ou appuyez sur +
+                  pour démarrer une nouvelle discussion
                 </p>
               </div>
             </div>
@@ -1098,7 +1303,6 @@ const Messagerie = ({
         </main>
       </div>
 
-      {/* Modale recherche utilisateur */}
       {showSearchModal && (
         <UserSearchModal
           onClose={() => setShowSearchModal(false)}
@@ -1116,15 +1320,6 @@ const Messagerie = ({
             });
             selectConversation(enrichedConv);
           }}
-        />
-      )}
-
-      {/* Modale édition message */}
-      {editModal && (
-        <EditMessageModal
-          initialText={editModal.text}
-          onConfirm={handleConfirmEdit}
-          onClose={() => setEditModal(null)}
         />
       )}
     </div>

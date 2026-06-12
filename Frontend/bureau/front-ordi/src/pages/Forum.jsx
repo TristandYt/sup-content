@@ -41,7 +41,6 @@ const getIconForGenre = (gameId) => {
   return genre ? genre.icon : "fa-solid fa-layer-group";
 };
 
-/* ── DROPDOWN JEU ── */
 const GameDropdown = ({ results, onSelect, searchTerm }) => (
   <div
     style={{
@@ -158,7 +157,6 @@ const GameDropdown = ({ results, onSelect, searchTerm }) => (
   </div>
 );
 
-/* ── MODALE CRÉATION SUJET ── */
 const CreateThreadModal = ({ user, onClose, onCreated }) => {
   const [newThread, setNewThread] = useState({
     title: "",
@@ -172,14 +170,6 @@ const CreateThreadModal = ({ user, onClose, onCreated }) => {
   const [showGameSugg, setShowGameSugg] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
-
-  useEffect(() => {
-    const handleKey = (e) => {
-      if (e.key === "Escape") onClose();
-    };
-    window.addEventListener("keydown", handleKey);
-    return () => window.removeEventListener("keydown", handleKey);
-  }, [onClose]);
 
   useEffect(() => {
     const timer = setTimeout(async () => {
@@ -237,7 +227,6 @@ const CreateThreadModal = ({ user, onClose, onCreated }) => {
 
   return (
     <>
-      {/* Overlay */}
       <div
         onClick={onClose}
         style={{
@@ -248,7 +237,6 @@ const CreateThreadModal = ({ user, onClose, onCreated }) => {
           backdropFilter: "blur(4px)",
         }}
       />
-      {/* Modale */}
       <div
         className="game-card-modern"
         style={{
@@ -266,7 +254,6 @@ const CreateThreadModal = ({ user, onClose, onCreated }) => {
           overflow: "visible",
         }}
       >
-        {/* En-tête */}
         <div
           style={{
             display: "flex",
@@ -306,7 +293,6 @@ const CreateThreadModal = ({ user, onClose, onCreated }) => {
           </button>
         </div>
 
-        {/* Erreur */}
         {errorMsg && (
           <div
             style={{
@@ -326,7 +312,6 @@ const CreateThreadModal = ({ user, onClose, onCreated }) => {
           </div>
         )}
 
-        {/* Titre */}
         <input
           className="filter-select"
           placeholder="Titre *"
@@ -340,8 +325,6 @@ const CreateThreadModal = ({ user, onClose, onCreated }) => {
             boxSizing: "border-box",
           }}
         />
-
-        {/* Contenu */}
         <textarea
           className="filter-select"
           placeholder="Contenu *"
@@ -357,13 +340,11 @@ const CreateThreadModal = ({ user, onClose, onCreated }) => {
             resize: "vertical",
           }}
         />
-
-        {/* Jeu lié */}
         <label
           className="game-genre"
           style={{ display: "block", marginBottom: "8px", fontSize: "0.9rem" }}
         >
-          <i className="fa-solid fa-link" style={{ marginRight: "6px" }}></i>
+          <i className="fa-solid fa-link" style={{ marginRight: "6px" }}></i>{" "}
           Jeu ou Genre lié *
         </label>
         <div style={{ position: "relative" }}>
@@ -455,8 +436,6 @@ const CreateThreadModal = ({ user, onClose, onCreated }) => {
             />
           )}
         </div>
-
-        {/* Bouton publier */}
         <button
           className="nav-user-btn"
           style={{
@@ -468,30 +447,13 @@ const CreateThreadModal = ({ user, onClose, onCreated }) => {
           onClick={handleSubmit}
           disabled={submitting}
         >
-          {submitting ? (
-            <>
-              <i
-                className="fa-solid fa-spinner fa-spin"
-                style={{ marginRight: "8px" }}
-              ></i>
-              Publication en cours...
-            </>
-          ) : (
-            <>
-              <i
-                className="fa-solid fa-paper-plane"
-                style={{ marginRight: "8px" }}
-              ></i>
-              Publier le sujet
-            </>
-          )}
+          {submitting ? "Publication en cours..." : "Publier le sujet"}
         </button>
       </div>
     </>
   );
 };
 
-/* ── FORUM PRINCIPAL ── */
 const Forum = ({ user, onGameClick, initialThread = null }) => {
   const [threads, setThreads] = useState([]);
   const [selectedThread, setSelectedThread] = useState(null);
@@ -499,7 +461,7 @@ const Forum = ({ user, onGameClick, initialThread = null }) => {
   const [loading, setLoading] = useState(true);
   const [view, setView] = useState("list");
   const [newPostContent, setNewPostContent] = useState("");
-  const [showCreateModal, setShowCreateModal] = useState(false); // ← déclaration ici, dans Forum
+  const [showCreateModal, setShowCreateModal] = useState(false);
 
   const fetchThreads = async () => {
     setLoading(true);
@@ -536,6 +498,7 @@ const Forum = ({ user, onGameClick, initialThread = null }) => {
   const handleAddPost = async (e) => {
     e.preventDefault();
     if (!newPostContent.trim()) return;
+
     try {
       const api = await authAxios();
       await api.post("/forum/posts", {
@@ -558,27 +521,21 @@ const Forum = ({ user, onGameClick, initialThread = null }) => {
   return (
     <div className="accueil-container">
       <div className="main-content-wrapper">
-        {/* ── VUE LISTE ── */}
         {view === "list" ? (
           <>
             <div className="section-header">
               <h3>Discussions récentes</h3>
               <button
                 className="category-btn active"
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  setShowCreateModal(true);
-                }}
+                onClick={() => setShowCreateModal(true)}
               >
                 <i
                   className="fa-solid fa-plus"
                   style={{ marginRight: "6px" }}
-                ></i>
+                ></i>{" "}
                 Nouveau sujet
               </button>
             </div>
-
             <div className="comments-list-modern">
               {loading ? (
                 <div style={{ color: "#94a3b8", textAlign: "center" }}>
@@ -621,7 +578,6 @@ const Forum = ({ user, onGameClick, initialThread = null }) => {
                     }}
                     onClick={() => fetchThreadDetail(thread)}
                   >
-                    {/* Cover / icône */}
                     <div style={{ flexShrink: 0 }}>
                       {thread.gameCoverId ? (
                         <img
@@ -658,9 +614,7 @@ const Forum = ({ user, onGameClick, initialThread = null }) => {
                         </div>
                       )}
                     </div>
-
-                    {/* Contenu */}
-                    <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ flex: 1 }}>
                       <h4 style={{ margin: "0 0 5px 0" }}>{thread.title}</h4>
                       <p
                         style={{
@@ -706,8 +660,6 @@ const Forum = ({ user, onGameClick, initialThread = null }) => {
                         {thread.gameName}
                       </div>
                     </div>
-
-                    {/* Date */}
                     <span
                       className="game-genre"
                       style={{
@@ -728,16 +680,14 @@ const Forum = ({ user, onGameClick, initialThread = null }) => {
             </div>
           </>
         ) : (
-          /* ── VUE DÉTAIL ── */
           <div className="game-card-modern" style={{ padding: "20px" }}>
             <button className="category-btn" onClick={() => setView("list")}>
               <i
                 className="fa-solid fa-arrow-left"
                 style={{ marginRight: "6px" }}
-              ></i>
+              ></i>{" "}
               Retour
             </button>
-
             <div
               style={{
                 display: "flex",
@@ -792,7 +742,6 @@ const Forum = ({ user, onGameClick, initialThread = null }) => {
                 )}
               </div>
             </div>
-
             <p
               style={{
                 lineHeight: "1.6",
@@ -802,24 +751,10 @@ const Forum = ({ user, onGameClick, initialThread = null }) => {
             >
               {selectedThread.content}
             </p>
-
             <div className="section-header">
               <h4>Réponses</h4>
             </div>
-
             <div className="comments-list-modern">
-              {posts.length === 0 && !loading && (
-                <p
-                  style={{
-                    color: "#64748b",
-                    textAlign: "center",
-                    padding: "20px 0",
-                    fontSize: "0.9rem",
-                  }}
-                >
-                  Aucune réponse pour l'instant. Soyez le premier !
-                </p>
-              )}
               {posts.map((post) => (
                 <div
                   key={post.id}
@@ -847,7 +782,6 @@ const Forum = ({ user, onGameClick, initialThread = null }) => {
                         height: "32px",
                         borderRadius: "50%",
                         marginTop: "2px",
-                        flexShrink: 0,
                       }}
                     />
                     <div>
@@ -876,8 +810,6 @@ const Forum = ({ user, onGameClick, initialThread = null }) => {
                 </div>
               ))}
             </div>
-
-            {/* Zone de réponse */}
             {user ? (
               <form onSubmit={handleAddPost} style={{ marginTop: "20px" }}>
                 <textarea
@@ -903,7 +835,7 @@ const Forum = ({ user, onGameClick, initialThread = null }) => {
                   <i
                     className="fa-solid fa-reply"
                     style={{ marginRight: "6px" }}
-                  ></i>
+                  ></i>{" "}
                   Répondre
                 </button>
               </form>
@@ -918,7 +850,7 @@ const Forum = ({ user, onGameClick, initialThread = null }) => {
                 <i
                   className="fa-solid fa-lock"
                   style={{ marginRight: "6px" }}
-                ></i>
+                ></i>{" "}
                 Connectez-vous pour répondre.
               </p>
             )}

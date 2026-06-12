@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import { auth } from "../Service/firebase";
 import "../../Style/Styles.css";
@@ -15,7 +15,13 @@ const authAxios = async () => {
 
 const PAGE_SIZE = 35;
 
-const PaginationBar = ({ page, hasMore, loading, onPageChange }) => {
+const PaginationBar = ({
+  page,
+  estimatedTotal,
+  hasMore,
+  loading,
+  onPageChange,
+}) => {
   const btnBase = {
     padding: "8px 14px",
     minWidth: "40px",
@@ -64,42 +70,29 @@ const PaginationBar = ({ page, hasMore, loading, onPageChange }) => {
   );
 };
 
-const CATEGORIES = [
-  { label: "Tous", value: "", icon: "fa-solid fa-layer-group" },
-  { label: "Combat", value: "4", icon: "fa-solid fa-hand-fist" },
-  { label: "Shooter", value: "5", icon: "fa-solid fa-crosshairs" },
-  { label: "RPG", value: "12", icon: "fa-solid fa-dragon" },
-  { label: "Aventure", value: "31", icon: "fa-solid fa-compass" },
-];
-
 const Catalogue = ({ onGameClick, user, searchTerm }) => {
   const navigate = useNavigate();
-  const [searchParams, setSearchParams] = useSearchParams();
-
-  // --- 1. Persistance globale via l'URL (Page ET Filtres) ---
-  const urlPage = parseInt(searchParams.get("page") || "1", 10);
-  const urlGenre = searchParams.get("genre") || "";
-  const urlPlatform = searchParams.get("platform") || "";
-  const urlSortBy = searchParams.get("sortBy") || "total_rating";
-  const urlSortOrder = searchParams.get("sortOrder") || "desc";
-
   const [games, setGames] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [page, setPage] = useState(urlPage);
+  const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
-
   const [params, setParams] = useState({
-    sortBy: urlSortBy,
-    sortOrder: urlSortOrder,
-    genre: urlGenre,
-    platform: urlPlatform,
+    sortBy: "total_rating",
+    sortOrder: "desc",
+    genre: "",
+    platform: "",
     style: "",
   });
 
-  const [activeCategory, setActiveCategory] = useState(
-    CATEGORIES.find((c) => c.value === urlGenre)?.label || "Tous",
-  );
+  const CATEGORIES = [
+    { label: "Tous", value: "", icon: "fa-solid fa-layer-group" },
+    { label: "Combat", value: "4", icon: "fa-solid fa-hand-fist" },
+    { label: "Shooter", value: "5", icon: "fa-solid fa-crosshairs" },
+    { label: "RPG", value: "12", icon: "fa-solid fa-dragon" },
+    { label: "Aventure", value: "31", icon: "fa-solid fa-compass" },
+  ];
+  const [activeCategory, setActiveCategory] = useState("Tous");
 
   const paramsRef = useRef(params);
   const searchTermRef = useRef(searchTerm);
@@ -107,7 +100,6 @@ const Catalogue = ({ onGameClick, user, searchTerm }) => {
   useEffect(() => {
     paramsRef.current = params;
   }, [params]);
-
   useEffect(() => {
     searchTermRef.current = searchTerm;
   }, [searchTerm]);
@@ -118,106 +110,47 @@ const Catalogue = ({ onGameClick, user, searchTerm }) => {
     return defaultCover;
   };
 
-  const fetchGames = useCallback(
-    async (targetPage = 1) => {
-      setError(null);
-      setLoading(true);
-
-      const currentParams = paramsRef.current;
-      const currentSearchTerm = searchTermRef.current;
-
-      // Mettre à jour l'ensemble des paramètres dans l'URL
-      setSearchParams((prev) => {
-        const next = new URLSearchParams(prev);
-        next.set("page", String(targetPage));
-        if (currentParams.genre) next.set("genre", currentParams.genre);
-        else next.delete("genre");
-        if (currentParams.platform)
-          next.set("platform", currentParams.platform);
-        else next.delete("platform");
-        next.set("sortBy", currentParams.sortBy);
-        next.set("sortOrder", currentParams.sortOrder);
-        return next;
-      });
-
-      try {
-        const api = auth.currentUser
-          ? await authAxios()
-          : axios.create({ baseURL: "http://localhost:3000/api" });
-
-        const hasSearchTerm = currentSearchTerm?.trim() !== "";
-        const endpoint = hasSearchTerm
-          ? "search"
-          : currentParams.genre || currentParams.platform || currentParams.style
-            ? "filtered"
-            : "popular";
-
-        const res = await api.get(`/games/${endpoint}`, {
-          params: {
-            page: targetPage,
-            limit: PAGE_SIZE,
-            sortBy: currentParams.sortBy,
-            order: currentParams.sortOrder,
-            ...(hasSearchTerm && { q: currentSearchTerm.trim() }),
-            ...(currentParams.genre && { genre: currentParams.genre }),
-            ...(currentParams.platform && { platform: currentParams.platform }),
-            ...(currentParams.style && { style: currentParams.style }),
-          },
-        });
-
-        const raw = res.data;
-        let newGames = [];
-        if (Array.isArray(raw)) newGames = raw;
-        else if (raw.games) newGames = raw.games;
-        else if (raw.results?.games) newGames = raw.results.games;
-        else if (raw.results && Array.isArray(raw.results))
-          newGames = raw.results;
-
-        const more = newGames.length === PAGE_SIZE;
-
-        setGames(newGames);
-        setHasMore(more);
-        setPage(targetPage);
-      } catch (err) {
-        setError("Impossible de charger les jeux.");
-      } finally {
-        setLoading(false);
-        window.scrollTo({ top: 0, behavior: "smooth" });
-      }
-    },
-    [setSearchParams],
-  );
-
-  // --- 2. Gestion unifiée du cycle de vie (Correction du Bug) ---
-  const isInitialMount = useRef(true);
-
-  useEffect(() => {
-    if (isInitialMount.current) {
-      isInitialMount.current = false;
-      // Au premier montage, on charge directement la page et les filtres issus de l'URL
-      fetchGames(urlPage);
-      return;
-    }
-
-    // Quand l'utilisateur modifie un filtre ou recherche → retour page 1 avec debounce
-    setPage(1);
-    const delay = setTimeout(() => {
-      fetchGames(1);
-    }, 400);
-    return () => clearTimeout(delay);
-  }, [params, searchTerm]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // Remonter en haut automatiquement lors des changements de page manuels
-  useEffect(() => {
+  const fetchGames = useCallback(async (targetPage = 1) => {
+    setError(null);
+    setLoading(true);
     window.scrollTo({ top: 0, behavior: "smooth" });
-  }, [page]);
+    try {
+      const api = auth.currentUser
+        ? await authAxios()
+        : axios.create({ baseURL: "http://localhost:3000/api" });
+      const hasSearchTerm = searchTermRef.current?.trim() !== "";
+      const endpoint = hasSearchTerm
+        ? "search"
+        : paramsRef.current.genre ||
+            paramsRef.current.platform ||
+            paramsRef.current.style
+          ? "filtered"
+          : "popular";
 
-  const handleCategoryChange = (value) => {
-    setActiveCategory(
-      CATEGORIES.find((c) => c.value === value)?.label || "Tous",
-    );
-    setParams((prev) => ({ ...prev, genre: value }));
-  };
+      const res = await api.get(`/games/${endpoint}`, {
+        params: {
+          page: targetPage,
+          limit: PAGE_SIZE,
+          sortBy: paramsRef.current.sortBy,
+          sortOrder: paramsRef.current.sortOrder,
+          ...(hasSearchTerm && { q: searchTermRef.current.trim() }),
+          ...paramsRef.current,
+        },
+      });
+      const data = res.data.games || res.data.results || res.data;
+      setGames(Array.isArray(data) ? data : []);
+      setHasMore(data.length === PAGE_SIZE);
+      setPage(targetPage);
+    } catch (err) {
+      setError("Impossible de charger les jeux.");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchGames(1);
+  }, [params, searchTerm]);
 
   return (
     <div className="accueil-container">
@@ -240,7 +173,10 @@ const Catalogue = ({ onGameClick, user, searchTerm }) => {
         {CATEGORIES.map((c) => (
           <button
             key={c.value}
-            onClick={() => handleCategoryChange(c.value)}
+            onClick={() => {
+              setActiveCategory(c.label);
+              setParams((p) => ({ ...p, genre: c.value }));
+            }}
             className={`category-btn ${activeCategory === c.label ? "active" : ""}`}
           >
             <i className={c.icon} style={{ marginRight: "6px" }}></i> {c.label}
@@ -259,8 +195,25 @@ const Catalogue = ({ onGameClick, user, searchTerm }) => {
           >
             <option value="">🎮 Toutes les Plateformes</option>
             <option value="6">💻 PC (Windows)</option>
+            <option value="48">🎮 PlayStation 4</option>
             <option value="167">🎮 PlayStation 5</option>
-            <option value="169">🎮 Xbox Series</option>
+            <option value="49">🎮 Xbox One</option>
+            <option value="169">🎮 Xbox Series X|S</option>
+            <option value="130">🎮 Nintendo Switch</option>
+          </select>
+          <select
+            value={params.style}
+            onChange={(e) =>
+              setParams((p) => ({ ...p, style: e.target.value }))
+            }
+            className="filter-select"
+          >
+            <option value="">🎭 Tous les Styles</option>
+            <option value="1">💥 Action</option>
+            <option value="18">🚀 Science-Fiction</option>
+            <option value="19">👻 Horreur</option>
+            <option value="21">🏕️ Survie</option>
+            <option value="22">🌍 Open World</option>
           </select>
           <select
             value={params.sortBy}

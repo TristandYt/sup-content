@@ -36,10 +36,6 @@ const Login = ({ onSwitch, onLoginSuccess }) => {
     setLoading(true);
     try {
       await signInWithEmailAndPassword(auth, email, password);
-      // FIX : on ne passe plus d'objet user ici.
-      // onAuthStateChanged dans App.jsx va détecter la connexion Firebase,
-      // appeler /api/users/profile et charger le profil complet (role inclus).
-      // handleLoginSuccess ne fait plus que navigate("/").
       if (typeof onLoginSuccess === "function") {
         onLoginSuccess();
       }
@@ -83,7 +79,6 @@ const Login = ({ onSwitch, onLoginSuccess }) => {
     try {
       const response = await loginWithGoogle();
       if (response.success) {
-        // FIX : idem, pas d'objet user — onAuthStateChanged s'en charge
         if (typeof onLoginSuccess === "function") {
           onLoginSuccess();
         }
@@ -101,7 +96,6 @@ const Login = ({ onSwitch, onLoginSuccess }) => {
     try {
       const response = await loginWithGithub();
       if (response.success) {
-        // FIX : idem, pas d'objet user — onAuthStateChanged s'en charge
         if (typeof onLoginSuccess === "function") {
           onLoginSuccess();
         }

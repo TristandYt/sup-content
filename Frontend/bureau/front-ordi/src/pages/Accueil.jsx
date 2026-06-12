@@ -46,26 +46,13 @@ const Accueil = ({
   });
 
   const upcomingRef = useRef(null);
-  const paramsRef = useRef(params);
-  const searchTermRef = useRef(searchTerm);
-  const searchTypeRef = useRef(searchType);
-
-  useEffect(() => {
-    paramsRef.current = params;
-  }, [params]);
-  useEffect(() => {
-    searchTermRef.current = searchTerm;
-  }, [searchTerm]);
-  useEffect(() => {
-    searchTypeRef.current = searchType;
-  }, [searchType]);
 
   const CATEGORIES = [
-    { label: "Tous", value: "" },
-    { label: "Combat", value: "4" },
-    { label: "Shooter", value: "5" },
-    { label: "RPG", value: "12" },
-    { label: "Aventure", value: "31" },
+    { label: "Tous", value: "", icon: "fa-solid fa-layer-group" },
+    { label: "Combat", value: "4", icon: "fa-solid fa-hand-fist" },
+    { label: "Shooter", value: "5", icon: "fa-solid fa-crosshairs" },
+    { label: "RPG", value: "12", icon: "fa-solid fa-dragon" },
+    { label: "Aventure", value: "31", icon: "fa-solid fa-compass" },
   ];
 
   const getImageUrl = (game) => {
@@ -83,6 +70,79 @@ const Accueil = ({
       });
     }
   };
+
+  const fetchResults = useCallback(async () => {
+    setError(null);
+    setLoading(true);
+
+    try {
+      const hasSearchTerm = searchTerm && searchTerm.trim() !== "";
+      const api = auth.currentUser
+        ? await authAxios()
+        : axios.create({ baseURL: "http://localhost:3000/api" });
+
+      if (searchType === "users") {
+        const res = await api
+          .get(`/search`, {
+            params: {
+              q: hasSearchTerm ? searchTerm.trim() : "",
+              type: "users",
+              page: 1,
+              limit: PAGE_SIZE,
+            },
+          })
+          .catch(() => ({ data: { results: { users: [] } } }));
+
+        const newUsers = res.data.results?.users || [];
+        setUsers(newUsers);
+      } else {
+        let endpoint;
+        if (hasSearchTerm) {
+          endpoint = "search";
+        } else if (params.genre || params.platform || params.style) {
+          endpoint = "filtered";
+        } else {
+          endpoint = "popular";
+        }
+
+        const queryParams = {
+          page: 1,
+          limit: PAGE_SIZE,
+          sortBy: params.sortBy || "total_rating",
+          order: params.sortOrder || "desc",
+          sort: params.sortBy || "total_rating",
+          sortOrder: params.sortOrder || "desc",
+        };
+
+        if (hasSearchTerm) queryParams.q = searchTerm.trim();
+        if (params.genre) queryParams.genre = params.genre;
+        if (params.platform) queryParams.platform = params.platform;
+        if (params.style) queryParams.style = params.style;
+
+        const res = await api.get(`/games/${endpoint}`, {
+          params: queryParams,
+        });
+
+        const rawData = res.data;
+        let newGames = [];
+        if (Array.isArray(rawData)) newGames = rawData;
+        else if (rawData.games) newGames = rawData.games;
+        else if (rawData.results?.games) newGames = rawData.results.games;
+        else if (rawData.results && Array.isArray(rawData.results))
+          newGames = rawData.results;
+
+        newGames = sortGamesLocally(newGames, params.sortBy, params.sortOrder);
+        setGames(newGames);
+      }
+    } catch (err) {
+      console.error("Erreur API:", err);
+      setError(
+        "Impossible de contacter le service de recherche. Vérifiez votre connexion.",
+      );
+    } finally {
+      setLoading(false);
+    }
+  }, [searchTerm, params, searchType]);
 
   const sortGamesLocally = (gamesList, sortBy, sortOrder) => {
     if (!gamesList || gamesList.length === 0) return gamesList;
@@ -116,93 +176,6 @@ const Accueil = ({
     return sorted;
   };
 
-  const fetchResults = useCallback(async () => {
-    const currentParams = paramsRef.current;
-    const currentSearchTerm = searchTermRef.current;
-    const currentSearchType = searchTypeRef.current;
-
-    setError(null);
-    setLoading(true);
-
-    try {
-      const hasSearchTerm =
-        currentSearchTerm && currentSearchTerm.trim() !== "";
-      const api = auth.currentUser
-        ? await authAxios()
-        : axios.create({ baseURL: "http://localhost:3000/api" });
-
-      if (currentSearchType === "users") {
-        const res = await api
-          .get(`/search`, {
-            params: {
-              q: hasSearchTerm ? currentSearchTerm.trim() : "",
-              type: "users",
-              page: 1,
-              limit: PAGE_SIZE,
-            },
-          })
-          .catch(() => ({ data: { results: { users: [] } } }));
-
-        const newUsers = res.data.results?.users || [];
-        setUsers(newUsers);
-      } else {
-        let endpoint;
-        if (hasSearchTerm) {
-          endpoint = "search";
-        } else if (
-          currentParams.genre ||
-          currentParams.platform ||
-          currentParams.style
-        ) {
-          endpoint = "filtered";
-        } else {
-          endpoint = "popular";
-        }
-
-        const queryParams = {
-          page: 1,
-          limit: PAGE_SIZE,
-          sortBy: currentParams.sortBy || "total_rating",
-          order: currentParams.sortOrder || "desc",
-          sort: currentParams.sortBy || "total_rating",
-          sortOrder: currentParams.sortOrder || "desc",
-        };
-
-        if (hasSearchTerm) queryParams.q = currentSearchTerm.trim();
-        if (currentParams.genre) queryParams.genre = currentParams.genre;
-        if (currentParams.platform)
-          queryParams.platform = currentParams.platform;
-        if (currentParams.style) queryParams.style = currentParams.style;
-
-        const res = await api.get(`/games/${endpoint}`, {
-          params: queryParams,
-        });
-
-        const rawData = res.data;
-        let newGames = [];
-        if (Array.isArray(rawData)) newGames = rawData;
-        else if (rawData.games) newGames = rawData.games;
-        else if (rawData.results?.games) newGames = rawData.results.games;
-        else if (rawData.results && Array.isArray(rawData.results))
-          newGames = rawData.results;
-
-        newGames = sortGamesLocally(
-          newGames,
-          currentParams.sortBy,
-          currentParams.sortOrder,
-        );
-        setGames(newGames);
-      }
-    } catch (err) {
-      console.error("Erreur API:", err);
-      setError(
-        "Impossible de contacter le service de recherche. Vérifiez votre connexion.",
-      );
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
   useEffect(() => {
     setGames([]);
     setUsers([]);
@@ -211,7 +184,7 @@ const Accueil = ({
   useEffect(() => {
     const delay = setTimeout(() => {
       fetchResults();
-    }, 400);
+    }, 500);
     return () => clearTimeout(delay);
   }, [searchTerm, params, searchType]);
 
@@ -277,13 +250,15 @@ const Accueil = ({
           className={`category-btn ${searchType === "games" ? "active" : ""}`}
           onClick={() => setSearchType("games")}
         >
-          🎮 Jeux
+          <i className="fa-solid fa-gamepad" style={{ marginRight: "8px" }}></i>{" "}
+          Jeux
         </button>
         <button
           className={`category-btn ${searchType === "users" ? "active" : ""}`}
           onClick={() => setSearchType("users")}
         >
-          👥 Membres
+          <i className="fa-solid fa-users" style={{ marginRight: "8px" }}></i>{" "}
+          Membres
         </button>
         {user?.role === "admin" && (
           <button
@@ -291,7 +266,8 @@ const Accueil = ({
             style={{ borderColor: "#a78bfa", color: "#a78bfa" }}
             onClick={onAdminClick}
           >
-            🛡️ Administration
+            <i className="fa-solid fa-lock" style={{ marginRight: "6px" }}></i>{" "}
+            Administration
           </button>
         )}
       </div>
@@ -306,12 +282,14 @@ const Accueil = ({
                 activeCategory === category.label ? "active" : ""
               }`}
             >
+              <i className={category.icon} style={{ marginRight: "6px" }}></i>
               {category.label}
             </button>
           ))}
         </div>
       )}
 
+      {/* ── FILTRES (On garde les EMOJIS natifs ici car les icônes FontAwesome cassent dans un <select>) ── */}
       {searchType === "games" && (
         <div className="filters-section">
           <div className="filters-container">
@@ -366,8 +344,16 @@ const Accueil = ({
                 }))
               }
               className="filter-select sort-btn"
+              style={{ display: "flex", alignItems: "center", gap: "6px" }}
             >
-              {params.sortOrder === "asc" ? "↑ Croissant" : "↓ Décroissant"}
+              <i
+                className={
+                  params.sortOrder === "asc"
+                    ? "fa-solid fa-arrow-up-wide-short"
+                    : "fa-solid fa-arrow-down-wide-short"
+                }
+              ></i>
+              {params.sortOrder === "asc" ? "Croissant" : "Décroissant"}
             </button>
           </div>
         </div>
@@ -375,7 +361,17 @@ const Accueil = ({
 
       <div className="section-header">
         <div className="section-icon">
-          {searchType === "games" ? "🔥" : "✨"}
+          {searchType === "games" ? (
+            <i
+              className="fa-solid fa-fire"
+              style={{ color: "rgb(239, 68, 68)" }}
+            ></i>
+          ) : (
+            <i
+              className="fa-solid fa-users"
+              style={{ color: "rgb(59, 130, 246)" }}
+            ></i>
+          )}
         </div>
         <h3 className="section-title">
           {searchTerm
@@ -393,14 +389,29 @@ const Accueil = ({
         </div>
       ) : error ? (
         <div className="empty-state">
-          <div className="empty-icon">⚠️</div>
+          <div className="empty-icon">
+            <i
+              className="fa-solid fa-xmark"
+              style={{ color: "rgb(239, 68, 68)" }}
+            ></i>
+          </div>
           <h3 className="empty-title">Erreur de connexion</h3>
           <p className="empty-text">{error}</p>
         </div>
       ) : (searchType === "games" ? games.length : users.length) === 0 ? (
         <div className="empty-state">
           <div className="empty-icon">
-            {searchType === "games" ? "🎮" : "👤"}
+            {searchType === "games" ? (
+              <i
+                className="fa-solid fa-gamepad"
+                style={{ color: "rgb(148, 163, 184)" }}
+              ></i>
+            ) : (
+              <i
+                className="fa-solid fa-user"
+                style={{ color: "rgb(148, 163, 184)" }}
+              ></i>
+            )}
           </div>
           <h3 className="empty-title">Aucun résultat</h3>
           <p className="empty-text">
@@ -425,7 +436,12 @@ const Accueil = ({
                     <div className="game-overlay"></div>
                     {game.total_rating && (
                       <div className="rating-badge">
-                        <span className="rating-star">⭐</span>
+                        <span className="rating-star">
+                          <i
+                            className="fa-solid fa-star"
+                            style={{ color: "rgb(255, 212, 59)" }}
+                          ></i>
+                        </span>
                         <span className="rating-value">
                           {(game.total_rating / 20).toFixed(1)}
                         </span>
@@ -520,7 +536,12 @@ const Accueil = ({
       {searchType === "games" && !searchTerm && (
         <div style={{ marginTop: "3rem" }}>
           <div className="section-header">
-            <div className="section-icon">🚀</div>
+            <div className="section-icon">
+              <i
+                className="fa-solid fa-clock"
+                style={{ color: "rgb(59, 130, 246)" }}
+              ></i>
+            </div>
             <h3 className="section-title">Jeux à venir</h3>
           </div>
 
@@ -531,7 +552,12 @@ const Accueil = ({
             </div>
           ) : upcomingGames.length === 0 ? (
             <div className="empty-state">
-              <div className="empty-icon">📅</div>
+              <div className="empty-icon">
+                <i
+                  className="fa-solid fa-calendar"
+                  style={{ color: "rgb(148, 163, 184)" }}
+                ></i>
+              </div>
               <h3 className="empty-title">Aucun jeu à venir</h3>
               <p className="empty-text">
                 Restez à l'écoute, de nouveaux titres arrivent bientôt !
@@ -561,7 +587,7 @@ const Accueil = ({
                   boxShadow: "0 4px 15px rgba(0,0,0,0.4)",
                 }}
               >
-                ‹
+                <i className="fa-solid fa-chevron-left"></i>
               </button>
 
               <div
@@ -595,7 +621,12 @@ const Accueil = ({
                       <div className="game-overlay"></div>
                       {game.total_rating && (
                         <div className="rating-badge">
-                          <span className="rating-star">⭐</span>
+                          <span className="rating-star">
+                            <i
+                              className="fa-solid fa-star"
+                              style={{ color: "rgb(255, 212, 59)" }}
+                            ></i>
+                          </span>
                           <span className="rating-value">
                             {(game.total_rating / 20).toFixed(1)}
                           </span>
@@ -654,7 +685,9 @@ const Accueil = ({
                       </>
                     ) : (
                       <>
-                        <span style={{ fontSize: "1.8rem" }}>›</span>
+                        <span style={{ fontSize: "1.8rem" }}>
+                          <i className="fa-solid fa-circle-plus"></i>
+                        </span>
                         <span
                           style={{
                             fontSize: "0.75rem",
@@ -692,7 +725,7 @@ const Accueil = ({
                   boxShadow: "0 4px 15px rgba(0,0,0,0.4)",
                 }}
               >
-                ›
+                <i className="fa-solid fa-chevron-right"></i>
               </button>
             </div>
           )}
