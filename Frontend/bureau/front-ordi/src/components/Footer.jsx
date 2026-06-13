@@ -7,7 +7,7 @@ const Footer = () => {
     <footer className="modern-footer">
       <div className="footer-content">
         <div className="footer-brand">
-          <h3 className="logo-text">SUPCONTENT</h3>
+          <h3 className="logo-text">TGMF</h3>
           <p className="footer-description">
             Votre plateforme sociale de jeux vidéo. Gérez votre collection, découvrez de nouveaux titres et échangez avec la communauté.
           </p>
@@ -50,7 +50,7 @@ const Footer = () => {
         </div>
       </div>
       <div className="footer-bottom">
-        <p>&copy; {new Date().getFullYear()} SupContent. Tous droits réservés.</p>
+        <p>&copy; {new Date().getFullYear()} TGMF. Tous droits réservés.</p>
       </div>
     </footer>
   );

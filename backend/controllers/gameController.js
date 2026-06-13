@@ -7,6 +7,20 @@ const {
   calculateAge,
 } = require("../utils/pegiHelper");
 
+// --- Système de Cache en mémoire ---
+const memoryCache = new Map();
+const CACHE_TTL = 1000 * 60 * 60;
+
+const getCachedData = (key) => {
+  const cached = memoryCache.get(key);
+  if (cached && Date.now() - cached.timestamp < CACHE_TTL) return cached.data;
+  return null;
+};
+
+const setCachedData = (key, data) => {
+  memoryCache.set(key, { data, timestamp: Date.now() });
+};
+
 const getOptionalUserId = async (req) => {
   const authHeader = req.headers.authorization;
   if (req.user && req.user.uid) {
@@ -69,14 +83,21 @@ exports.getPopularGames = async (req, res, next) => {
     const userId = await getOptionalUserId(req);
     const showAdult = await getAdultPreference(userId);
 
-    // Jeux du moment via IGDB PopScore
-    let games = await IGDBService.getPopularGames(
-      null,
-      null,
-      lim,
-      offset,
-      showAdult,
-    );
+    const cacheKey = `popular_${lim}_${offset}_${showAdult}`;
+    let games = getCachedData(cacheKey);
+
+    if (!games) {
+      // Jeux du moment via IGDB PopScore
+      games = await IGDBService.getPopularGames(
+        null,
+        null,
+        lim,
+        offset,
+        showAdult,
+      );
+      setCachedData(cacheKey, games);
+    }
+
     games = filterUnauthenticatedAdultGames(games, userId);
     res.json(games);
   } catch (error) {
@@ -204,7 +225,14 @@ exports.getUpcomingGames = async (req, res, next) => {
     const userId = await getOptionalUserId(req);
     const showAdult = await getAdultPreference(userId);
 
-    let games = await IGDBService.getUpcomingGames(lim, offset, showAdult);
+    const cacheKey = `upcoming_${lim}_${offset}_${showAdult}`;
+    let games = getCachedData(cacheKey);
+
+    if (!games) {
+      games = await IGDBService.getUpcomingGames(lim, offset, showAdult);
+      setCachedData(cacheKey, games);
+    }
+
     games = filterUnauthenticatedAdultGames(games, userId);
     res.json(games);
   } catch (error) {

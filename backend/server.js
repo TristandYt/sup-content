@@ -45,7 +45,7 @@ const swaggerUi = require("swagger-ui-express");
 const swaggerDocument = yaml.load("./swagger.yaml");
 app.use("/swagger", swaggerUi.serve, swaggerUi.setup(swaggerDocument, {
   customCss: ".swagger-ui .topbar { display: none }",
-  customSiteTitle: "SupContent API Docs"
+  customSiteTitle: "TGMF API Docs"
 }));
 
 const authMiddleware = require("./middlewares/auth");
