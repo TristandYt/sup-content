@@ -33,6 +33,7 @@ const Footer = () => {
           <Link to="/">Accueil</Link>
           <Link to="/catalogue">Catalogue</Link>
           <Link to="/forum">Forum</Link>
+          <Link to="/a-propos">À propos</Link>
         </div>
 
         <div className="footer-links-group">

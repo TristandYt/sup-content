@@ -20,6 +20,7 @@ import AdminDashboard from "./pages/AdminDashboard";
 import Forum from "./pages/Forum";
 import Catalogue from "./pages/Catalogue";
 import Parametres from "./pages/Parametres.jsx";
+import APropos from "./pages/APropos";
 import logo from "./assets/Logo_PLUSFONCE.png";
 import "../Style/Styles.css";
 import "./Langue/i18n";
@@ -933,6 +934,7 @@ const AppInner = () => {
               )
             }
           />
+          <Route path="/a-propos" element={<APropos />} />
         </Routes>
       </main>
     </div>
