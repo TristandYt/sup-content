@@ -1,0 +1,2078 @@
+openapi: 3.0.1
+info:
+  title: tgmf API
+  version: 1.0.0
+  description: |
+    API REST de **tgmf** — plateforme de gestion de bibliothèque de jeux vidéo.
+
+    ## Authentification
+    Firebase JWT requis pour les routes protégées.
+    En-tête : `Authorization: Bearer <idToken>`
+
+    ## Rate Limiting
+    200 requêtes par 15 minutes par IP sur `/api/*`
+
+    ## Structure
+    - Routes publiques : Auth, Games, Search (partiel), Reviews (partiel)
+    - Routes protégées : Users, Lists, Follows, Conversations, Notifications, Forum, Moderation, Interactions, Feed
+  contact:
+    name: Tristan — SUPINFO
+
+servers:
+  - url: http://localhost:3000/api
+    description: Développement
+  - url: https://api.tgmf.app/api
+    description: Production
+
+tags:
+  - name: Auth
+  - name: Games
+  - name: Users
+  - name: Lists
+  - name: Reviews
+  - name: Interactions
+  - name: Follows
+  - name: Feed
+  - name: Conversations
+  - name: Notifications
+  - name: Forum
+  - name: Search
+  - name: Moderation
+
+components:
+  securitySchemes:
+    FirebaseJWT:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    SuccessMessage:
+      type: object
+      properties:
+        success:
+          type: boolean
+        msg:
+          type: string
+
+    Error:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: false
+        msg:
+          type: string
+
+    RegisterRequest:
+      type: object
+      required: [username, email, password, birthDate]
+      properties:
+        username:
+          type: string
+          minLength: 3
+          maxLength: 30
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          minLength: 8
+        birthDate:
+          type: string
+          pattern: '^\d{4}-\d{2}-\d{2}$'
+
+    LoginRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+
+    UserProfile:
+      type: object
+      properties:
+        uid:
+          type: string
+        username:
+          type: string
+        email:
+          type: string
+        bio:
+          type: string
+          nullable: true
+        birthDate:
+          type: string
+        role:
+          type: string
+          enum: [user, admin]
+        avatar:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+
+    PublicUserProfile:
+      type: object
+      properties:
+        uid:
+          type: string
+        username:
+          type: string
+        bio:
+          type: string
+          nullable: true
+        avatar:
+          type: string
+          nullable: true
+
+    GameSummary:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        cover:
+          type: object
+          properties:
+            image_id:
+              type: string
+        total_rating:
+          type: number
+          nullable: true
+        first_release_date:
+          type: integer
+          nullable: true
+        genres:
+          type: array
+          items:
+            type: object
+
+    GameDetails:
+      allOf:
+        - $ref: '#/components/schemas/GameSummary'
+        - type: object
+          properties:
+            summary:
+              type: string
+            platforms:
+              type: array
+              items:
+                type: string
+            screenshots:
+              type: array
+              items:
+                type: string
+
+    LibraryEntry:
+      type: object
+      properties:
+        gameId:
+          type: integer
+        gameName:
+          type: string
+        status:
+          type: string
+          enum: [to_play, playing, finished, dropped]
+        rating:
+          type: integer
+          nullable: true
+          minimum: 1
+          maximum: 5
+
+    UpdateStatusRequest:
+      type: object
+      required: [gameId, status]
+      properties:
+        gameId:
+          type: integer
+        status:
+          type: string
+          enum: [to_play, playing, finished, dropped]
+        rating:
+          type: integer
+          nullable: true
+          minimum: 1
+          maximum: 5
+
+    CustomList:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+          nullable: true
+        isPrivate:
+          type: boolean
+
+    CreateListRequest:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+        isPrivate:
+          type: boolean
+
+    Review:
+      type: object
+      properties:
+        gameId:
+          type: integer
+        gameName:
+          type: string
+        rating:
+          type: integer
+          minimum: 1
+          maximum: 5
+        text:
+          type: string
+          nullable: true
+        pseudo:
+          type: string
+        likeCount:
+          type: integer
+        commentCount:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+
+    AddReviewRequest:
+      type: object
+      required: [rating]
+      properties:
+        gameId:
+          type: integer
+        rating:
+          type: integer
+          minimum: 1
+          maximum: 5
+        text:
+          type: string
+          nullable: true
+
+    Conversation:
+      type: object
+      properties:
+        id:
+          type: string
+        participants:
+          type: array
+          items:
+            type: string
+        lastMessage:
+          type: string
+          nullable: true
+
+    Message:
+      type: object
+      properties:
+        id:
+          type: string
+        conversationId:
+          type: string
+        senderId:
+          type: string
+        content:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+
+    Notification:
+      type: object
+      properties:
+        id:
+          type: string
+        type:
+          type: string
+          enum: [like, comment, follow, message]
+        sourceUserId:
+          type: string
+        isRead:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+
+    Thread:
+      type: object
+      properties:
+        id:
+          type: string
+        title:
+          type: string
+        content:
+          type: string
+        authorId:
+          type: string
+        gameId:
+          type: integer
+          nullable: true
+        replyCount:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+
+    Post:
+      type: object
+      properties:
+        id:
+          type: string
+        threadId:
+          type: string
+        authorId:
+          type: string
+        content:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+
+    CreateThreadRequest:
+      type: object
+      required: [title, content]
+      properties:
+        title:
+          type: string
+        content:
+          type: string
+        gameId:
+          type: integer
+          nullable: true
+
+    CreatePostRequest:
+      type: object
+      required: [content]
+      properties:
+        content:
+          type: string
+
+    FollowEntry:
+      type: object
+      properties:
+        userId:
+          type: string
+        username:
+          type: string
+        avatar:
+          type: string
+          nullable: true
+
+    ProfileUpdateRequest:
+      type: object
+      properties:
+        username:
+          type: string
+          minLength: 3
+          maxLength: 30
+          description: Pseudo unique (3-30 caractères)
+        email:
+          type: string
+          format: email
+          description: Email unique
+        bio:
+          type: string
+          maxLength: 500
+          nullable: true
+          description: Biographie
+        avatarUrl:
+          type: string
+          format: uri
+          nullable: true
+          description: URL de l'avatar
+        website:
+          type: string
+          format: uri
+          nullable: true
+          description: URL du site personnel
+        birthDate:
+          type: string
+          pattern: '^\d{4}-\d{2}-\d{2}$'
+          nullable: true
+          description: Date de naissance (YYYY-MM-DD)
+        preferences:
+          $ref: '#/components/schemas/UserPreferences'
+
+    UserPreferences:
+      type: object
+      properties:
+        theme:
+          type: string
+          enum: [light, dark]
+          default: dark
+        language:
+          type: string
+          enum: [en, fr]
+          default: fr
+        emailNotifications:
+          type: boolean
+          default: true
+        pushNotifications:
+          type: boolean
+          default: true
+        showAdultGames:
+          type: boolean
+          default: false
+          description: Afficher les jeux classés +18
+        privateProfile:
+          type: boolean
+          default: false
+          description: Rendre le profil privé
+
+    PreferencesUpdateRequest:
+      type: object
+      properties:
+        theme:
+          type: string
+          enum: [light, dark]
+          description: Thème (clair/sombre)
+        language:
+          type: string
+          enum: [en, fr]
+          description: Langue
+        emailNotifications:
+          type: boolean
+          description: Recevoir les notifications par email
+        pushNotifications:
+          type: boolean
+          description: Recevoir les notifications push
+        showAdultGames:
+          type: boolean
+          description: Afficher les jeux classés +18
+
+    Favorite:
+      type: object
+      properties:
+        gameId:
+          type: string
+        gameName:
+          type: string
+        gameCover:
+          type: string
+          format: uri
+
+paths:
+  # ==================== AUTH ====================
+  /auth/register:
+    post:
+      tags: [Auth]
+      summary: Créer un compte
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+      responses:
+        '201':
+          description: Compte créé
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  uid:
+                    type: string
+        '400':
+          description: Erreur de validation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /auth/login:
+    post:
+      tags: [Auth]
+      summary: Se connecter
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Connexion réussie
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  uid:
+                    type: string
+        '401':
+          description: Identifiants invalides
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /auth/oauth/callback:
+    post:
+      tags: [Auth]
+      summary: Callback OAuth2 (Google/GitHub/Facebook)
+      security:
+        - FirebaseJWT: []
+      responses:
+        '200':
+          description: Connexion OAuth réussie et profil synchronisé
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  uid:
+                    type: string
+                  profile:
+                    $ref: '#/components/schemas/UserProfile'
+
+  # ==================== GAMES ====================
+  /games/popular:
+    get:
+      tags: [Games]
+      summary: Jeux populaires
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+      responses:
+        '200':
+          description: Liste de jeux
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/GameSummary'
+
+  /games/search:
+    get:
+      tags: [Games]
+      summary: Rechercher des jeux
+      parameters:
+        - name: q
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Résultats
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/GameSummary'
+
+  /games/upcoming:
+    get:
+      tags: [Games]
+      summary: Jeux à venir
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Jeux à venir
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/GameSummary'
+
+  /games/filtered:
+    get:
+      tags: [Games]
+      summary: Jeux filtrés
+      parameters:
+        - name: genres
+          in: query
+          schema:
+            type: array
+            items:
+              type: string
+        - name: platforms
+          in: query
+          schema:
+            type: array
+            items:
+              type: string
+      responses:
+        '200':
+          description: Jeux filtrés
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/GameSummary'
+
+  /games/details/{id}:
+    get:
+      tags: [Games]
+      summary: Détails d'un jeu
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Détails du jeu
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: '#/components/schemas/GameDetails'
+
+  /games/{id}/similar:
+    get:
+      tags: [Games]
+      summary: Jeux similaires
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Jeux similaires
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/GameSummary'
+
+  # ==================== USERS ====================
+  /users/profile:
+    get:
+      tags: [Users]
+      summary: Mon profil
+      security:
+        - FirebaseJWT: []
+      responses:
+        '200':
+          description: Profil utilisateur
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/UserProfile'
+        '401':
+          description: Non authentifié
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    put:
+      tags: [Users]
+      summary: Mettre à jour mon profil
+      security:
+        - FirebaseJWT: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProfileUpdateRequest'
+      responses:
+        '200':
+          description: Profil mis à jour avec succès
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  msg:
+                    type: string
+                    example: Profil mis à jour
+        '400':
+          description: Validation échouée (username trop court, email invalide, etc.)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Conflit — username ou email déjà utilisé
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: false
+                  msg:
+                    type: string
+                    example: "Ce pseudo est déjà pris"
+        '401':
+          description: Non authentifié
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /users/{userId}/profile:
+    get:
+      tags: [Users]
+      summary: Profil public d'un utilisateur
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Profil public
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/PublicUserProfile'
+
+  /users/password:
+    put:
+      tags: [Users]
+      summary: Changer le mot de passe
+      security:
+        - FirebaseJWT: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [oldPassword, newPassword]
+              properties:
+                oldPassword:
+                  type: string
+                newPassword:
+                  type: string
+      responses:
+        '200':
+          description: Mot de passe mis à jour
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessMessage'
+
+  /users/email:
+    put:
+      tags: [Users]
+      summary: Changer l'email
+      security:
+        - FirebaseJWT: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [newEmail]
+              properties:
+                newEmail:
+                  type: string
+      responses:
+        '200':
+          description: Email mis à jour
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessMessage'
+
+  /users/account:
+    delete:
+      tags: [Users]
+      summary: Supprimer mon compte
+      security:
+        - FirebaseJWT: []
+      responses:
+        '200':
+          description: Compte supprimé
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessMessage'
+
+  /users/preferences:
+    get:
+      tags: [Users]
+      summary: Mes préférences
+      security:
+        - FirebaseJWT: []
+      responses:
+        '200':
+          description: Préférences utilisateur
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  preferences:
+                    $ref: '#/components/schemas/UserPreferences'
+        '401':
+          description: Non authentifié
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    put:
+      tags: [Users]
+      summary: Mettre à jour mes préférences
+      description: |
+        Valide avec Zod schema. Les champs `showAdultGames` et `theme` sont immédiatement appliqués au profil utilisateur.
+        Toute modification est enregistrée dans les logs d'audit.
+      security:
+        - FirebaseJWT: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PreferencesUpdateRequest'
+      responses:
+        '200':
+          description: Préférences mises à jour avec succès
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  msg:
+                    type: string
+                    example: Préférences mises à jour
+        '400':
+          description: Validation échouée (thème ou langue invalide)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: false
+                  msg:
+                    type: string
+                    example: "Thème invalide"
+        '401':
+          description: Non authentifié
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /users/favorites:
+    get:
+      tags: [Users]
+      summary: Mes jeux favoris
+      security:
+        - FirebaseJWT: []
+      responses:
+        '200':
+          description: Liste des favoris
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  total:
+                    type: integer
+                  favorites:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Favorite'
+        '401':
+          description: Non authentifié
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    post:
+      tags: [Users]
+      summary: Ajouter un jeu aux favoris
+      security:
+        - FirebaseJWT: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [gameId]
+              properties:
+                gameId:
+                  type: integer
+                  description: ID IGDB du jeu
+                gameName:
+                  type: string
+                  nullable: true
+                gameCover:
+                  type: string
+                  format: uri
+                  nullable: true
+      responses:
+        '200':
+          description: Jeu ajouté aux favoris
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessMessage'
+        '400':
+          description: gameId manquant
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Non authentifié
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    delete:
+      tags: [Users]
+      summary: Retirer un jeu des favoris
+      security:
+        - FirebaseJWT: []
+      parameters:
+        - name: gameId
+          in: query
+          required: true
+          schema:
+            type: integer
+          description: ID IGDB du jeu
+      responses:
+        '200':
+          description: Jeu retiré des favoris
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessMessage'
+        '400':
+          description: gameId manquant
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Non authentifié
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      summary: Ajouter aux favoris
+      security:
+        - FirebaseJWT: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [gameId]
+              properties:
+                gameId:
+                  type: integer
+      responses:
+        '201':
+          description: Ajouté aux favoris
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessMessage'
+
+  /users/favorites/{gameId}:
+    delete:
+      tags: [Users]
+      summary: Retirer des favoris
+      security:
+        - FirebaseJWT: []
+      parameters:
+        - name: gameId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Retiré des favoris
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessMessage'
+
+  /users/me/export:
+    get:
+      tags: [Users]
+      summary: Exporter mes données (RGPD)
+      security:
+        - FirebaseJWT: []
+      responses:
+        '200':
+          description: Données exportées
+          content:
+            application/json:
+              schema:
+                type: object
+
+  # ==================== LISTS ====================
+  /lists/status:
+    post:
+      tags: [Lists]
+      summary: Ajouter/mettre à jour un jeu dans la bibliothèque
+      security:
+        - FirebaseJWT: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateStatusRequest'
+      responses:
+        '200':
+          description: Jeu ajouté/mis à jour
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/LibraryEntry'
+
+  /lists/library:
+    get:
+      tags: [Lists]
+      summary: Ma bibliothèque
+      security:
+        - FirebaseJWT: []
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [to_play, playing, finished, dropped]
+      responses:
+        '200':
+          description: Bibliothèque
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/LibraryEntry'
+
+  /lists/library/{gameId}:
+    get:
+      tags: [Lists]
+      summary: Détail d'une entrée de bibliothèque
+      security:
+        - FirebaseJWT: []
+      parameters:
+        - name: gameId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Entrée
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/LibraryEntry'
+
+    delete:
+      tags: [Lists]
+      summary: Retirer de la bibliothèque
+      security:
+        - FirebaseJWT: []
+      parameters:
+        - name: gameId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Retiré
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessMessage'
+
+  /lists/custom:
+    post:
+      tags: [Lists]
+      summary: Créer une liste personnalisée
+      security:
+        - FirebaseJWT: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateListRequest'
+      responses:
+        '201':
+          description: Liste créée
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/CustomList'
+
+  /lists/custom/me:
+    get:
+      tags: [Lists]
+      summary: Mes listes personnalisées
+      security:
+        - FirebaseJWT: []
+      responses:
+        '200':
+          description: Listes
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/CustomList'
+
+  /lists/custom/{listId}:
+    get:
+      tags: [Lists]
+      summary: Détails d'une liste
+      security:
+        - FirebaseJWT: []
+      parameters:
+        - name: listId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Détails
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/CustomList'
+
+    put:
+      tags: [Lists]
+      summary: Mettre à jour une liste
+      security:
+        - FirebaseJWT: []
+      parameters:
+        - name: listId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                description:
+                  type: string
+      responses:
+        '200':
+          description: Liste mise à jour
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/CustomList'
+
+    delete:
+      tags: [Lists]
+      summary: Supprimer une liste
+      security:
+        - FirebaseJWT: []
+      parameters:
+        - name: listId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Liste supprimée
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessMessage'
+
+  /lists/custom/{listId}/games:
+    post:
+      tags: [Lists]
+      summary: Ajouter un jeu à une liste
+      security:
+        - FirebaseJWT: []
+      parameters:
+        - name: listId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [gameId]
+              properties:
+                gameId:
+                  type: integer
+      responses:
+        '201':
+          description: Jeu ajouté
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessMessage'
+
+  /lists/custom/{listId}/games/{gameId}:
+    delete:
+      tags: [Lists]
+      summary: Retirer un jeu d'une liste
+      security:
+        - FirebaseJWT: []
+      parameters:
+        - name: listId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: gameId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Jeu retiré
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessMessage'
+
+  # ==================== REVIEWS ====================
+  /reviews/game/{gameId}:
+    get:
+      tags: [Reviews]
+      summary: Critiques d'un jeu
+      parameters:
+        - name: gameId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Critiques
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Review'
+
+  /reviews/me:
+    get:
+      tags: [Reviews]
+      summary: Mes critiques
+      security:
+        - FirebaseJWT: []
+      responses:
+        '200':
+          description: Mes critiques
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Review'
+
+  /reviews:
+    post:
+      tags: [Reviews]
+      summary: Créer ou mettre à jour une critique
+      security:
+        - FirebaseJWT: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AddReviewRequest'
+      responses:
+        '201':
+          description: Critique créée/mise à jour
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Review'
+
+  /reviews/{gameId}:
+    delete:
+      tags: [Reviews]
+      summary: Supprimer une critique
+      security:
+        - FirebaseJWT: []
+      parameters:
+        - name: gameId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Critique supprimée
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessMessage'
+
+  # ==================== INTERACTIONS ====================
+  /interactions/reviews/{reviewId}/like:
+    post:
+      tags: [Interactions]
+      summary: Liker une critique
+      security:
+        - FirebaseJWT: []
+      parameters:
+        - name: reviewId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Like ajouté/retiré
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessMessage'
+
+  /interactions/reviews/{reviewId}/comments:
+    post:
+      tags: [Interactions]
+      summary: Commenter une critique
+      security:
+        - FirebaseJWT: []
+      parameters:
+        - name: reviewId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [text]
+              properties:
+                text:
+                  type: string
+      responses:
+        '201':
+          description: Commentaire ajouté
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessMessage'
+
+  # ==================== FOLLOWS ====================
+  /follows/me/following:
+    get:
+      tags: [Follows]
+      summary: Utilisateurs que je suis
+      security:
+        - FirebaseJWT: []
+      responses:
+        '200':
+          description: Abonnements
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/FollowEntry'
+
+  /follows/me/followers:
+    get:
+      tags: [Follows]
+      summary: Mes abonnés
+      security:
+        - FirebaseJWT: []
+      responses:
+        '200':
+          description: Abonnés
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/FollowEntry'
+
+  /follows/{userId}:
+    post:
+      tags: [Follows]
+      summary: Suivre un utilisateur
+      security:
+        - FirebaseJWT: []
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '201':
+          description: Suivi
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessMessage'
+
+    delete:
+      tags: [Follows]
+      summary: Ne plus suivre
+      security:
+        - FirebaseJWT: []
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Non-suivi
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessMessage'
+
+  # ==================== CONVERSATIONS ====================
+  /conversations:
+    get:
+      tags: [Conversations]
+      summary: Mes conversations
+      security:
+        - FirebaseJWT: []
+      responses:
+        '200':
+          description: Conversations
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Conversation'
+
+    post:
+      tags: [Conversations]
+      summary: Créer ou récupérer une conversation
+      security:
+        - FirebaseJWT: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [userId]
+              properties:
+                userId:
+                  type: string
+      responses:
+        '200':
+          description: Conversation
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Conversation'
+
+  /conversations/{conversationId}/messages:
+    get:
+      tags: [Conversations]
+      summary: Messages d'une conversation
+      security:
+        - FirebaseJWT: []
+      parameters:
+        - name: conversationId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Messages
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Message'
+
+    post:
+      tags: [Conversations]
+      summary: Envoyer un message
+      security:
+        - FirebaseJWT: []
+      parameters:
+        - name: conversationId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [content]
+              properties:
+                content:
+                  type: string
+      responses:
+        '201':
+          description: Message envoyé
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Message'
+
+  /conversations/{conversationId}/messages/{messageId}:
+    patch:
+      tags: [Conversations]
+      summary: Marquer un message comme lu
+      security:
+        - FirebaseJWT: []
+      parameters:
+        - name: conversationId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: messageId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Message marqué
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessMessage'
+
+    delete:
+      tags: [Conversations]
+      summary: Supprimer un message
+      security:
+        - FirebaseJWT: []
+      parameters:
+        - name: conversationId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: messageId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Message supprimé
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessMessage'
+
+  # ==================== NOTIFICATIONS ====================
+  /notifications/stream:
+    get:
+      tags: [Notifications]
+      summary: Flux SSE de notifications
+      security:
+        - FirebaseJWT: []
+      responses:
+        '200':
+          description: Stream SSE
+          content:
+            text/event-stream:
+              schema:
+                type: string
+
+  /notifications:
+    get:
+      tags: [Notifications]
+      summary: Mes notifications
+      security:
+        - FirebaseJWT: []
+      responses:
+        '200':
+          description: Notifications
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Notification'
+
+  /notifications/{notificationId}/read:
+    patch:
+      tags: [Notifications]
+      summary: Marquer une notification comme lue
+      security:
+        - FirebaseJWT: []
+      parameters:
+        - name: notificationId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Marquée comme lue
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessMessage'
+
+  # ==================== FORUM ====================
+  /forum/threads:
+    get:
+      tags: [Forum]
+      summary: Threads du forum
+      responses:
+        '200':
+          description: Threads
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Thread'
+
+    post:
+      tags: [Forum]
+      summary: Créer un thread
+      security:
+        - FirebaseJWT: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateThreadRequest'
+      responses:
+        '201':
+          description: Thread créé
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Thread'
+
+  /forum/threads/{threadId}:
+    get:
+      tags: [Forum]
+      summary: Détails d'un thread
+      parameters:
+        - name: threadId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Thread
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Thread'
+
+    delete:
+      tags: [Forum]
+      summary: Supprimer un thread
+      security:
+        - FirebaseJWT: []
+      parameters:
+        - name: threadId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Thread supprimé
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessMessage'
+
+  /forum/threads/{threadId}/posts:
+    get:
+      tags: [Forum]
+      summary: Posts d'un thread
+      parameters:
+        - name: threadId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Posts
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Post'
+
+  /forum/posts:
+    post:
+      tags: [Forum]
+      summary: Créer un post
+      security:
+        - FirebaseJWT: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreatePostRequest'
+      responses:
+        '201':
+          description: Post créé
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Post'
+
+  /forum/posts/{postId}:
+    delete:
+      tags: [Forum]
+      summary: Supprimer un post
+      security:
+        - FirebaseJWT: []
+      parameters:
+        - name: postId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Post supprimé
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessMessage'
+
+  # ==================== SEARCH ====================
+  /search:
+    get:
+      tags: [Search]
+      summary: Recherche globale
+      parameters:
+        - name: q
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Résultats
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+
+  /search/recommendations:
+    get:
+      tags: [Search]
+      summary: Recommandations personnalisées
+      security:
+        - FirebaseJWT: []
+      responses:
+        '200':
+          description: Recommandations
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/GameSummary'
+
+  # ==================== MODERATION ====================
+  /moderation/report:
+    post:
+      tags: [Moderation]
+      summary: Signaler un contenu
+      security:
+        - FirebaseJWT: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [targetType, targetId, reason]
+              properties:
+                targetType:
+                  type: string
+                targetId:
+                  type: string
+                reason:
+                  type: string
+      responses:
+        '201':
+          description: Signalement créé
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessMessage'
+
+  /moderation/users/{userId}/ban:
+    post:
+      tags: [Moderation]
+      summary: Bannir un utilisateur (admin)
+      security:
+        - FirebaseJWT: []
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [reason]
+              properties:
+                reason:
+                  type: string
+      responses:
+        '200':
+          description: Utilisateur banni
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessMessage'
+
+  /moderation/reviews/{reviewId}:
+    delete:
+      tags: [Moderation]
+      summary: Supprimer une critique (admin)
+      security:
+        - FirebaseJWT: []
+      parameters:
+        - name: reviewId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Critique supprimée
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessMessage'
+
+  /moderation/reviews/{reviewId}/highlight:
+    patch:
+      tags: [Moderation]
+      summary: Mettre en avant une critique (admin)
+      security:
+        - FirebaseJWT: []
+      parameters:
+        - name: reviewId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Critique mise en avant
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessMessage'
+
+  # ==================== FEED ====================
+  /feeds:
+    get:
+      tags: [Feed]
+      summary: Mon fil d'actualité
+      security:
+        - FirebaseJWT: []
+      responses:
+        '200':
+          description: Fil d'actualité
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      type: object

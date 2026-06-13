@@ -1,5 +1,5 @@
 export const resources_inscription = {
-  Français: {
+  fr: {
     translation: {
       signup_title: "Rejoindre la communauté",
       label_pseudo: "Pseudo",
@@ -11,10 +11,10 @@ export const resources_inscription = {
       button_signup: "CRÉER MON COMPTE",
       divider_signup: "Ou s'inscrire avec",
       error_password_match: "Les mots de passe ne correspondent pas.",
-      error_fields_empty: "Veuillez remplir tous les champs."
-    }
+      error_fields_empty: "Veuillez remplir tous les champs.",
+    },
   },
-  English: {
+  en: {
     translation: {
       signup_title: "Join the community",
       label_pseudo: "Username",
@@ -26,7 +26,9 @@ export const resources_inscription = {
       button_signup: "CREATE MY ACCOUNT",
       divider_signup: "Or sign up with",
       error_password_match: "Passwords do not match.",
-      error_fields_empty: "Please fill in all fields."
-    }
-  }
+      error_fields_empty: "Please fill in all fields.",
+    },
+  },
 };
+
+export default resources_inscription;

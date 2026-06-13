@@ -1,8 +1,159 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+
+    // ==================== Fonctions Utilitaires ====================
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isAdmin() {
+      return isSignedIn() &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    function isBanned() {
+      return isSignedIn() &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isBanned == true;
+    }
+
+    function notBanned() {
+      return !isBanned() || isAdmin();
+    }
+
+    function mutualFollow(userA, userB) {
+      return exists(/databases/$(database)/documents/follows/$(userA + '_' + userB)) &&
+             exists(/databases/$(database)/documents/follows/$(userB + '_' + userA));
+    }
+
+    // Validation des données utilisateur
+    function isValidUserProfile() {
+      let data = request.resource.data;
+      return data.size() > 0 &&
+             data.keys().hasAll(['username', 'email', 'birthDate']) &&
+             data.username is string &&
+             data.email is string &&
+             data.birthDate is string &&
+             data.username.size() >= 3 &&
+             data.username.size() <= 30;
+    }
+
+    // ==================== Collections ====================
+
+    // --- users/{userId} ---
+    match /users/{userId} {
+      allow read: if isOwner(userId) || isAdmin();
+      // Sécurisé : TOUS les writes passent par l'API Express + middleware ValidateRequest
+      // Les validations Zod sont côté backend
+      allow write: if false;
+
+      // Sous-collection : Bibliothèque personnelle
+      match /library/{gameId} {
+        allow read: if isSignedIn() && isOwner(userId);
+        allow write: if false; // Validé par listController.js
+      }
+    }
+
+    // --- games/{gameId} (cache IGDB en lecture seule) ---
+    match /games/{gameId} {
+      allow read: if isSignedIn();
+      allow write: if false; // Backend only via gameController.js
+    }
+
+    // --- reviews/{reviewId} ---
+    match /reviews/{reviewId} {
+      allow read: if isSignedIn();
+      allow write: if false; // Backend via reviewController.js
+
+      // Sous-collection : Commentaires
+      match /comments/{commentId} {
+        allow read: if isSignedIn();
+        allow write: if false; // Backend only
+      }
+    }
+
+    // --- follows/{followId} ---
+    // Validation : IDs doivent être en format "userId1_userId2"
+    match /follows/{followId} {
+      allow read: if isSignedIn();
+      allow write: if false; // Backend via followController.js
+    }
+
+    // --- notifications/{notificationId} ---
+    match /notifications/{notificationId} {
+      // Lecture : uniquement le destinataire peut voir ses notifications
+      allow read: if isSignedIn() &&
+                     resource.data.userId == request.auth.uid;
+      allow write: if false; // Backend only via notificationController.js
+    }
+
+    // --- conversations/{conversationId} ---
+    match /conversations/{conversationId} {
+      function isParticipant() {
+        return isSignedIn() && request.auth.uid in resource.data.participants;
+      }
+
+      allow read: if isParticipant();
+      allow write: if false; // Backend via conversationController.js
+
+      // Sous-collection : Messages
+      match /messages/{messageId} {
+        function isConvParticipant() {
+          let convData = get(/databases/$(database)/documents/conversations/$(conversationId)).data;
+          return isSignedIn() && request.auth.uid in convData.participants;
+        }
+
+        allow read: if isConvParticipant();
+        allow write: if false; // Backend only
+      }
+    }
+
+    // --- threads/{threadId} (Forum) ---
+    match /threads/{threadId} {
+      allow read: if isSignedIn();
+      allow write: if false; // Backend via forumController.js
+    }
+
+    // --- posts/{postId} (Réponses Forum) ---
+    match /posts/{postId} {
+      allow read: if isSignedIn();
+      allow write: if false; // Backend via forumController.js
+    }
+
+    // --- custom_lists/{listId} ---
+    match /custom_lists/{listId} {
+      // Lecture : propriétaire toujours, autres si liste publique
+      allow read: if isSignedIn() &&
+                     (resource.data.userId == request.auth.uid || 
+                      resource.data.isPrivate == false);
+      allow write: if false; // Backend via listController.js
+    }
+
+    // --- reports/{reportId} (Signalements) ---
+    match /reports/{reportId} {
+      // Lecture : admins uniquement
+      allow read: if isAdmin();
+      allow write: if false; // Backend via moderationController.js (non implémenté côté client)
+    }
+
+    // --- logs/{logId} (Audit Trail) ---
+    match /logs/{logId} {
+      // Lecture : admins uniquement
+      allow read: if isAdmin();
+      // Écriture : seulement backend via Firebase Admin SDK (non accessible du client)
+      allow write: if false;
+      // Alternative si besoin custom token :
+      // allow create: if isSignedIn() && request.auth.token.custom_claims.logger == true;
+    }
+
+    // Bloquer tous les autres accès
     match /{document=**} {
-      allow read, write: if true;
+      allow read, write: if false;
     }
   }
 }

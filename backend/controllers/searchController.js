@@ -1,0 +1,170 @@
+// Recherche globale et recommandations
+const { admin, db } = require("../Services/Firebase");
+const IGDBService = require("../Services/Api_igdb");
+const { getMinAgeFromRating } = require("../utils/pegiHelper");
+const { ADULT_THEME_ID } = require("../Services/constants");
+
+const getOptionalUserId = async (req) => {
+  const authHeader = req.headers.authorization;
+  if (req.user && req.user.uid) {
+    return req.user.uid;
+  }
+  if (authHeader && authHeader.startsWith("Bearer ")) {
+    try {
+      const token = authHeader.split("Bearer ")[1];
+      const decodedToken = await admin.auth().verifyIdToken(token);
+      return decodedToken.uid;
+    } catch (err) {
+      return null;
+    }
+  }
+  return null;
+};
+
+const filterUnauthenticatedAdultGames = (games, userId) => {
+  if (userId || !games || !Array.isArray(games)) return games;
+
+  return games.filter((game) => {
+    let requiredAge = 0;
+    if (game.age_ratings && Array.isArray(game.age_ratings)) {
+      for (const ratingObj of game.age_ratings) {
+        const ratingVal =
+          typeof ratingObj === "object" ? ratingObj.rating : ratingObj;
+        const age = getMinAgeFromRating(ratingVal);
+        if (age > requiredAge) requiredAge = age;
+      }
+    }
+    if (game.themes && Array.isArray(game.themes)) {
+      const isAdultTheme = game.themes.some((t) => t === ADULT_THEME_ID || t.id === ADULT_THEME_ID);
+      if (isAdultTheme && requiredAge < 18) requiredAge = 18;
+    }
+    return requiredAge < 18;
+  });
+};
+
+exports.searchAll = async (req, res, next) => {
+  try {
+    let { q = "", type = "all", genre, year, page = 1, limit = 10 } = req.query;
+
+    let showAdult = false;
+    const userId = await getOptionalUserId(req);
+
+    if (userId) {
+      const userDoc = await db.collection("users").doc(userId).get();
+      if (userDoc.exists) {
+        showAdult = userDoc.data().preferences?.showAdultGames || false;
+      }
+    }
+
+    // Protection contre les requêtes trop longues
+    q = q.substring(0, 100);
+    
+    const p = Math.max(1, parseInt(page) || 1);
+    const l = Math.min(50, Math.max(1, parseInt(limit) || 10));
+    const offset = (p - 1) * l;
+
+    let users = [];
+    let games = [];
+    let lists = [];
+
+    // Recherche utilisateurs
+    if (type === "all" || type === "users") {
+      if (q.length >= 3) {
+        const usersSnap = await db
+          .collection("users")
+          .where("username", ">=", q)
+          .where("username", "<=", q + "\uf8ff")
+          .offset(offset)
+          .limit(l)
+          .get();
+
+        users = usersSnap.docs.map((doc) => {
+          const data = doc.data();
+          return {
+            id: doc.id,
+            username: data.username || data.pseudo || "Joueur",
+            avatar: data.avatar || data.profileData?.avatarUrl || null,
+            bio: data.bio || "Joueur passionné",
+          };
+        });
+      }
+    }
+
+    // Recherche listes publiques
+    if (type === "all" || type === "lists") {
+      if (q.length >= 3) {
+        const listsSnap = await db
+          .collection("custom_lists")
+          .where("isPrivate", "==", false)
+          .where("name", ">=", q)
+          .where("name", "<=", q + "\uf8ff")
+          .offset(offset)
+          .limit(l)
+          .get();
+
+        lists = listsSnap.docs.map((doc) => ({
+          id: doc.id,
+          ...doc.data(),
+        }));
+      }
+    }
+
+    // Recherche jeux IGDB
+    if (type === "all" || type === "games") {
+      try {
+        games = await IGDBService.advancedSearch(q, genre, year, showAdult, l, offset);
+        games = filterUnauthenticatedAdultGames(games, userId);
+      } catch (igdbError) {
+        console.error("Erreur IGDB recherche avancée", igdbError.message);
+      }
+    }
+
+
+
+    res.json({ success: true, page: p, limit: l, results: { users, lists, games } });
+  } catch (error) {
+    next(error);
+  }
+};
+
+exports.getRecommendations = async (req, res, next) => {
+  try {
+    const userId = req.user.id;
+    const userDoc = await db.collection("users").doc(userId).get();
+    const favorites = userDoc.data().favorites || [];
+    let recommendations = [];
+
+    // Recommandations via favoris
+    if (favorites.length > 0) {
+      const gameId = favorites[0].gameId;
+      try {
+        const result = await IGDBService.getSimilarGames(gameId);
+        if (result.length > 0 && result[0].similar_games) {
+          // On limite à 10 recommandations pour ne pas surcharger le front
+          recommendations = result[0].similar_games.slice(0, 10);
+        }
+      } catch (igdbError) {
+        console.error("Erreur IGDB recommandation:", igdbError.message);
+      }
+    }
+
+    // Fallback : jeux populaires
+    if (recommendations.length === 0) {
+      recommendations = await IGDBService.getPopularGames("total_rating", "desc", 15, 0, true);
+    }
+
+    //utiliser le cache local Firestore si IGDB ne renvoie rien
+    if ((!recommendations || recommendations.length === 0)) {
+      try {
+        const gamesSnap = await db.collection('games').limit(10).get();
+        recommendations = gamesSnap.docs.map(d => ({ id: d.id, name: d.data().name, cover: d.data().cover }));
+      } catch (e) {
+        console.error('Erreur fallback local recommandations', e.message);
+      }
+    }
+
+    res.json({ success: true, recommendations });
+  } catch (error) {
+    next(error);
+  }
+};

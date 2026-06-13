@@ -1,26 +1,26 @@
-import i18n from 'i18next';
-import { initReactI18next } from 'react-i18next';
-import LanguageDetector from 'i18next-browser-languagedetector';
-import { resources } from './dictionnaire_Accueil_Profil'; 
-import { resources_connexion } from './dictionnaire_Connexion'; 
-import { resources_inscription } from './dictionnaire_inscription';
+import i18n from "i18next";
+import { initReactI18next } from "react-i18next";
+import LanguageDetector from "i18next-browser-languagedetector";
+import { resources } from "./dictionnaire_Accueil_Profil";
+import { resources_connexion } from "./dictionnaire_Connexion";
+import { resources_inscription } from "./dictionnaire_inscription";
 
 // Fusion des dictionnaires
 const combinedResources = {
-  Français: {
+  fr: {
     translation: {
-      ...resources.Français.translation,
-      ...resources_connexion.Français.translation,
-      ...resources_inscription.Français.translation,
-    }
+      ...resources.fr?.translation,
+      ...resources_connexion.fr?.translation,
+      ...resources_inscription.fr?.translation,
+    },
   },
-  English: {
+  en: {
     translation: {
-      ...resources.English.translation,
-      ...resources_connexion.English.translation,
-      ...resources_inscription.English.translation,
-    }
-  }
+      ...resources.en?.translation,
+      ...resources_connexion.en?.translation,
+      ...resources_inscription.en?.translation,
+    },
+  },
 };
 
 i18n
@@ -29,12 +29,12 @@ i18n
   .init({
     resources: combinedResources, // On utilise l'objet fusionné
     detection: {
-      order: ['localStorage', 'navigator'],
-      caches: ['localStorage'],
+      order: ["localStorage", "navigator"],
+      caches: ["localStorage"],
     },
-    lng: localStorage.getItem('i18nextLng') || 'Français', 
-    fallbackLng: "Français",
-    interpolation: { escapeValue: false }
+    lng: localStorage.getItem("i18nextLng") || "fr",
+    fallbackLng: "fr",
+    interpolation: { escapeValue: false },
   });
 
 export default i18n;

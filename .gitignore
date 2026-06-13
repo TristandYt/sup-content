@@ -3,14 +3,20 @@ node_modules/
 .pnp/
 .pnp.js
 
-# Environnement (Tes secrets !)
+# Environnement
 .env
 
 # Docker
 .dockerignore
 
 # Firebase
+data/
 .firebase/
 firestore-debug.log
 ui-debug.log
 firebase-debug.log
+backend/.env
+/coverage
+*.export_metadata
+/firebase-export-*
+/backend/tests/coverage

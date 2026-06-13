@@ -2,30 +2,35 @@ services:
   # ÉMULATEUR FIREBASE (Base de données locale)
   database:
     image: andreysenov/firebase-tools:latest
-    container_name: supcontent-db
+    container_name: tgmf-db
     ports:
       - "4000:4000" # UI de l'émulateur
       - "8081:8081" # Port Firestore
       - "9099:9099" # Port Auth
     volumes:
       - .:/home/node/app
+      - firebase_cache:/home/node/.cache
     working_dir: /home/node/app
-    command: firebase emulators:start --project sup-content-tristan
+    command: >
+      firebase emulators:start 
+      --project tgmf-tristan 
+      --import=./backend/data 
+      --export-on-exit=./backend/data
     networks:
-      - sup-network
+      - tgmf-network
 
   # BACKEND (Node 22) - API & IGDB Logic
   backend:
     build: 
       context: ./backend
       dockerfile: Dockerfile
-    image: supcontent-backend:1.0
-    container_name: supcontent-api
+    image: tgmf-backend:1.0
+    container_name: tgmf-api
     ports:
       - "3000:3000"
     volumes:
       - ./backend:/app
-      - /app/node_modules
+      - backend_vol:/app/node_modules
     env_file:
       - ./backend/.env
     environment:
@@ -34,27 +39,33 @@ services:
     depends_on:
       - database
     networks:
-      - sup-network
+      - tgmf-network
 
   # FRONTEND (Node 22) - Vite / React
   web:
     build:
       context: ./Frontend/bureau/front-ordi
       dockerfile: Dockerfile
-    image: supcontent-web:1.0
-    container_name: supcontent-front
+    image: tgmf-web:1.0
+    container_name: tgmf-front
     ports:
       - "3001:5173"
     volumes:
       - ./Frontend/bureau/front-ordi:/app
-      - /app/node_modules
+      - web_vol:/app/node_modules
     environment:
       - CHOKIDAR_USEPOLLING=true 
     depends_on:
       - backend
     networks:
-      - sup-network
+      - tgmf-network
 
 networks:
-  sup-network:
+  tgmf-network:
     driver: bridge
+
+volumes:
+  backend_vol:
+  web_vol:
+  db_vol:
+  firebase_cache:
