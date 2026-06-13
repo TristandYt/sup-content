@@ -20,6 +20,7 @@ import AdminDashboard from "./pages/AdminDashboard";
 import Forum from "./pages/Forum";
 import Catalogue from "./pages/Catalogue";
 import Parametres from "./pages/Parametres.jsx";
+import logo from "./assets/Logo_PLUSFONCE.png";
 import "../Style/Styles.css";
 import "./Langue/i18n";
 
@@ -102,6 +103,31 @@ const AppInner = () => {
 
   const [user, setUser] = useState(null);
   const [authLoading, setAuthLoading] = useState(true);
+
+  // Mise à jour du favicon (logo de l'onglet)
+  // Utilisation d'un canvas pour pivoter le logo de 270 degrés dynamiquement
+  useEffect(() => {
+    const img = new Image();
+    img.src = logo;
+    img.onload = () => {
+      const canvas = document.createElement("canvas");
+      canvas.width = img.width;
+      canvas.height = img.height;
+      const ctx = canvas.getContext("2d");
+      ctx.translate(canvas.width / 2, canvas.height / 2);
+      ctx.rotate((270 * Math.PI) / 180);
+      ctx.drawImage(img, -img.width / 2, -img.height / 2);
+      const rotatedLogo = canvas.toDataURL();
+      const link = document.querySelector("link[rel~='icon']");
+      if (link) link.href = rotatedLogo;
+      else {
+        const newLink = document.createElement("link");
+        newLink.rel = "icon";
+        newLink.href = rotatedLogo;
+        document.head.appendChild(newLink);
+      }
+    };
+  }, []);
 
   // onAuthStateChanged : source unique de vérité pour le user
   useEffect(() => {
@@ -325,12 +351,22 @@ const AppInner = () => {
                 <div
                   className="logo-icon"
                   onClick={() => navigate("/")}
-                  style={{ cursor: "pointer" }}
+                  style={{
+                    cursor: "pointer",
+                    width: "3.5rem", // Agrandissement du conteneur
+                    height: "3.5rem",
+                  }}
                 >
-                  <i
-                    className="fa-solid fa-gamepad"
-                    style={{ color: "white" }}
-                  ></i>
+                  <img
+                    src={logo}
+                    alt="TGMF Logo"
+                    style={{
+                      width: "100%",
+                      height: "100%",
+                      objectFit: "contain",
+                      transform: "rotate(270deg)", // Rotation de 270 degrés
+                    }}
+                  />
                 </div>
                 <h1
                   className="logo-text"
