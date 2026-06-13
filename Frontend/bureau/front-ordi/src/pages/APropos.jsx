@@ -4,6 +4,7 @@ import logo from "../assets/Logo_PLUSFONCE.png";
 import "../../Style/Styles.css";
 
 const APropos = () => {
+  // Mise à jour du titre de l'onglet et retour en haut de page à l'affichage
   useEffect(() => {
     document.title = "À propos | TGMF";
     window.scrollTo(0, 0);

@@ -4,6 +4,7 @@ import { auth, googleProvider, githubProvider } from "../Service/firebase";
 const BACKEND_URL = "http://localhost:3000";
 
 export function useOAuth() {
+  // Transmet le jeton d'identification Firebase au backend pour synchroniser le profil utilisateur
   const callBackendOAuth = async (idToken) => {
     const res = await fetch(`${BACKEND_URL}/api/auth/oauth/callback`, {
       method: "POST",

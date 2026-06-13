@@ -148,6 +148,7 @@ const Jeu = ({
     });
   };
 
+  // Traduction automatique du résumé via l'API MyMemory lorsque l'interface est en français
   useEffect(() => {
     if (!game?.summary) return;
     setTranslatedSummary("");
@@ -162,143 +163,149 @@ const Jeu = ({
   }, [game, i18n.language]);
 
   useEffect(() => {
-  if (!gameId) return;
+    if (!gameId) return;
 
-  let isMounted = true;
-  const abortController = new AbortController();
+    let isMounted = true;
+    const abortController = new AbortController();
 
-  // Réinitialisation immédiate des états liés au jeu précédent
-  setIsFavorite(false);
-  setReviews([]);
-  setAverageRating(null);
-  setGameThread(null);
-  setCommentingReviewId(null);
-  setReviewCommentText("");
-  setDlcs([]);
-  setExpansions([]);
-  setTranslatedSummary("");
-  setGame(null);
-  setGameError(null);
-  window.scrollTo(0, 0);
+    // Nettoyage des données pour éviter les "flashs" d'informations du jeu précédent pendant le chargement
+    setIsFavorite(false);
+    setReviews([]);
+    setAverageRating(null);
+    setGameThread(null);
+    setCommentingReviewId(null);
+    setReviewCommentText("");
+    setDlcs([]);
+    setExpansions([]);
+    setTranslatedSummary("");
+    setGame(null);
+    setGameError(null);
+    window.scrollTo(0, 0);
 
-  const fetchDetails = async () => {
-    try {
-      setLoading(true);
-      setGameError(null);
-
-      // 1. Détails du jeu
-      const api = auth.currentUser
-        ? await authAxios()
-        : axios.create({ baseURL: "http://localhost:3000/api" });
-
-      const res = await api.get(`/games/details/${gameId}`, {
-        signal: abortController.signal,
-      });
-      if (!isMounted || res.data?.id !== gameId) return;
-      const g = res.data;
-      setGame(g);
-      if (g.dlcs?.length) setDlcs(g.dlcs);
-      if (g.expansions?.length) setExpansions(g.expansions);
-
-      // 2. Jeux similaires
+    const fetchDetails = async () => {
       try {
-        const similarApi = auth.currentUser
+        setLoading(true);
+        setGameError(null);
+
+        // 1. Détails du jeu
+        const api = auth.currentUser
           ? await authAxios()
           : axios.create({ baseURL: "http://localhost:3000/api" });
-        const resSimilar = await similarApi.get(`/games/${gameId}/similar`, {
+
+        const res = await api.get(`/games/details/${gameId}`, {
           signal: abortController.signal,
         });
-        if (isMounted && gameId === gameId) {
-          setSimilarGames(resSimilar.data || []);
-        }
-      } catch (_) {}
+        if (!isMounted || res.data?.id !== gameId) return;
+        const g = res.data;
+        setGame(g);
+        if (g.dlcs?.length) setDlcs(g.dlcs);
+        if (g.expansions?.length) setExpansions(g.expansions);
 
-      // 3. DLC / extensions
-      try {
-        setDlcLoading(true);
-        const dlcApi = auth.currentUser
-          ? await authAxios()
-          : axios.create({ baseURL: "http://localhost:3000/api" });
-        const resDlc = await dlcApi.get(`/games/${gameId}/dlcs`, {
-          signal: abortController.signal,
-        });
-        if (isMounted && gameId === gameId) {
-          if (resDlc.data?.success) {
-            if (resDlc.data.dlcs?.length) setDlcs(resDlc.data.dlcs);
-            if (resDlc.data.expansions?.length)
-              setExpansions(resDlc.data.expansions);
-          }
-        }
-      } catch (_) {
-      } finally {
-        if (isMounted) setDlcLoading(false);
-      }
-
-      // 4. Vérification du favori 
-      if (auth.currentUser) {
+        // 2. Jeux similaires
         try {
-          const favApi = await authAxios();
-          const resLib = await favApi.get(`/lists/library/${gameId}`, {
+          const similarApi = auth.currentUser
+            ? await authAxios()
+            : axios.create({ baseURL: "http://localhost:3000/api" });
+          const resSimilar = await similarApi.get(`/games/${gameId}/similar`, {
             signal: abortController.signal,
           });
           if (isMounted && gameId === gameId) {
-            setIsFavorite(resLib.data?.success === true);
+            setSimilarGames(resSimilar.data || []);
+          }
+        } catch (_) {}
+
+        // 3. DLC / extensions
+        try {
+          setDlcLoading(true);
+          const dlcApi = auth.currentUser
+            ? await authAxios()
+            : axios.create({ baseURL: "http://localhost:3000/api" });
+          const resDlc = await dlcApi.get(`/games/${gameId}/dlcs`, {
+            signal: abortController.signal,
+          });
+          if (isMounted && gameId === gameId) {
+            if (resDlc.data?.success) {
+              if (resDlc.data.dlcs?.length) setDlcs(resDlc.data.dlcs);
+              if (resDlc.data.expansions?.length)
+                setExpansions(resDlc.data.expansions);
+            }
           }
         } catch (_) {
-          if (isMounted) setIsFavorite(false);
+        } finally {
+          if (isMounted) setDlcLoading(false);
         }
-      }
 
-      // 5. Fil de discussion forum
-      try {
-        const threadApi = auth.currentUser
-          ? await authAxios()
-          : axios.create({ baseURL: "http://localhost:3000/api" });
-        const resThreads = await threadApi.get(`/forum/threads?gameId=${gameId}`, {
-          signal: abortController.signal,
-        });
-        if (isMounted && gameId === gameId) {
-          setGameThread(
-            resThreads.data?.success && resThreads.data.threads.length > 0
-              ? resThreads.data.threads[0]
-              : false
+        // 4. Vérification du favori
+        if (auth.currentUser) {
+          try {
+            const favApi = await authAxios();
+            const resLib = await favApi.get(`/lists/library/${gameId}`, {
+              signal: abortController.signal,
+            });
+            if (isMounted && gameId === gameId) {
+              setIsFavorite(resLib.data?.success === true);
+            }
+          } catch (_) {
+            if (isMounted) setIsFavorite(false);
+          }
+        }
+
+        // 5. Fil de discussion forum
+        try {
+          const threadApi = auth.currentUser
+            ? await authAxios()
+            : axios.create({ baseURL: "http://localhost:3000/api" });
+          const resThreads = await threadApi.get(
+            `/forum/threads?gameId=${gameId}`,
+            {
+              signal: abortController.signal,
+            },
           );
+          if (isMounted && gameId === gameId) {
+            setGameThread(
+              resThreads.data?.success && resThreads.data.threads.length > 0
+                ? resThreads.data.threads[0]
+                : false,
+            );
+          }
+        } catch (_) {
+          if (isMounted) setGameThread(false);
         }
-      } catch (_) {
-        if (isMounted) setGameThread(false);
-      }
-    } catch (err) {
-      if (err.name === "AbortError") return;
-      console.error("Erreur de chargement:", err);
-      const status = err?.response?.status;
-      if (isMounted) {
-        if (status === 401) {
-          setGameError({
-            code: 401,
-            msg: err.response.data?.msg || "Connectez-vous pour voir ce contenu.",
-          });
-        } else if (status === 403) {
-          setGameError({
-            code: 403,
-            msg: err.response.data?.msg || "Vous n'avez pas accès à ce contenu.",
-          });
-        } else {
-          setGameError({ code: 0, msg: "Impossible de charger ce jeu." });
+      } catch (err) {
+        if (err.name === "AbortError") return;
+        console.error("Erreur de chargement:", err);
+        const status = err?.response?.status;
+        if (isMounted) {
+          if (status === 401) {
+            setGameError({
+              code: 401,
+              msg:
+                err.response.data?.msg ||
+                "Connectez-vous pour voir ce contenu.",
+            });
+          } else if (status === 403) {
+            setGameError({
+              code: 403,
+              msg:
+                err.response.data?.msg || "Vous n'avez pas accès à ce contenu.",
+            });
+          } else {
+            setGameError({ code: 0, msg: "Impossible de charger ce jeu." });
+          }
         }
+      } finally {
+        if (isMounted) setLoading(false);
       }
-    } finally {
-      if (isMounted) setLoading(false);
-    }
-  };
+    };
 
-  fetchDetails();
+    fetchDetails();
 
-  // Nettoyage : annule les requêtes et ignore les mises à jour si le composant est démonté ou si gameId a changé
-  return () => {
-    isMounted = false;
-    abortController.abort();
-  };
-}, [gameId]);
+    // Nettoyage : annule les requêtes et ignore les mises à jour si le composant est démonté ou si gameId a changé
+    return () => {
+      isMounted = false;
+      abortController.abort();
+    };
+  }, [gameId]);
 
   useEffect(() => {
     if (!gameId) return;
@@ -307,6 +314,7 @@ const Jeu = ({
     return () => clearInterval(interval);
   }, [gameId]);
 
+  // Récupère les avis depuis le backend pour calculer la moyenne et identifier l'avis de l'utilisateur
   const refreshReviews = async (isInitial = false) => {
     try {
       const res = await axios.get(
@@ -366,6 +374,7 @@ const Jeu = ({
     }
   };
 
+  // Logique pour la création d'une nouvelle critique ou la mise à jour d'une existante
   const handleSaveReview = async () => {
     if (!auth.currentUser) {
       alert("Connectez-vous pour laisser un avis.");
@@ -422,6 +431,7 @@ const Jeu = ({
     }
   };
 
+  // Envoi d'une critique (nouvelle ou mise à jour) vers l'API
   const handleLikeReview = async (reviewId) => {
     if (!auth.currentUser) {
       alert("Connectez-vous pour aimer un avis.");

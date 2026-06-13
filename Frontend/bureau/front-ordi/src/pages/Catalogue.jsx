@@ -16,6 +16,7 @@ const authAxios = async () => {
 
 const PAGE_SIZE = 24;
 
+// Barre de navigation entre les pages de résultats du catalogue
 const PaginationBar = ({
   page,
   estimatedTotal,
@@ -71,6 +72,7 @@ const PaginationBar = ({
   );
 };
 
+// Gestionnaire de catalogue : combine filtres (genre, plateforme) et recherche textuelle
 const Catalogue = ({ onGameClick, user, searchTerm }) => {
   const navigate = useNavigate();
   const [games, setGames] = useState([]);
@@ -105,51 +107,58 @@ const Catalogue = ({ onGameClick, user, searchTerm }) => {
     return defaultCover;
   };
 
-  const fetchGames = useCallback(async (targetPage = 1) => {
-    setError(null);
-    setLoading(true);
-    window.scrollTo({ top: 0, behavior: "smooth" });
-    try {
-      const api = auth.currentUser
-        ? await authAxios()
-        : axios.create({ baseURL: "http://localhost:3000/api" });
-      const hasSearchTerm = searchTerm && searchTerm.trim() !== "";
-      const hasCustomSort = params.sortBy !== "total_rating" || params.sortOrder !== "desc";
-      const endpoint = hasSearchTerm
-        ? "search"
-        : params.genre || params.platform || params.style || hasCustomSort
-          ? "filtered"
-          : "popular";
+  // Construit la requête API dynamiquement selon que l'utilisateur recherche, filtre ou explore
+  const fetchGames = useCallback(
+    async (targetPage = 1) => {
+      setError(null);
+      setLoading(true);
+      window.scrollTo({ top: 0, behavior: "smooth" });
+      try {
+        const api = auth.currentUser
+          ? await authAxios()
+          : axios.create({ baseURL: "http://localhost:3000/api" });
+        const hasSearchTerm = searchTerm && searchTerm.trim() !== "";
+        const hasCustomSort =
+          params.sortBy !== "total_rating" || params.sortOrder !== "desc";
+        const endpoint = hasSearchTerm
+          ? "search"
+          : params.genre || params.platform || params.style || hasCustomSort
+            ? "filtered"
+            : "popular";
 
-      const queryParams = {
-        page: targetPage,
-        limit: PAGE_SIZE,
-        sortBy: params.sortBy || "total_rating",
-        order: params.sortOrder || "desc",
-        sort: params.sortBy || "total_rating",
-        sortOrder: params.sortOrder || "desc",
-      };
+        const queryParams = {
+          page: targetPage,
+          limit: PAGE_SIZE,
+          sortBy: params.sortBy || "total_rating",
+          order: params.sortOrder || "desc",
+          sort: params.sortBy || "total_rating",
+          sortOrder: params.sortOrder || "desc",
+        };
 
-      if (hasSearchTerm) queryParams.q = searchTerm.trim();
-      if (params.genre) queryParams.genre = params.genre;
-      if (params.platform) queryParams.platform = params.platform;
-      if (params.style) queryParams.style = params.style;
+        if (hasSearchTerm) queryParams.q = searchTerm.trim();
+        if (params.genre) queryParams.genre = params.genre;
+        if (params.platform) queryParams.platform = params.platform;
+        if (params.style) queryParams.style = params.style;
 
-      const res = await api.get(`/games/${endpoint}`, { params: queryParams });
-      const data = res.data.games || res.data.results || res.data;
-      let gamesList = Array.isArray(data) ? data : [];
-      
-      setGames(gamesList);
-      
-      // On assouplit la condition hasMore pour gérer les limites imposées par le backend (connecté ou non)
-      setHasMore(gamesList.length >= 10);
-      setPage(targetPage);
-    } catch (err) {
-      setError("Impossible de charger les jeux.");
-    } finally {
-      setLoading(false);
-    }
-  }, [params, searchTerm]);
+        const res = await api.get(`/games/${endpoint}`, {
+          params: queryParams,
+        });
+        const data = res.data.games || res.data.results || res.data;
+        let gamesList = Array.isArray(data) ? data : [];
+
+        setGames(gamesList);
+
+        // On assouplit la condition hasMore pour gérer les limites imposées par le backend (connecté ou non)
+        setHasMore(gamesList.length >= 10);
+        setPage(targetPage);
+      } catch (err) {
+        setError("Impossible de charger les jeux.");
+      } finally {
+        setLoading(false);
+      }
+    },
+    [params, searchTerm],
+  );
 
   useEffect(() => {
     fetchGames(1);
@@ -157,8 +166,10 @@ const Catalogue = ({ onGameClick, user, searchTerm }) => {
 
   // Fonction pour afficher des labels clairs plutôt que "Croissant/Décroissant"
   const getOrderLabel = () => {
-    if (params.sortBy === "name") return params.sortOrder === "asc" ? "De A à Z" : "De Z à A";
-    if (params.sortBy === "first_release_date") return params.sortOrder === "asc" ? "Plus anciens" : "Plus récents";
+    if (params.sortBy === "name")
+      return params.sortOrder === "asc" ? "De A à Z" : "De Z à A";
+    if (params.sortBy === "first_release_date")
+      return params.sortOrder === "asc" ? "Plus anciens" : "Plus récents";
     return params.sortOrder === "asc" ? "Moins bien notés" : "Mieux notés";
   };
 
@@ -268,12 +279,20 @@ const Catalogue = ({ onGameClick, user, searchTerm }) => {
           <div className="loading-spinner" />
         </div>
       ) : games.length === 0 ? (
-        <div className="empty-state" style={{ margin: "40px auto", textAlign: "center" }}>
-          <div className="empty-icon" style={{ fontSize: "3rem", opacity: 0.5, marginBottom: "1rem" }}>
+        <div
+          className="empty-state"
+          style={{ margin: "40px auto", textAlign: "center" }}
+        >
+          <div
+            className="empty-icon"
+            style={{ fontSize: "3rem", opacity: 0.5, marginBottom: "1rem" }}
+          >
             <i className="fa-solid fa-ghost"></i>
           </div>
           <h3 className="empty-title">Aucun jeu trouvé</h3>
-          <p className="empty-text">Il n'y a plus de résultats ou la recherche est vide.</p>
+          <p className="empty-text">
+            Il n'y a plus de résultats ou la recherche est vide.
+          </p>
         </div>
       ) : (
         <div className="games-grid">
@@ -305,7 +324,7 @@ const Catalogue = ({ onGameClick, user, searchTerm }) => {
                       : "TBA"}
                   </span>
                   {game.genres && game.genres.length > 0 && (
-                  <span className="game-genre">{game.genres[0].name}</span>
+                    <span className="game-genre">{game.genres[0].name}</span>
                   )}
                 </div>
               </div>

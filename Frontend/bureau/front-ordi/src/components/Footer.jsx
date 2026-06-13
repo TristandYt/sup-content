@@ -2,6 +2,7 @@ import React from "react";
 import { Link } from "react-router-dom";
 import "../../Style/Styles.css";
 
+// Pied de page principal : contient la navigation secondaire et les réseaux sociaux
 const Footer = () => {
   return (
     <footer className="modern-footer">

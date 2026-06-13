@@ -1,4 +1,3 @@
-// pages/Parametres.jsx
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
@@ -51,7 +50,7 @@ const Parametres = ({ user }) => {
       setLoading(false);
     }
   };
-  // Exportation Minimaliste & RGPD Compliant
+  // Génère un fichier JSON contenant les données personnelles de l'utilisateur pour le droit à la portabilité
   const handleExportData = async () => {
     setExportLoading(true);
     try {
@@ -101,6 +100,7 @@ const Parametres = ({ user }) => {
     }
   };
 
+  // Procédure de suppression de compte en deux étapes avec confirmation irréversible
   const handleDeleteAccount = async () => {
     const confirm1 = window.confirm(
       "⚠️ ATTENTION ⚠️\n\nÊtes-vous sûr de vouloir supprimer DÉFINITIVEMENT votre compte ? Cette action effacera toutes vos listes, favoris, et messages.",
@@ -179,7 +179,6 @@ const Parametres = ({ user }) => {
           <div
             style={{ display: "flex", flexDirection: "column", gap: "30px" }}
           >
-            {/* ════ SECTION: AFFICHAGE ET CONFIDENTIALITÉ ════ */}
             <div>
               <h3
                 className="section-title"

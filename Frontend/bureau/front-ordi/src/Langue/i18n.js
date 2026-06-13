@@ -5,7 +5,7 @@ import { resources } from "./dictionnaire_Accueil_Profil";
 import { resources_connexion } from "./dictionnaire_Connexion";
 import { resources_inscription } from "./dictionnaire_inscription";
 
-// Fusion des dictionnaires
+// Fusion des différents dictionnaires de traduction par langue
 const combinedResources = {
   fr: {
     translation: {
@@ -27,7 +27,7 @@ i18n
   .use(LanguageDetector)
   .use(initReactI18next)
   .init({
-    resources: combinedResources, // On utilise l'objet fusionné
+    resources: combinedResources,
     detection: {
       order: ["localStorage", "navigator"],
       caches: ["localStorage"],

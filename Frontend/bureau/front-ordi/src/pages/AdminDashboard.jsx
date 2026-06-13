@@ -12,6 +12,7 @@ const authAxios = async () => {
   });
 };
 
+// Configuration de la navigation latérale du panneau admin
 const NAV = [
   { id: "overview", icon: "⬡", label: "Tableau de bord" },
   { id: "users", icon: "◈", label: "Membres" },
@@ -183,6 +184,7 @@ function SectionTitle({ children }) {
   );
 }
 
+// Vue globale : affiche les statistiques clés et les derniers événements système
 function OverviewPanel({ logs, stats }) {
   return (
     <div>
@@ -258,6 +260,7 @@ function OverviewPanel({ logs, stats }) {
   );
 }
 
+// Gestion des membres : recherche, bannissement et promotion des comptes
 function UsersPanel({ showToast }) {
   const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -740,6 +743,7 @@ function BanFromReportForm({ showToast }) {
   );
 }
 
+// Modération des contenus : gestion des critiques et des commentaires signalés
 function ReviewsPanel({ showToast }) {
   const [reviews, setReviews] = useState([]);
   const [reviewId, setReviewId] = useState("");
@@ -976,6 +980,7 @@ function ReviewsPanel({ showToast }) {
   );
 }
 
+// Journal d'audit : liste détaillée de toutes les actions administratives effectuées
 function LogsPanel({ logs, reload, loading }) {
   return (
     <div>
@@ -1072,6 +1077,7 @@ function LogsPanel({ logs, reload, loading }) {
   );
 }
 
+// Point d'entrée de l'administration : centralise les statistiques et les logs de modération
 export default function AdminDashboard({ onBack }) {
   const [active, setActive] = useState("overview");
   const [toast, setToast] = useState(null);
