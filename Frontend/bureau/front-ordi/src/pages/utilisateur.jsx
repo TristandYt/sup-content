@@ -18,9 +18,7 @@ const authAxios = async () => {
   });
 };
 
-/* ═══════════════════════════════════════════════════════════
-   VUE PROFIL PUBLIC — isPublic === true
-═══════════════════════════════════════════════════════════ */
+// PublicProfile : Vue affichant la bibliothèque, les listes et le statut de suivi d'un utilisateur tiers
 const PublicProfile = ({
   targetUserId,
   currentUser,
@@ -840,9 +838,7 @@ const PublicProfile = ({
   );
 };
 
-/* ═══════════════════════════════════════════════════════════
-   CUSTOM LISTS — sous-composant de MyProfile
-═══════════════════════════════════════════════════════════ */
+// CustomLists : Logique de gestion des collections de jeux personnalisées (Création/Édition/Suppression)
 const CustomLists = ({ onGameClick }) => {
   const [lists, setLists] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -1519,9 +1515,7 @@ const CustomLists = ({ onGameClick }) => {
   );
 };
 
-/* ═══════════════════════════════════════════════════════════
-   MON PROFIL PERSONNEL — isPublic !== true
-═══════════════════════════════════════════════════════════ */
+// MyProfile : Tableau de bord privé permettant à l'utilisateur de gérer ses paramètres et sa collection
 const MyProfile = ({ user, onLoginSuccess, onLogout, onGameClick }) => {
   const { t, i18n } = useTranslation();
   const [isEditing, setIsEditing] = useState(false);
@@ -2212,9 +2206,7 @@ const MyProfile = ({ user, onLoginSuccess, onLogout, onGameClick }) => {
   );
 };
 
-/* ═══════════════════════════════════════════════════════════
-   NOTIFICATIONS
-═══════════════════════════════════════════════════════════ */
+// Notificationsbell : Composant gérant la récupération périodique et l'affichage des notifications sociales
 export const Notificationsbell = ({ user, onUserClick, onGameClick }) => {
   const [notifs, setNotifs] = useState([]);
   const [open, setOpen] = useState(false);

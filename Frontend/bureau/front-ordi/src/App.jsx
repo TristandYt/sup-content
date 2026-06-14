@@ -23,6 +23,8 @@ import Parametres from "./pages/Parametres.jsx";
 import MentionsLegales from "./pages/MentionsLegales.jsx";
 import Confidentialite from "./pages/Confidentialite.jsx";
 import CGU from "./pages/CGU.jsx";
+import APropos from "./pages/APropos";
+import logo from "./assets/Logo_PLUSFONCE.png";
 import "../Style/Styles.css";
 import "./Langue/i18n";
 
@@ -36,9 +38,8 @@ const authAxios = async () => {
   });
 };
 
-// ── Wrappers de pages pour extraire les params d'URL ──────────────────────────
-
 const JeuPage = ({
+  // Wrapper de page pour extraire les paramètres d'URL et passer la logique au composant Jeu
   user,
   handleShowGame,
   handleForumClick,
@@ -59,6 +60,7 @@ const JeuPage = ({
 };
 
 const UtilisateurPublicPage = ({
+  // Wrapper pour les profils publics afin de gérer le routage dynamique via userId
   user,
   handleOpenMessaging,
   handleShowGame,
@@ -77,8 +79,6 @@ const UtilisateurPublicPage = ({
     />
   );
 };
-
-// ── Composant interne avec accès au router ─────────────────────────────────────
 
 const AppInner = () => {
   const navigate = useNavigate();
@@ -106,7 +106,31 @@ const AppInner = () => {
   const [user, setUser] = useState(null);
   const [authLoading, setAuthLoading] = useState(true);
 
-  // onAuthStateChanged : source unique de vérité pour le user
+  // Rotation dynamique du favicon (270°) via Canvas pour la cohérence avec le logo de la navbar
+  useEffect(() => {
+    const img = new Image();
+    img.src = logo;
+    img.onload = () => {
+      const canvas = document.createElement("canvas");
+      canvas.width = img.width;
+      canvas.height = img.height;
+      const ctx = canvas.getContext("2d");
+      ctx.translate(canvas.width / 2, canvas.height / 2);
+      ctx.rotate((270 * Math.PI) / 180);
+      ctx.drawImage(img, -img.width / 2, -img.height / 2);
+      const rotatedLogo = canvas.toDataURL();
+      const link = document.querySelector("link[rel~='icon']");
+      if (link) link.href = rotatedLogo;
+      else {
+        const newLink = document.createElement("link");
+        newLink.rel = "icon";
+        newLink.href = rotatedLogo;
+        document.head.appendChild(newLink);
+      }
+    };
+  }, []);
+
+  // Synchronisation de l'état utilisateur local avec le profil stocké en base de données au changement d'auth
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
@@ -174,14 +198,12 @@ const AppInner = () => {
     setSearchTerm("");
   }, [location.pathname]);
 
-  // Reset badge messagerie quand on est sur /messagerie
   useEffect(() => {
     if (location.pathname === "/messagerie") {
       setUnreadMessageCount(0);
     }
   }, [location.pathname]);
 
-  // ── Notifications ────────────────────────────────────────────────────────
   const [notifications, setNotifications] = useState([]);
   const [showNotifications, setShowNotifications] = useState(false);
   const notifRef = useRef(null);
@@ -206,7 +228,7 @@ const AppInner = () => {
     }
   }, [user?.uid]);
 
-  // ── Unread messages ──────────────────────────────────────────────────────
+  // Récupération périodique du nombre total de messages non lus pour le badge de la navbar
   const [unreadMessageCount, setUnreadMessageCount] = useState(0);
 
   const fetchUnreadMessageCount = async () => {
@@ -245,7 +267,6 @@ const AppInner = () => {
     return () => document.removeEventListener("mousedown", handle);
   }, []);
 
-  // ── Handlers de navigation ───────────────────────────────────────────────
   const handleLoginSuccess = () => navigate("/");
 
   const handleLogout = () => {
@@ -319,7 +340,6 @@ const AppInner = () => {
 
   return (
     <div className="app-container">
-      {/* ══ NAVBAR ══════════════════════════════════════════════════════════ */}
       <nav className="modern-navbar">
         <div className="navbar-container">
           {!showSearch ? (
@@ -328,12 +348,22 @@ const AppInner = () => {
                 <div
                   className="logo-icon"
                   onClick={() => navigate("/")}
-                  style={{ cursor: "pointer" }}
+                  style={{
+                    cursor: "pointer",
+                    width: "3.5rem", // Agrandissement du conteneur
+                    height: "3.5rem",
+                  }}
                 >
-                  <i
-                    className="fa-solid fa-gamepad"
-                    style={{ color: "white" }}
-                  ></i>
+                  <img
+                    src={logo}
+                    alt="TGMF Logo"
+                    style={{
+                      width: "100%",
+                      height: "100%",
+                      objectFit: "contain",
+                      transform: "rotate(270deg)",
+                    }}
+                  />
                 </div>
                 <h1
                   className="logo-text"
@@ -356,7 +386,6 @@ const AppInner = () => {
                   </button>
                 )}
 
-                {/* BOUTON THÈME */}
                 <button
                   className="nav-icon-btn"
                   onClick={toggleTheme}
@@ -783,7 +812,7 @@ const AppInner = () => {
         </div>
       </nav>
 
-      {/* ══ ROUTES ══════════════════════════════════════════════════════════ */}
+      {/* Configuration des routes et protection des accès (authentification requise ou non) */}
       <main className="main-content-wrapper">
         <Routes>
           <Route
@@ -903,13 +932,14 @@ const AppInner = () => {
           <Route path="/mentions-legales" element={<MentionsLegales />} />
           <Route path="/confidentialite" element={<Confidentialite />} />
           <Route path="/cgu" element={<CGU />} />
+          <Route path="/a-propos" element={<APropos />} />
         </Routes>
       </main>
     </div>
   );
 };
 
-// ── Wrapper Forum pour lire le state de location ──────────────────────────────
+// Extraction des données du sujet de forum passées via le state du router (navigation interne)
 const ForumPage = ({ user, handleShowGame }) => {
   const location = useLocation();
   const forumThread = location.state?.forumThread || null;

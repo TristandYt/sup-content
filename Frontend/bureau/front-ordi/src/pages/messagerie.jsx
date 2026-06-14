@@ -14,9 +14,7 @@ const authAxios = async () => {
   });
 };
 
-/* ═══════════════════════════════════════════════════════════
-   MODALE RECHERCHE UTILISATEUR
-═══════════════════════════════════════════════════════════ */
+// UserSearchModal : Recherche et sélection de contacts pour démarrer une nouvelle discussion
 const UserSearchModal = ({ onClose, onSelectConversation }) => {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState([]);
@@ -295,9 +293,7 @@ const UserSearchModal = ({ onClose, onSelectConversation }) => {
   );
 };
 
-/* ═══════════════════════════════════════════════════════════
-   MODALE MODIFICATION DE MESSAGE
-═══════════════════════════════════════════════════════════ */
+// EditMessageModal : Interface d'édition pour les messages déjà envoyés
 const EditMessageModal = ({ initialText, onClose, onSave }) => {
   const [text, setText] = useState(initialText || "");
   const textareaRef = useRef(null);
@@ -457,9 +453,7 @@ const EditMessageModal = ({ initialText, onClose, onSave }) => {
   );
 };
 
-/* ═══════════════════════════════════════════════════════════
-   MESSAGERIE PRINCIPALE
-═══════════════════════════════════════════════════════════ */
+// Messagerie : Composant principal gérant les conversations et les messages en temps réel
 const Messagerie = ({
   user,
   preselectedConversation,

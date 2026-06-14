@@ -17,14 +17,14 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 
-// Persistence explicite en localStorage → survit au refresh
+// Maintien de la session dans le localStorage pour qu'elle survive au rafraîchissement de la page
 setPersistence(auth, browserLocalPersistence).catch((err) => {
   console.error("Erreur setPersistence:", err);
 });
 
 connectAuthEmulator(auth, "http://localhost:9099", { disableWarnings: true });
 
-// Providers OAuth
+// Configuration des fournisseurs d'authentification tiers
 export const googleProvider = new GoogleAuthProvider();
 export const githubProvider = new GithubAuthProvider();
 

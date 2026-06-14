@@ -50,6 +50,7 @@ const Login = ({ onSwitch, onLoginSuccess }) => {
     }
   };
 
+  // Route personnalisée pour réinitialiser le mot de passe via l'API locale (alternative au mail direct Firebase)
   const handleResetPassword = async () => {
     if (!email.trim() || !password.trim()) {
       setError("Veuillez remplir l'email et le nouveau mot de passe.");

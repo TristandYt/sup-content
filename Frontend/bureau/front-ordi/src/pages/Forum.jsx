@@ -42,6 +42,7 @@ const getIconForGenre = (gameId) => {
   return genre ? genre.icon : "fa-solid fa-layer-group";
 };
 
+// Composant de sélection rapide pour lier un jeu ou une catégorie thématique à un sujet
 const GameDropdown = ({ results, onSelect, searchTerm }) => (
   <div
     style={{
@@ -158,6 +159,7 @@ const GameDropdown = ({ results, onSelect, searchTerm }) => (
   </div>
 );
 
+// Formulaire de création de sujet avec recherche prédictive de jeux via l'API IGDB
 const CreateThreadModal = ({ user, onClose, onCreated }) => {
   const [newThread, setNewThread] = useState({
     title: "",
@@ -172,6 +174,7 @@ const CreateThreadModal = ({ user, onClose, onCreated }) => {
   const [submitting, setSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
 
+  // Déclenche la recherche IGDB uniquement après un délai de frappe (debounce)
   useEffect(() => {
     const timer = setTimeout(async () => {
       if (!gameSearch || gameSearch.length < 2) {
@@ -527,6 +530,7 @@ const Forum = ({ user, onGameClick, initialThread = null }) => {
     fetchThreads();
   }, []);
 
+  // Bascule entre la vue liste des discussions et la vue détaillée d'un fil
   return (
     <div className="accueil-container">
       <div className="main-content-wrapper">
@@ -869,7 +873,6 @@ const Forum = ({ user, onGameClick, initialThread = null }) => {
         )}
       </div>
 
-      {/* ── Modale création ── */}
       {showCreateModal && (
         <CreateThreadModal
           user={user}

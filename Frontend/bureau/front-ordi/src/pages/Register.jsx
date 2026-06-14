@@ -1,4 +1,3 @@
-// src/pages/Register.jsx
 import React, { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { createUserWithEmailAndPassword, updateProfile } from "firebase/auth";
@@ -36,6 +35,7 @@ const Register = ({ onSwitch, onLoginSuccess }) => {
     document.title = "Inscription | TGMF";
   }, []);
 
+  // Validation côté client pour éviter les appels inutiles à l'API
   const validateForm = () => {
     const { pseudo, email, pass, confirm } = formData;
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -55,6 +55,7 @@ const Register = ({ onSwitch, onLoginSuccess }) => {
     setError("");
     setIsLoading(true);
     try {
+      // Création du compte dans Firebase Auth et mise à jour immédiate du pseudo
       const userCredential = await createUserWithEmailAndPassword(
         auth,
         formData.email,

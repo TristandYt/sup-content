@@ -68,6 +68,7 @@ const Accueil = ({
     }
   };
 
+  // Récupération unifiée des jeux ou des utilisateurs selon le type de recherche actif
   const fetchResults = useCallback(async () => {
     setError(null);
     setLoading(true);
@@ -141,6 +142,7 @@ const Accueil = ({
     }
   }, [searchTerm, params, searchType]);
 
+  // Logique de tri côté client pour optimiser les performances lors d'un changement d'ordre simple
   const sortGamesLocally = (gamesList, sortBy, sortOrder) => {
     if (!gamesList || gamesList.length === 0) return gamesList;
 
@@ -185,6 +187,7 @@ const Accueil = ({
     return () => clearTimeout(delay);
   }, [searchTerm, params, searchType]);
 
+  // Chargement paginé des jeux à venir (upcoming) avec option d'ajout à la liste existante
   const fetchUpcoming = useCallback(async (targetPage = 1, append = false) => {
     if (append) setUpcomingLoadingMore(true);
     else setUpcomingLoading(true);
@@ -268,7 +271,7 @@ const Accueil = ({
           </button>
         )}
       </div>
-      
+
       <div className="section-header">
         <div className="section-icon">
           {searchType === "games" ? (
@@ -418,7 +421,6 @@ const Accueil = ({
         </div>
       )}
 
-      {/* ── Bouton catalogue ── */}
       {searchType === "games" &&
         !searchTerm &&
         games.length > 0 &&
@@ -442,7 +444,6 @@ const Accueil = ({
           </div>
         )}
 
-      {/* ── Jeux à venir ── */}
       {searchType === "games" && !searchTerm && (
         <div style={{ marginTop: "3rem" }}>
           <div className="section-header">
