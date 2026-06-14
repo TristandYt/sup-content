@@ -1,0 +1,324 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="AutoImportSettings">
+    <option name="autoReloadType" value="SELECTIVE" />
+  </component>
+  <component name="ChangeListManager">
+    <list default="true" id="eaf4903e-99f4-429c-bab0-9a1a3616c388" name="Changes" comment="Yes I need to do a commit at every changes for the eas. This time we add a dependencie in the package.json" />
+    <option name="SHOW_DIALOG" value="false" />
+    <option name="HIGHLIGHT_CONFLICTS" value="true" />
+    <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
+    <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="FileTemplateManagerImpl">
+    <option name="RECENT_TEMPLATES">
+      <list>
+        <option value="JavaScript File" />
+        <option value="TypeScript JSX File" />
+      </list>
+    </option>
+  </component>
+  <component name="Git.Settings">
+    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
+    <option name="ROOT_SYNC" value="DONT_SYNC" />
+  </component>
+  <component name="GitHubPullRequestSearchHistory">{
+  &quot;lastFilter&quot;: {
+    &quot;state&quot;: &quot;OPEN&quot;,
+    &quot;assignee&quot;: &quot;Androwos&quot;
+  }
+}</component>
+  <component name="GithubPullRequestsUISettings">{
+  &quot;selectedUrlAndAccountId&quot;: {
+    &quot;url&quot;: &quot;https://github.com/TristandYt/sup-content.git&quot;,
+    &quot;accountId&quot;: &quot;e2be4c73-a33d-4ca0-9ce3-18d726964fe4&quot;
+  }
+}</component>
+  <component name="NextEditCompletionFeaturesState">
+    <decayedCancelled>
+      <entry key="MS100" value="1.000000000003102" />
+      <entry key="MS500" value="1.004992575637512" />
+      <entry key="S2" value="1.265879501884418" />
+      <entry key="S5" value="1.6105343299259407" />
+      <entry key="S10" value="1.9524729664910914" />
+      <entry key="S30" value="3.3958179484657793" />
+      <entry key="S60" value="5.613527151770816" />
+      <entry key="M2" value="8.687662959317535" />
+      <entry key="M5" value="13.666044740056345" />
+      <entry key="M10" value="20.089168230333023" />
+      <entry key="M15" value="27.211330371927808" />
+      <entry key="M30" value="48.60119260452683" />
+      <entry key="H1" value="80.37160219667716" />
+      <entry key="H2" value="125.7759920475353" />
+      <entry key="H4" value="184.2162795903821" />
+      <entry key="D1" value="327.73937200279704" />
+      <entry key="W1" value="551.5678816043852" />
+    </decayedCancelled>
+    <decayedSelected>
+      <entry key="MS100" value="5.678678463341942E-34" />
+      <entry key="MS500" value="2.2511782225877455E-7" />
+      <entry key="S2" value="0.027093232095716475" />
+      <entry key="S5" value="0.34037676614238055" />
+      <entry key="S10" value="0.8773248042878204" />
+      <entry key="S30" value="2.7115393808409154" />
+      <entry key="S60" value="4.414785853782931" />
+      <entry key="M2" value="5.866433491390043" />
+      <entry key="M5" value="7.048280619063445" />
+      <entry key="M10" value="7.5862195250108515" />
+      <entry key="M15" value="7.9250855943499925" />
+      <entry key="M30" value="8.691625553885295" />
+      <entry key="H1" value="9.618224253984586" />
+      <entry key="H2" value="10.756629948163832" />
+      <entry key="H4" value="12.181522742585365" />
+      <entry key="D1" value="30.652331707115668" />
+      <entry key="W1" value="92.0212568658639" />
+    </decayedSelected>
+    <decayedShown>
+      <entry key="MS100" value="0.9592641193267624" />
+      <entry key="MS500" value="0.99603302142092" />
+      <entry key="S2" value="1.2711096347661412" />
+      <entry key="S5" value="1.8890738989532292" />
+      <entry key="S10" value="2.7583634538093316" />
+      <entry key="S30" value="6.0493711400518935" />
+      <entry key="S60" value="9.985503038329048" />
+      <entry key="M2" value="14.526899238428237" />
+      <entry key="M5" value="20.701498017151632" />
+      <entry key="M10" value="27.668333538906364" />
+      <entry key="M15" value="35.13126756130125" />
+      <entry key="M30" value="57.28958647745242" />
+      <entry key="H1" value="89.98771427171006" />
+      <entry key="H2" value="136.53115014452248" />
+      <entry key="H4" value="196.3967472571885" />
+      <entry key="D1" value="358.39102442447455" />
+      <entry key="W1" value="643.5888082662514" />
+    </decayedShown>
+  </component>
+  <component name="ProblemsViewState">
+    <option name="selectedTabId" value="CurrentFile" />
+  </component>
+  <component name="ProjectColorInfo">{
+  &quot;associatedIndex&quot;: 2,
+  &quot;fromUser&quot;: false
+}</component>
+  <component name="ProjectId" id="3DfdD2o7M60lStsQq3pqpp2ly6N" />
+  <component name="ProjectViewState">
+    <option name="hideEmptyMiddlePackages" value="true" />
+    <option name="showLibraryContents" value="true" />
+  </component>
+  <component name="PropertiesComponent"><![CDATA[{
+  "keyToString": {
+    "ModuleVcsDetector.initialDetectionPerformed": "true",
+    "RunOnceActivity.ShowReadmeOnStart": "true",
+    "RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager.252": "true",
+    "RunOnceActivity.git.unshallow": "true",
+    "RunOnceActivity.typescript.service.memoryLimit.init": "true",
+    "codeWithMe.voiceChat.enabledByDefault": "false",
+    "com.intellij.ml.llm.matterhorn.ej.ui.settings.DefaultModelSelectionForGA.v1": "true",
+    "git-widget-placeholder": "Front-mobile",
+    "ignore.virus.scanning.warn.message": "true",
+    "javascript.preferred.runtime.type.id": "node",
+    "junie.onboarding.icon.badge.shown": "true",
+    "last_opened_file_path": "C:/Users/andro/WebstormProjects/FinalProject - Copie/mon-projet-global/apps",
+    "node.js.detected.package.eslint": "true",
+    "node.js.detected.package.tslint": "true",
+    "node.js.selected.package.eslint": "(autodetect)",
+    "node.js.selected.package.tslint": "(autodetect)",
+    "nodejs_package_manager_path": "npm",
+    "to.speed.mode.migration.done": "true",
+    "ts.external.directory.path": "C:\\Users\\andro\\AppData\\Local\\Programs\\WebStorm\\plugins\\javascript-plugin\\jsLanguageServicesImpl\\external",
+    "vue.rearranger.settings.migration": "true"
+  }
+}]]></component>
+  <component name="RecentsManager">
+    <key name="CopyFile.RECENT_KEYS">
+      <recent name="C:\Users\andro\WebstormProjects\FinalProject - Copie\mon-projet-global\apps" />
+      <recent name="C:\Users\andro\WebstormProjects\FinalProject - Copie\sup-content" />
+      <recent name="C:\Users\andro\WebstormProjects\FinalProject - Copie\sup-content\backend" />
+      <recent name="C:\Users\andro\WebstormProjects\FinalProject - Copie\mon-projet-global\apps\web\src" />
+      <recent name="C:\Users\andro\WebstormProjects\FinalProject - Copie\mon-projet-global\apps\web\src\Langue" />
+    </key>
+    <key name="MoveFile.RECENT_KEYS">
+      <recent name="C:\Users\andro\WebstormProjects\FinalProject - Copie" />
+      <recent name="C:\Users\andro\WebstormProjects\FinalProject - Copie\mon-projet-global" />
+      <recent name="C:\Users\andro\WebstormProjects\FinalProject - Copie\mon-projet-global\apps" />
+      <recent name="C:\Users\andro\WebstormProjects\FinalProject - Copie\mon-projet-global\apps\web\src" />
+      <recent name="C:\Users\andro\WebstormProjects\FinalProject - Copie\mon-projet-global\apps\web\src\pages" />
+    </key>
+  </component>
+  <component name="SharedIndexes">
+    <attachedChunks>
+      <set>
+        <option value="bundled-js-predefined-d6986cc7102b-31caf2ab9e3c-JavaScript-WS-261.25134.101" />
+      </set>
+    </attachedChunks>
+  </component>
+  <component name="TaskManager">
+    <task active="true" id="Default" summary="Default task">
+      <changelist id="eaf4903e-99f4-429c-bab0-9a1a3616c388" name="Changes" comment="" />
+      <created>1778676934979</created>
+      <option name="number" value="Default" />
+      <option name="presentableId" value="Default" />
+      <updated>1778676934979</updated>
+      <workItem from="1778676936006" duration="2073000" />
+      <workItem from="1778679977407" duration="10875000" />
+      <workItem from="1778778024540" duration="2439000" />
+      <workItem from="1779179065247" duration="29406000" />
+      <workItem from="1780385198198" duration="26946000" />
+      <workItem from="1780906749719" duration="37235000" />
+      <workItem from="1781183741026" duration="9744000" />
+      <workItem from="1781266029341" duration="46733000" />
+    </task>
+    <task id="LOCAL-00001" summary="MonoRepo Set Up With version SupContent">
+      <option name="closed" value="true" />
+      <created>1780409316331</created>
+      <option name="number" value="00001" />
+      <option name="presentableId" value="LOCAL-00001" />
+      <option name="project" value="LOCAL" />
+      <updated>1780409316331</updated>
+    </task>
+    <task id="LOCAL-00002" summary="Connexions API and Game Card">
+      <option name="closed" value="true" />
+      <created>1780575659564</created>
+      <option name="number" value="00002" />
+      <option name="presentableId" value="LOCAL-00002" />
+      <option name="project" value="LOCAL" />
+      <updated>1780575659564</updated>
+    </task>
+    <task id="LOCAL-00003" summary="Connexion FireBase">
+      <option name="closed" value="true" />
+      <created>1780578065117</created>
+      <option name="number" value="00003" />
+      <option name="presentableId" value="LOCAL-00003" />
+      <option name="project" value="LOCAL" />
+      <updated>1780578065117</updated>
+    </task>
+    <task id="LOCAL-00004" summary="Profile and Connection">
+      <option name="closed" value="true" />
+      <created>1780930718073</created>
+      <option name="number" value="00004" />
+      <option name="presentableId" value="LOCAL-00004" />
+      <option name="project" value="LOCAL" />
+      <updated>1780930718073</updated>
+    </task>
+    <task id="LOCAL-00005" summary="Profile and Connection with Comment on games">
+      <option name="closed" value="true" />
+      <created>1781010266426</created>
+      <option name="number" value="00005" />
+      <option name="presentableId" value="LOCAL-00005" />
+      <option name="project" value="LOCAL" />
+      <updated>1781010266426</updated>
+    </task>
+    <task id="LOCAL-00006" summary="Finished the merge with matheo branch (took way to long)">
+      <option name="closed" value="true" />
+      <created>1781195175203</created>
+      <option name="number" value="00006" />
+      <option name="presentableId" value="LOCAL-00006" />
+      <option name="project" value="LOCAL" />
+      <updated>1781195175203</updated>
+    </task>
+    <task id="LOCAL-00007" summary="Open Profil and Collection finished with buggs correction for the mobile">
+      <option name="closed" value="true" />
+      <created>1781426837336</created>
+      <option name="number" value="00007" />
+      <option name="presentableId" value="LOCAL-00007" />
+      <option name="project" value="LOCAL" />
+      <updated>1781426837336</updated>
+    </task>
+    <task id="LOCAL-00008" summary="Forum">
+      <option name="closed" value="true" />
+      <created>1781432198861</created>
+      <option name="number" value="00008" />
+      <option name="presentableId" value="LOCAL-00008" />
+      <option name="project" value="LOCAL" />
+      <updated>1781432198861</updated>
+    </task>
+    <task id="LOCAL-00009" summary="Add the request of authentification to acces the Forum">
+      <option name="closed" value="true" />
+      <created>1781432579692</created>
+      <option name="number" value="00009" />
+      <option name="presentableId" value="LOCAL-00009" />
+      <option name="project" value="LOCAL" />
+      <updated>1781432579692</updated>
+    </task>
+    <task id="LOCAL-00010" summary="Better Longing and Register without OAuth du to the lack of time and backend material">
+      <option name="closed" value="true" />
+      <created>1781434285715</created>
+      <option name="number" value="00010" />
+      <option name="presentableId" value="LOCAL-00010" />
+      <option name="project" value="LOCAL" />
+      <updated>1781434285715</updated>
+    </task>
+    <task id="LOCAL-00011" summary="Chat working (not perfect but working)">
+      <option name="closed" value="true" />
+      <created>1781435475745</created>
+      <option name="number" value="00011" />
+      <option name="presentableId" value="LOCAL-00011" />
+      <option name="project" value="LOCAL" />
+      <updated>1781435475745</updated>
+    </task>
+    <task id="LOCAL-00012" summary="Chat working correcting a display bug">
+      <option name="closed" value="true" />
+      <created>1781436738358</created>
+      <option name="number" value="00012" />
+      <option name="presentableId" value="LOCAL-00012" />
+      <option name="project" value="LOCAL" />
+      <updated>1781436738358</updated>
+    </task>
+    <task id="LOCAL-00013" summary="Fixing axios for building the apk with eas">
+      <option name="closed" value="true" />
+      <created>1781439771744</created>
+      <option name="number" value="00013" />
+      <option name="presentableId" value="LOCAL-00013" />
+      <option name="project" value="LOCAL" />
+      <updated>1781439771744</updated>
+    </task>
+    <task id="LOCAL-00014" summary="building the apk with eas at the right place to use monorepo">
+      <option name="closed" value="true" />
+      <created>1781449877278</created>
+      <option name="number" value="00014" />
+      <option name="presentableId" value="LOCAL-00014" />
+      <option name="project" value="LOCAL" />
+      <updated>1781449877278</updated>
+    </task>
+    <task id="LOCAL-00015" summary="Double mistake, building the apk with eas at the right place to use monorepo">
+      <option name="closed" value="true" />
+      <created>1781450933779</created>
+      <option name="number" value="00015" />
+      <option name="presentableId" value="LOCAL-00015" />
+      <option name="project" value="LOCAL" />
+      <updated>1781450933779</updated>
+    </task>
+    <task id="LOCAL-00016" summary="Yes I need to do a commit at every changes for the eas. This time we add a dependencie in the package.json">
+      <option name="closed" value="true" />
+      <created>1781451450647</created>
+      <option name="number" value="00016" />
+      <option name="presentableId" value="LOCAL-00016" />
+      <option name="project" value="LOCAL" />
+      <updated>1781451450647</updated>
+    </task>
+    <option name="localTasksCounter" value="17" />
+    <servers />
+  </component>
+  <component name="TypeScriptGeneratedFilesManager">
+    <option name="version" value="3" />
+  </component>
+  <component name="VcsManagerConfiguration">
+    <MESSAGE value="MonoRepo Set Up With version SupContent" />
+    <MESSAGE value="Connexions API and Game Card" />
+    <MESSAGE value="Connexion FireBase" />
+    <MESSAGE value="Profile and Connection" />
+    <MESSAGE value="Profile and Connection with Comment on games" />
+    <MESSAGE value="Finished the merge with matheo branch (took way to long)" />
+    <MESSAGE value="Open Profil and Collection finished with buggs correction for the mobile" />
+    <MESSAGE value="Forum" />
+    <MESSAGE value="Add the request of authentification to acces the Forum" />
+    <MESSAGE value="Better Longing and Register without OAuth du to the lack of time and backend material" />
+    <MESSAGE value="Chat working (not perfect but working)" />
+    <MESSAGE value="Chat working correcting a display bug" />
+    <MESSAGE value="Fixing axios for building the apk with eas" />
+    <MESSAGE value="building the apk with eas at the right place to use monorepo" />
+    <MESSAGE value="Double mistake, building the apk with eas at the right place to use monorepo" />
+    <MESSAGE value="Yes I need to do a commit at every changes for the eas. This time we add a dependencie in the package.json" />
+    <option name="LAST_COMMIT_MESSAGE" value="Yes I need to do a commit at every changes for the eas. This time we add a dependencie in the package.json" />
+  </component>
+</project>

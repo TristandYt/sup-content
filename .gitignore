@@ -1,0 +1,29 @@
+# Dépendances
+sup-content/node_modules/
+mon-projet-global/node_modules
+mon-projet-global/apps/web/node_modules
+mon-projet-global/apps/mobile/node_modules
+mon-projet-global/packages/*/node_modules
+
+.expo
+
+.pnp/
+.pnp.js
+
+# Environnement
+.env
+
+# Docker
+.dockerignore
+
+# Firebase
+data/
+.firebase/
+firestore-debug.log
+ui-debug.log
+firebase-debug.log
+backend/.env
+/coverage
+*.export_metadata
+/firebase-export-*
+/backend/tests/coverage
