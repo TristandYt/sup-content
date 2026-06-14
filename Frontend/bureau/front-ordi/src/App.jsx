@@ -20,6 +20,9 @@ import AdminDashboard from "./pages/AdminDashboard";
 import Forum from "./pages/Forum";
 import Catalogue from "./pages/Catalogue";
 import Parametres from "./pages/Parametres.jsx";
+import MentionsLegales from "./pages/MentionsLegales.jsx";
+import Confidentialite from "./pages/Confidentialite.jsx";
+import CGU from "./pages/CGU.jsx";
 import APropos from "./pages/APropos";
 import logo from "./assets/Logo_PLUSFONCE.png";
 import "../Style/Styles.css";
@@ -926,6 +929,9 @@ const AppInner = () => {
               )
             }
           />
+          <Route path="/mentions-legales" element={<MentionsLegales />} />
+          <Route path="/confidentialite" element={<Confidentialite />} />
+          <Route path="/cgu" element={<CGU />} />
           <Route path="/a-propos" element={<APropos />} />
         </Routes>
       </main>

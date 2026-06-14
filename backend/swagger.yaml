@@ -1,28 +1,19 @@
 openapi: 3.0.1
 info:
-  title: tgmf API
+  title: Tgmf API
   version: 1.0.0
   description: |
-    API REST de **tgmf** — plateforme de gestion de bibliothèque de jeux vidéo.
+    API REST de **TGMF** — plateforme de gestion de bibliothèque de jeux vidéo.
 
     ## Authentification
     Firebase JWT requis pour les routes protégées.
     En-tête : `Authorization: Bearer <idToken>`
 
-    ## Rate Limiting
-    200 requêtes par 15 minutes par IP sur `/api/*`
-
     ## Structure
-    - Routes publiques : Auth, Games, Search (partiel), Reviews (partiel)
+    - Routes publiques : Auth, Games, Search (partiel), Reviews (partiel), Forum (partiel)
     - Routes protégées : Users, Lists, Follows, Conversations, Notifications, Forum, Moderation, Interactions, Feed
   contact:
-    name: Tristan — SUPINFO
-
-servers:
-  - url: http://localhost:3000/api
-    description: Développement
-  - url: https://api.tgmf.app/api
-    description: Production
+    name: PGE3 — SUPINFO
 
 tags:
   - name: Auth
@@ -179,6 +170,12 @@ components:
         status:
           type: string
           enum: [to_play, playing, finished, dropped]
+        gameName:
+          type: string
+          nullable: true
+        gameCover:
+          type: string
+          format: uri
         rating:
           type: integer
           nullable: true
@@ -259,6 +256,9 @@ components:
           minimum: 1
           maximum: 5
         text:
+          type: string
+          nullable: true
+        pseudo:
           type: string
           nullable: true
 
@@ -343,7 +343,7 @@ components:
 
     CreateThreadRequest:
       type: object
-      required: [title, content]
+      required: [title, content, gameId]
       properties:
         title:
           type: string
@@ -351,14 +351,35 @@ components:
           type: string
         gameId:
           type: integer
+        gameName:
+          type: string
+          nullable: true
+        gameCoverId:
+          type: string
+          nullable: true
+        pseudo:
+          type: string
+          nullable: true
+        avatarUrl:
+          type: string
+          format: uri
           nullable: true
 
     CreatePostRequest:
       type: object
-      required: [content]
+      required: [content, threadId]
       properties:
+        threadId:
+          type: string
         content:
           type: string
+        pseudo:
+          type: string
+          nullable: true
+        avatarUrl:
+          type: string
+          format: uri
+          nullable: true
 
     FollowEntry:
       type: object
@@ -556,6 +577,18 @@ paths:
           schema:
             type: integer
             default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+        - name: sortBy
+          in: query
+          schema:
+            type: string
+        - name: order
+          in: query
+          schema:
+            type: string
       responses:
         '200':
           description: Liste de jeux
@@ -581,6 +614,26 @@ paths:
           required: true
           schema:
             type: string
+        - name: genre
+          in: query
+          schema:
+            type: string
+        - name: platform
+          in: query
+          schema:
+            type: string
+        - name: style
+          in: query
+          schema:
+            type: string
+        - name: page
+          in: query
+          schema:
+            type: integer
+        - name: limit
+          in: query
+          schema:
+            type: integer
       responses:
         '200':
           description: Résultats
@@ -605,6 +658,10 @@ paths:
           in: query
           schema:
             type: integer
+        - name: limit
+          in: query
+          schema:
+            type: integer
       responses:
         '200':
           description: Jeux à venir
@@ -625,18 +682,34 @@ paths:
       tags: [Games]
       summary: Jeux filtrés
       parameters:
-        - name: genres
+        - name: genre
           in: query
           schema:
-            type: array
-            items:
-              type: string
-        - name: platforms
+            type: string
+        - name: platform
           in: query
           schema:
-            type: array
-            items:
-              type: string
+            type: string
+        - name: style
+          in: query
+          schema:
+            type: string
+        - name: sortBy
+          in: query
+          schema:
+            type: string
+        - name: order
+          in: query
+          schema:
+            type: string
+        - name: page
+          in: query
+          schema:
+            type: integer
+        - name: limit
+          in: query
+          schema:
+            type: integer
       responses:
         '200':
           description: Jeux filtrés
@@ -1087,6 +1160,52 @@ paths:
               schema:
                 type: object
 
+  /users/logs:
+    get:
+      tags: [Users]
+      summary: Voir l'historique des actions (Admin)
+      security:
+        - FirebaseJWT: []
+      responses:
+        '200':
+          description: Historique récupéré
+
+  /users/promote/{userId}:
+    post:
+      tags: [Users]
+      summary: Promouvoir un membre (Admin)
+      security:
+        - FirebaseJWT: []
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [role]
+              properties:
+                role:
+                  type: string
+      responses:
+        '200':
+          description: Membre promu
+
+  /users/me/stats:
+    get:
+      tags: [Users]
+      summary: Statistiques de la bibliothèque
+      security:
+        - FirebaseJWT: []
+      responses:
+        '200':
+          description: Statistiques récupérées
+
   # ==================== LISTS ====================
   /lists/status:
     post:
@@ -1436,6 +1555,27 @@ paths:
               schema:
                 $ref: '#/components/schemas/SuccessMessage'
 
+    put:
+      tags: [Reviews]
+      summary: Modifier une critique
+      security:
+        - FirebaseJWT: []
+      parameters:
+        - name: gameId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AddReviewRequest'
+      responses:
+        '200':
+          description: Critique modifiée
+
   # ==================== INTERACTIONS ====================
   /interactions/reviews/{reviewId}/like:
     post:
@@ -1671,7 +1811,7 @@ paths:
   /conversations/{conversationId}/messages/{messageId}:
     patch:
       tags: [Conversations]
-      summary: Marquer un message comme lu
+      summary: Modifier un message
       security:
         - FirebaseJWT: []
       parameters:
@@ -1685,9 +1825,19 @@ paths:
           required: true
           schema:
             type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [text]
+              properties:
+                text:
+                  type: string
       responses:
         '200':
-          description: Message marqué
+          description: Message modifié
           content:
             application/json:
               schema:
@@ -1716,6 +1866,27 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/SuccessMessage'
+
+  /conversations/{conversationId}/messages/{messageId}/read:
+    patch:
+      tags: [Conversations]
+      summary: Marquer un message comme lu
+      security:
+        - FirebaseJWT: []
+      parameters:
+        - name: conversationId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: messageId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Message marqué
 
   # ==================== NOTIFICATIONS ====================
   /notifications/stream:
@@ -1928,6 +2099,27 @@ paths:
           required: true
           schema:
             type: string
+        - name: type
+          in: query
+          schema:
+            type: string
+            enum: [all, users, games, lists]
+        - name: genre
+          in: query
+          schema:
+            type: string
+        - name: year
+          in: query
+          schema:
+            type: integer
+        - name: page
+          in: query
+          schema:
+            type: integer
+        - name: limit
+          in: query
+          schema:
+            type: integer
       responses:
         '200':
           description: Résultats
@@ -1939,7 +2131,7 @@ paths:
                   data:
                     type: object
 
-  /search/recommendations:
+  /recommendations:
     get:
       tags: [Search]
       summary: Recommandations personnalisées
@@ -1959,6 +2151,16 @@ paths:
                       $ref: '#/components/schemas/GameSummary'
 
   # ==================== MODERATION ====================
+  /moderation/reports:
+    get:
+      tags: [Moderation]
+      summary: Voir les signalements (admin)
+      security:
+        - FirebaseJWT: []
+      responses:
+        '200':
+          description: Liste des signalements
+
   /moderation/report:
     post:
       tags: [Moderation]
