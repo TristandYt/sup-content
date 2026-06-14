@@ -72,9 +72,7 @@ const Footer = () => {
         </div>
       </div>
       <div className="footer-bottom">
-        <p>
-          &copy; {new Date().getFullYear()} SupContent. Tous droits réservés.
-        </p>
+        <p>&copy; {new Date().getFullYear()} TGMF. Tous droits réservés.</p>
       </div>
     </footer>
   );
