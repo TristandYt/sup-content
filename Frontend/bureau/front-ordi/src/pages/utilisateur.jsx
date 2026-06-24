@@ -7,7 +7,6 @@ import { statusConfig } from "../Utils/icons";
 import "../../Style/Styles.css";
 import defaultCover from "../assets/fr-default-large_default.jpg";
 import Footer from "../components/Footer";
-const { t, i18n } = useTranslation();
 
 const authAxios = async () => {
   const firebaseUser = auth.currentUser;
@@ -27,6 +26,7 @@ const PublicProfile = ({
   onOpenMessaging,
   onGameClick,
 }) => {
+  const { t } = useTranslation();
   const [profile, setProfile] = useState(null);
   const [iFollow, setIFollow] = useState(false);
   const [theyFollowMe, setTheyFollowMe] = useState(false);
@@ -1880,7 +1880,7 @@ const MyProfile = ({ user, onLoginSuccess, onLogout, onGameClick }) => {
         Erreur
       </>
     ),
-    "": "Sauvegarder les modifications",
+    "": t("btnUpdate") || "Sauvegarder les modifications",
   }[saveStatus];
 
   return (
@@ -2140,14 +2140,15 @@ const MyProfile = ({ user, onLoginSuccess, onLogout, onGameClick }) => {
                     fontWeight: "bold",
                   }}
                 >
-                  Langue de l'interface
+                  {t("langLabel") || "Langue de l'interface"}
                 </label>
                 <select
+                  name="lang"
                   value={i18n.language}
-                  onChange={(e) => i18n.changeLanguage(e.target.value)}
+                  onChange={handleChange}
                   style={{
                     width: "100%",
-                    backgroundColor: "#1a1a2e" /* s'adapte à ton fond sombre */,
+                    backgroundColor: "#1a1a2e",
                     color: "#ffffff",
                     border: "1px solid rgba(255, 255, 255, 0.1)",
                     padding: "10px",
@@ -2167,7 +2168,7 @@ const MyProfile = ({ user, onLoginSuccess, onLogout, onGameClick }) => {
                     className="game-genre"
                     style={{ display: "block", marginBottom: "8px" }}
                   >
-                    Pseudo
+                    {t("label_pseudo") || "Pseudo"}
                   </label>
                   <input
                     type="text"
@@ -2201,7 +2202,7 @@ const MyProfile = ({ user, onLoginSuccess, onLogout, onGameClick }) => {
                   className="game-genre"
                   style={{ display: "block", marginBottom: "8px" }}
                 >
-                  Bio
+                  {t("bioLabel") || "Bio"}
                 </label>
                 <textarea
                   name="bio"
@@ -2213,7 +2214,7 @@ const MyProfile = ({ user, onLoginSuccess, onLogout, onGameClick }) => {
                     minHeight: "80px",
                     paddingTop: "10px",
                   }}
-                  placeholder="Parle un peu de toi..."
+                  placeholder={t("placeholderBio") || "Parle un peu de toi..."}
                 />
               </div>
 
