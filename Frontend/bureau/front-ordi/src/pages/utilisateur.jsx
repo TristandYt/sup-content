@@ -7,6 +7,7 @@ import { statusConfig } from "../Utils/icons";
 import "../../Style/Styles.css";
 import defaultCover from "../assets/fr-default-large_default.jpg";
 import Footer from "../components/Footer";
+const { t, i18n } = useTranslation();
 
 const authAxios = async () => {
   const firebaseUser = auth.currentUser;
@@ -176,7 +177,9 @@ const PublicProfile = ({
       onOpenMessaging(res.data.conversation);
     } catch (err) {
       console.error("Erreur conversation:", err);
-      showToast(err.response?.data?.msg || "Impossible d'ouvrir la conversation.");
+      showToast(
+        err.response?.data?.msg || "Impossible d'ouvrir la conversation.",
+      );
     } finally {
       setMsgLoading(false);
     }
@@ -941,7 +944,7 @@ const CustomLists = ({ onGameClick }) => {
         } catch (err) {
           showToast("Erreur lors de la suppression de la liste.");
         }
-      }
+      },
     });
   };
 
@@ -1485,28 +1488,95 @@ const CustomLists = ({ onGameClick }) => {
         </div>
       )}
       {toast && (
-        <div style={{
-          position: "fixed", bottom: "20px", right: "20px",
-          background: toast.type === "success" ? "#22c55e" : "#ef4444",
-          color: "#fff", padding: "12px 24px", borderRadius: "8px",
-          boxShadow: "0 4px 12px rgba(0,0,0,0.5)", zIndex: 99999,
-          animation: "slideUp 0.3s ease-out"
-        }}>
-          <i className={`fa-solid ${toast.type === "success" ? "fa-check" : "fa-circle-exclamation"}`} style={{marginRight: "8px"}}></i>
+        <div
+          style={{
+            position: "fixed",
+            bottom: "20px",
+            right: "20px",
+            background: toast.type === "success" ? "#22c55e" : "#ef4444",
+            color: "#fff",
+            padding: "12px 24px",
+            borderRadius: "8px",
+            boxShadow: "0 4px 12px rgba(0,0,0,0.5)",
+            zIndex: 99999,
+            animation: "slideUp 0.3s ease-out",
+          }}
+        >
+          <i
+            className={`fa-solid ${toast.type === "success" ? "fa-check" : "fa-circle-exclamation"}`}
+            style={{ marginRight: "8px" }}
+          ></i>
           {toast.msg}
         </div>
       )}
       {confirmDialog && (
-        <div style={{
-          position: "fixed", top: 0, left: 0, right: 0, bottom: 0,
-          background: "rgba(0,0,0,0.85)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100000, padding: "20px"
-        }}>
-          <div style={{ background: "#111118", border: "1px solid #1e1e2a", borderRadius: "12px", padding: "24px", maxWidth: "400px", width: "100%", animation: "fadeIn 0.2s ease" }}>
-            <h3 style={{ margin: "0 0 16px 0", color: "#e8e8f0", fontSize: "1.1rem" }}>Confirmation</h3>
-            <p style={{ color: "#9ca3af", marginBottom: "24px", fontSize: "0.95rem" }}>{confirmDialog.message}</p>
-            <div style={{ display: "flex", gap: "12px", justifyContent: "flex-end" }}>
-              <button className="category-btn" onClick={() => setConfirmDialog(null)}>Annuler</button>
-              <button className="nav-user-btn" style={{ background: "#ef4444" }} onClick={() => { confirmDialog.onConfirm(); setConfirmDialog(null); }}>Confirmer</button>
+        <div
+          style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: "rgba(0,0,0,0.85)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 100000,
+            padding: "20px",
+          }}
+        >
+          <div
+            style={{
+              background: "#111118",
+              border: "1px solid #1e1e2a",
+              borderRadius: "12px",
+              padding: "24px",
+              maxWidth: "400px",
+              width: "100%",
+              animation: "fadeIn 0.2s ease",
+            }}
+          >
+            <h3
+              style={{
+                margin: "0 0 16px 0",
+                color: "#e8e8f0",
+                fontSize: "1.1rem",
+              }}
+            >
+              Confirmation
+            </h3>
+            <p
+              style={{
+                color: "#9ca3af",
+                marginBottom: "24px",
+                fontSize: "0.95rem",
+              }}
+            >
+              {confirmDialog.message}
+            </p>
+            <div
+              style={{
+                display: "flex",
+                gap: "12px",
+                justifyContent: "flex-end",
+              }}
+            >
+              <button
+                className="category-btn"
+                onClick={() => setConfirmDialog(null)}
+              >
+                Annuler
+              </button>
+              <button
+                className="nav-user-btn"
+                style={{ background: "#ef4444" }}
+                onClick={() => {
+                  confirmDialog.onConfirm();
+                  setConfirmDialog(null);
+                }}
+              >
+                Confirmer
+              </button>
             </div>
           </div>
         </div>
@@ -1541,7 +1611,7 @@ const MyProfile = ({ user, onLoginSuccess, onLogout, onGameClick }) => {
   const [saveStatus, setSaveStatus] = useState("");
 
   useEffect(() => {
-    document.title = "Mon Profil | SupContent";
+    document.title = "Mon Profil | TGMF";
   }, []);
 
   useEffect(() => {
@@ -1592,17 +1662,17 @@ const MyProfile = ({ user, onLoginSuccess, onLogout, onGameClick }) => {
           followingCount: actualFollowingCount,
         };
         setProfileData(fullProfile);
-      if (onLoginSuccess) {
-        onLoginSuccess({
-          ...user,
-          ...fullProfile,
-          pseudo: fullProfile.pseudo,
-          username: fullProfile.pseudo,
-          displayName: fullProfile.pseudo,
-          avatarUrl: fullProfile.avatar,
-          photoURL: fullProfile.avatar
-        });
-      }
+        if (onLoginSuccess) {
+          onLoginSuccess({
+            ...user,
+            ...fullProfile,
+            pseudo: fullProfile.pseudo,
+            username: fullProfile.pseudo,
+            displayName: fullProfile.pseudo,
+            avatarUrl: fullProfile.avatar,
+            photoURL: fullProfile.avatar,
+          });
+        }
       }
     } catch (err) {
       console.warn("Erreur fetch profile perso", err);
@@ -1653,7 +1723,12 @@ const MyProfile = ({ user, onLoginSuccess, onLogout, onGameClick }) => {
       };
       if (profileData.website) payload.website = profileData.website;
       // On accepte désormais les liens classiques OU les images encodées en base64 compressées
-      if (profileData.avatar && (profileData.avatar.startsWith("http") || profileData.avatar.startsWith("data:image/"))) payload.avatarUrl = profileData.avatar;
+      if (
+        profileData.avatar &&
+        (profileData.avatar.startsWith("http") ||
+          profileData.avatar.startsWith("data:image/"))
+      )
+        payload.avatarUrl = profileData.avatar;
       if (profileData.birthDate) payload.birthDate = profileData.birthDate;
 
       await api.put("/users/profile", payload);
@@ -1661,7 +1736,10 @@ const MyProfile = ({ user, onLoginSuccess, onLogout, onGameClick }) => {
       if (auth.currentUser) {
         await updateProfile(auth.currentUser, {
           displayName: profileData.pseudo,
-          photoURL: profileData.avatar && profileData.avatar.startsWith("http") ? profileData.avatar : auth.currentUser.photoURL
+          photoURL:
+            profileData.avatar && profileData.avatar.startsWith("http")
+              ? profileData.avatar
+              : auth.currentUser.photoURL,
         });
         await auth.currentUser.reload();
       }
@@ -1674,14 +1752,14 @@ const MyProfile = ({ user, onLoginSuccess, onLogout, onGameClick }) => {
           username: profileData.pseudo,
           displayName: profileData.pseudo,
           avatarUrl: profileData.avatar,
-          photoURL: profileData.avatar
+          photoURL: profileData.avatar,
         });
       }
       setSaveStatus("saved");
       setTimeout(() => {
         setSaveStatus("");
         setIsEditing(false);
-        
+
         // Force la mise à jour du Header si l'application principale n'écoute pas l'événement dynamique
         if (!onLoginSuccess) {
           window.location.reload();
@@ -1715,17 +1793,23 @@ const MyProfile = ({ user, onLoginSuccess, onLogout, onGameClick }) => {
 
           // Calcul des nouvelles dimensions en conservant le ratio
           if (width > height) {
-            if (width > MAX_SIZE) { height *= MAX_SIZE / width; width = MAX_SIZE; }
+            if (width > MAX_SIZE) {
+              height *= MAX_SIZE / width;
+              width = MAX_SIZE;
+            }
           } else {
-            if (height > MAX_SIZE) { width *= MAX_SIZE / height; height = MAX_SIZE; }
+            if (height > MAX_SIZE) {
+              width *= MAX_SIZE / height;
+              height = MAX_SIZE;
+            }
           }
-          
+
           canvas.width = width;
           canvas.height = height;
-          
+
           const ctx = canvas.getContext("2d");
           ctx.drawImage(img, 0, 0, width, height);
-          
+
           // Compression à 70% de qualité JPEG pour garantir une très petite taille de payload
           const dataUrl = canvas.toDataURL("image/jpeg", 0.7);
           setProfileData({ ...profileData, avatar: dataUrl });
@@ -1770,10 +1854,10 @@ const MyProfile = ({ user, onLoginSuccess, onLogout, onGameClick }) => {
   const totalGames = favorites.length;
   const countByStatus = {
     Tous: totalGames,
-    "A faire": favorites.filter(g => g.status === "to_play").length,
-    "En cours": favorites.filter(g => g.status === "playing").length,
-    "Fini": favorites.filter(g => g.status === "finished").length,
-    "Abandonné": favorites.filter(g => g.status === "dropped").length,
+    "A faire": favorites.filter((g) => g.status === "to_play").length,
+    "En cours": favorites.filter((g) => g.status === "playing").length,
+    Fini: favorites.filter((g) => g.status === "finished").length,
+    Abandonné: favorites.filter((g) => g.status === "dropped").length,
   };
 
   const saveLabel = {
@@ -2047,6 +2131,35 @@ const MyProfile = ({ user, onLoginSuccess, onLogout, onGameClick }) => {
                   style={{ width: "100%", padding: "10px" }}
                 />
               </div>
+              <div style={{ marginBottom: "15px" }}>
+                <label
+                  style={{
+                    display: "block",
+                    color: "#c084fc",
+                    marginBottom: "5px",
+                    fontWeight: "bold",
+                  }}
+                >
+                  Langue de l'interface
+                </label>
+                <select
+                  value={i18n.language}
+                  onChange={(e) => i18n.changeLanguage(e.target.value)}
+                  style={{
+                    width: "100%",
+                    backgroundColor: "#1a1a2e" /* s'adapte à ton fond sombre */,
+                    color: "#ffffff",
+                    border: "1px solid rgba(255, 255, 255, 0.1)",
+                    padding: "10px",
+                    borderRadius: "6px",
+                    outline: "none",
+                    cursor: "pointer",
+                  }}
+                >
+                  <option value="fr">Français</option>
+                  <option value="en">Anglais</option>
+                </select>
+              </div>
 
               <div style={{ display: "flex", gap: "16px", flexWrap: "wrap" }}>
                 <div style={{ flex: 1, minWidth: "200px" }}>
@@ -2148,7 +2261,11 @@ const MyProfile = ({ user, onLoginSuccess, onLogout, onGameClick }) => {
           {filteredGames.length === 0 ? (
             <div
               className="game-card-modern"
-              style={{ padding: "40px", textAlign: "center", cursor: "default" }}
+              style={{
+                padding: "40px",
+                textAlign: "center",
+                cursor: "default",
+              }}
             >
               <p className="hero-subtitle">
                 {favorites.length === 0
