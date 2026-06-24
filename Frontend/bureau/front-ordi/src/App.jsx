@@ -3,6 +3,7 @@ import {
   BrowserRouter,
   Routes,
   Route,
+  Navigate, // Ajouté ici
   useNavigate,
   useParams,
   useLocation,
@@ -28,6 +29,20 @@ import logo from "./assets/Logo_PLUSFONCE.png";
 import "../Style/Styles.css";
 import "./Langue/i18n";
 
+// Guard : redirige vers / si déjà connecté (pour login/register)
+const GuestRoute = ({ user, authLoading, children }) => {
+  if (authLoading) return null;
+  if (user) return <Navigate to="/" replace />;
+  return children;
+};
+
+// Guard : redirige si pas connecté ou pas admin
+const AdminRoute = ({ user, authLoading, children }) => {
+  if (authLoading) return null;
+  if (!user || user.role !== "admin") return <Navigate to="/" replace />;
+  return children;
+};
+
 const authAxios = async () => {
   const firebaseUser = auth.currentUser;
   if (!firebaseUser) return null;
@@ -39,7 +54,6 @@ const authAxios = async () => {
 };
 
 const JeuPage = ({
-  // Wrapper de page pour extraire les paramètres d'URL et passer la logique au composant Jeu
   user,
   handleShowGame,
   handleForumClick,
@@ -60,7 +74,6 @@ const JeuPage = ({
 };
 
 const UtilisateurPublicPage = ({
-  // Wrapper pour les profils publics afin de gérer le routage dynamique via userId
   user,
   handleOpenMessaging,
   handleShowGame,
@@ -350,7 +363,7 @@ const AppInner = () => {
                   onClick={() => navigate("/")}
                   style={{
                     cursor: "pointer",
-                    width: "3.5rem", // Agrandissement du conteneur
+                    width: "3.5rem",
                     height: "3.5rem",
                   }}
                 >
@@ -812,7 +825,7 @@ const AppInner = () => {
         </div>
       </nav>
 
-      {/* Configuration des routes et protection des accès (authentification requise ou non) */}
+      {/* Configuration des routes et protection des accès */}
       <main className="main-content-wrapper">
         <Routes>
           <Route
@@ -823,12 +836,43 @@ const AppInner = () => {
                 onUserClick={handleUserClick}
                 searchTerm={searchTerm}
                 user={user}
-                onAdminClick={handleAdminClick}
-                onOpenCatalogue={handleOpenCatalogue}
-                theme={theme}
-                toggleTheme={toggleTheme}
               />
             }
+          />
+          <Route
+            path="/login"
+            element={
+              <GuestRoute user={user} authLoading={authLoading}>
+                <Login
+                  onSwitch={() => navigate("/register")}
+                  onLoginSuccess={handleLoginSuccess}
+                />
+              </GuestRoute>
+            }
+          />
+          <Route
+            path="/register"
+            element={
+              <GuestRoute user={user} authLoading={authLoading}>
+                <Register onSwitch={() => navigate("/login")} />
+              </GuestRoute>
+            }
+          />
+          <Route
+            path="/admin"
+            element={
+              <AdminRoute user={user} authLoading={authLoading}>
+                <AdminDashboard onBack={() => navigate(-1)} />
+              </AdminRoute>
+            }
+          />
+          <Route
+            path="/catalogue"
+            element={<Catalogue onGameClick={handleShowGame} />}
+          />
+          <Route
+            path="/forum"
+            element={<Forum user={user} onUserClick={handleUserClick} />}
           />
           <Route
             path="/jeu/:gameId"
@@ -842,42 +886,27 @@ const AppInner = () => {
             }
           />
           <Route
-            path="/login"
+            path="/messagerie"
             element={
-              <Login
-                onSwitch={() => navigate("/register")}
-                onLoginSuccess={handleLoginSuccess}
+              <Messagerie
+                user={user}
+                onUserClick={handleUserClick}
+                preselectedConversation={preselectedConversation}
               />
             }
           />
           <Route
-            path="/register"
-            element={<Register onSwitch={() => navigate("/login")} />}
-          />
-          <Route
             path="/profil"
             element={
-              user ? (
-                <Utilisateur
-                  key={profileRefresh}
-                  user={user}
-                  onLoginSuccess={(updatedUser) =>
-                    setUser((prev) => ({ ...prev, ...updatedUser }))
-                  }
-                  onLogout={() => {
-                    setUser(null);
-                    auth.signOut();
-                    navigate("/");
-                  }}
-                  onGameClick={handleShowGame}
-                  onAdminClick={handleAdminClick}
-                />
-              ) : (
-                <Login
-                  onSwitch={() => navigate("/register")}
-                  onLoginSuccess={handleLoginSuccess}
-                />
-              )
+              <Utilisateur
+                key={profileRefresh}
+                user={user}
+                isPublic={false}
+                onBack={() => navigate(-1)}
+                onOpenMessaging={handleOpenMessaging}
+                onGameClick={handleShowGame}
+                onLogout={handleLogout}
+              />
             }
           />
           <Route
@@ -890,45 +919,7 @@ const AppInner = () => {
               />
             }
           />
-          <Route
-            path="/messagerie"
-            element={
-              <Messagerie
-                user={user}
-                preselectedConversation={preselectedConversation}
-                onConversationOpen={() => setPreselectedConversation(null)}
-                onMessagesRead={fetchUnreadMessageCount}
-              />
-            }
-          />
-          <Route
-            path="/forum"
-            element={<ForumPage user={user} handleShowGame={handleShowGame} />}
-          />
-          <Route
-            path="/catalogue"
-            element={
-              <Catalogue
-                onGameClick={handleShowGame}
-                user={user}
-                searchTerm={searchTerm}
-              />
-            }
-          />
-          <Route
-            path="/admin"
-            element={<AdminDashboard onBack={() => navigate(-1)} />}
-          />
-          <Route
-            path="/parametres"
-            element={
-              user ? (
-                <Parametres user={user} />
-              ) : (
-                <Login onLoginSuccess={handleLoginSuccess} />
-              )
-            }
-          />
+          <Route path="/parametres" element={<Parametres user={user} />} />
           <Route path="/mentions-legales" element={<MentionsLegales />} />
           <Route path="/confidentialite" element={<Confidentialite />} />
           <Route path="/cgu" element={<CGU />} />
@@ -939,23 +930,10 @@ const AppInner = () => {
   );
 };
 
-// Extraction des données du sujet de forum passées via le state du router (navigation interne)
-const ForumPage = ({ user, handleShowGame }) => {
-  const location = useLocation();
-  const forumThread = location.state?.forumThread || null;
+export default function App() {
   return (
-    <Forum
-      user={user}
-      onGameClick={handleShowGame}
-      initialThread={forumThread}
-    />
+    <BrowserRouter>
+      <AppInner />
+    </BrowserRouter>
   );
-};
-
-const App = () => (
-  <BrowserRouter>
-    <AppInner />
-  </BrowserRouter>
-);
-
-export default App;
+}
