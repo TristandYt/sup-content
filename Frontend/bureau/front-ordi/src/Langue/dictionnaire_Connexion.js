@@ -14,6 +14,7 @@ export const resources_connexion = {
       reset_password_label: "Nouveau mot de passe",
       reset_button: "Réinitialiser",
       cancel_button: "Annuler",
+      subtitle: "Accédez à votre bibliothèque",
     },
   },
   en: {
@@ -31,6 +32,7 @@ export const resources_connexion = {
       reset_password_label: "New password",
       reset_button: "Reset",
       cancel_button: "Cancel",
+      subtitle: "Access your library",
     },
   },
 };

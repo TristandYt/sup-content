@@ -160,7 +160,7 @@ const Login = ({ onSwitch, onLoginSuccess }) => {
             {isResetMode ? t("reset_title") : t("title")}
           </h2>
           <p className="hero-subtitle" style={{ marginBottom: "1.5rem" }}>
-            Accédez à votre bibliothèque
+            {t("subtitle")}
           </p>
         </div>
 
