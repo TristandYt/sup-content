@@ -3,12 +3,13 @@ import {
   BrowserRouter,
   Routes,
   Route,
-  Navigate, // Ajouté ici
+  Navigate,
   useNavigate,
   useParams,
   useLocation,
 } from "react-router-dom";
 import axios from "axios";
+import { useTranslation } from "react-i18next";
 import { auth } from "./Service/firebase";
 import { onAuthStateChanged } from "firebase/auth";
 import Accueil from "./pages/Accueil";
@@ -29,14 +30,12 @@ import logo from "./assets/Logo_PLUSFONCE.png";
 import "../Style/Styles.css";
 import "./Langue/i18n";
 
-// Guard : redirige vers / si déjà connecté (pour login/register)
 const GuestRoute = ({ user, authLoading, children }) => {
   if (authLoading) return null;
   if (user) return <Navigate to="/" replace />;
   return children;
 };
 
-// Guard : redirige si pas connecté ou pas admin
 const AdminRoute = ({ user, authLoading, children }) => {
   if (authLoading) return null;
   if (!user || user.role !== "admin") return <Navigate to="/" replace />;
@@ -94,6 +93,7 @@ const UtilisateurPublicPage = ({
 };
 
 const AppInner = () => {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -318,16 +318,16 @@ const AppInner = () => {
 
   const notifLabel = (n) => {
     const map = {
-      follow: "Un nouvel utilisateur vous suit !",
-      NEW_FOLLOWER: "Un nouvel utilisateur vous suit !",
-      like: "Quelqu'un a aimé votre avis.",
-      NEW_LIKE: "Quelqu'un a aimé votre critique.",
-      comment: "Un nouveau commentaire sur votre avis.",
-      NEW_COMMENT: "Un nouveau commentaire sur votre avis.",
-      message: "Vous avez un nouveau message.",
-      thread_reply: "Nouvelle réponse dans un fil.",
+      follow: t("app_notif_new_follower"),
+      NEW_FOLLOWER: t("app_notif_new_follower"),
+      like: t("app_notif_new_like"),
+      NEW_LIKE: t("app_notif_new_like"),
+      comment: t("app_notif_new_comment"),
+      NEW_COMMENT: t("app_notif_new_comment"),
+      message: t("app_notif_new_message"),
+      thread_reply: t("app_notif_thread_reply"),
     };
-    return map[n.type] || n.message || "Nouvelle notification";
+    return map[n.type] || n.message || t("app_notif_default");
   };
 
   const unreadCount = notifications.filter((n) => !n.isRead).length;
@@ -345,7 +345,9 @@ const AppInner = () => {
       >
         <div style={{ textAlign: "center" }}>
           <div className="loading-spinner" style={{ margin: "0 auto 16px" }} />
-          <p style={{ color: "#64748b", fontSize: "0.9rem" }}>Chargement…</p>
+          <p style={{ color: "#64748b", fontSize: "0.9rem" }}>
+            {t("app_loading")}
+          </p>
         </div>
       </div>
     );
@@ -392,7 +394,7 @@ const AppInner = () => {
                   <button
                     className="nav-icon-btn"
                     onClick={() => navigate(-1)}
-                    title="Retour"
+                    title={t("app_nav_back")}
                     style={{ color: "#c084fc", fontSize: "1.2rem" }}
                   >
                     <i className="fa-solid fa-arrow-left"></i>
@@ -402,7 +404,7 @@ const AppInner = () => {
                 <button
                   className="nav-icon-btn"
                   onClick={toggleTheme}
-                  title="Changer de thème"
+                  title={t("app_nav_theme_toggle")}
                   style={{ fontSize: "1.2rem" }}
                 >
                   {theme === "dark" ? (
@@ -421,7 +423,7 @@ const AppInner = () => {
                 <button
                   className="nav-icon-btn"
                   onClick={() => setShowSearch(true)}
-                  title="Rechercher"
+                  title={t("app_nav_search")}
                   style={{
                     fontSize: "1.2rem",
                     color: theme === "light" ? "rgb(30, 48, 80)" : "#fff",
@@ -435,7 +437,7 @@ const AppInner = () => {
                     <button
                       className="nav-icon-btn"
                       onClick={() => setShowNotifications((v) => !v)}
-                      title="Notifications"
+                      title={t("app_nav_notifications")}
                       style={{
                         position: "relative",
                         fontSize: "1.2rem",
@@ -499,7 +501,7 @@ const AppInner = () => {
                               color: "#e2e8f0",
                             }}
                           >
-                            Notifications
+                            {t("app_notif_title")}
                             {unreadCount > 0 && (
                               <span
                                 style={{
@@ -511,7 +513,9 @@ const AppInner = () => {
                                   padding: "1px 7px",
                                 }}
                               >
-                                {unreadCount} nouvelles
+                                {t("app_notif_new_count", {
+                                  count: unreadCount,
+                                })}
                               </span>
                             )}
                           </span>
@@ -536,7 +540,7 @@ const AppInner = () => {
                                 fontWeight: "600",
                               }}
                             >
-                              Tout lire
+                              {t("app_notif_mark_all_read")}
                             </button>
                           )}
                         </div>
@@ -565,7 +569,7 @@ const AppInner = () => {
                                   fontSize: "0.82rem",
                                 }}
                               >
-                                Aucune notification
+                                {t("app_notif_empty")}
                               </p>
                             </div>
                           ) : (
@@ -622,7 +626,7 @@ const AppInner = () => {
                                         ? new Date(
                                             n.createdAt._seconds * 1000,
                                           ).toLocaleDateString()
-                                        : "Récemment"}
+                                        : t("app_notif_recently")}
                                   </span>
                                 </div>
                                 {!n.isRead && (
@@ -653,7 +657,7 @@ const AppInner = () => {
                       setPreselectedConversation(null);
                       navigate("/messagerie");
                     }}
-                    title="Messagerie"
+                    title={t("app_nav_messaging")}
                     style={{
                       position: "relative",
                       fontSize: "1.2rem",
@@ -687,7 +691,7 @@ const AppInner = () => {
                 <button
                   className="nav-icon-btn"
                   onClick={handleOpenForum}
-                  title="Forum"
+                  title={t("app_nav_forum")}
                   style={{
                     fontSize: "1.2rem",
                     color: theme === "light" ? "rgb(30, 48, 80)" : "#fff",
@@ -709,7 +713,7 @@ const AppInner = () => {
                       }}
                     >
                       <i className="fa-solid fa-arrow-right-to-bracket"></i>
-                      <span>S'inscrire / Connexion</span>
+                      <span>{t("app_nav_signup_login")}</span>
                     </button>
                   ) : (
                     <>
@@ -758,7 +762,7 @@ const AppInner = () => {
                               className="fa-solid fa-user"
                               style={{ marginRight: "8px" }}
                             ></i>{" "}
-                            Profil
+                            {t("app_dropdown_profile")}
                           </button>
                           <button
                             className="dropdown-item"
@@ -771,7 +775,7 @@ const AppInner = () => {
                               className="fa-solid fa-gear"
                               style={{ marginRight: "8px" }}
                             ></i>{" "}
-                            Paramètres
+                            {t("app_dropdown_settings")}
                           </button>
                           <div className="dropdown-divider"></div>
                           <button
@@ -782,7 +786,7 @@ const AppInner = () => {
                               className="fa-solid fa-arrow-right-from-bracket"
                               style={{ marginRight: "8px" }}
                             ></i>{" "}
-                            Se déconnecter
+                            {t("app_dropdown_logout")}
                           </button>
                         </div>
                       )}
@@ -797,7 +801,7 @@ const AppInner = () => {
                 <input
                   autoFocus
                   type="text"
-                  placeholder="Rechercher des jeux, discussions, utilisateurs..."
+                  placeholder={t("app_search_placeholder")}
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="search-input-modern"

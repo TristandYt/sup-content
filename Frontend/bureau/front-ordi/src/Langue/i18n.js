@@ -6,6 +6,7 @@ import { resources_connexion } from "./dictionnaire_Connexion";
 import { resources_inscription } from "./dictionnaire_inscription";
 import { resources_jeu } from "./dictionnaire_Jeu";
 import { resources_footer } from "./dictionnaire_Footer";
+import { resources_app } from "./dictionnaire_app";
 
 // Fusion des différents dictionnaires de traduction par langue
 const combinedResources = {
@@ -16,6 +17,7 @@ const combinedResources = {
       ...resources_inscription.fr?.translation,
       ...resources_jeu.fr?.translation,
       ...resources_footer.fr?.translation,
+      ...resources_app.fr?.translation,
     },
   },
   en: {
@@ -25,6 +27,7 @@ const combinedResources = {
       ...resources_inscription.en?.translation,
       ...resources_jeu.en?.translation,
       ...resources_footer.en?.translation,
+      ...resources_app.en?.translation,
     },
   },
 };
