@@ -58,17 +58,17 @@ const StarRating = ({
   </div>
 );
 
-const formatDate = (updatedAt) => {
+const formatDate = (updatedAt, locale) => {
   if (!updatedAt) return "";
   const ts = updatedAt?._seconds
     ? new Date(updatedAt._seconds * 1000)
     : new Date(updatedAt);
-  return ts.toLocaleDateString("fr-FR");
+  return ts.toLocaleDateString(locale);
 };
 
-const formatReleaseDate = (timestamp) => {
-  if (!timestamp) return "Date inconnue";
-  return new Date(timestamp * 1000).toLocaleDateString("fr-FR", {
+const formatReleaseDate = (timestamp, locale, unknownLabel) => {
+  if (!timestamp) return unknownLabel;
+  return new Date(timestamp * 1000).toLocaleDateString(locale, {
     day: "numeric",
     month: "short",
     year: "numeric",
@@ -83,8 +83,9 @@ const Jeu = ({
   onGameClick,
   onForumClick,
 }) => {
-  const { i18n } = useTranslation();
+  const { t, i18n } = useTranslation();
   const navigate = useNavigate();
+  const dateLocale = i18n.language === "fr" ? "fr-FR" : "en-US";
 
   const [game, setGame] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -121,7 +122,7 @@ const Jeu = ({
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
   const [reportTargetId, setReportTargetId] = useState(null);
   const [reportTargetType, setReportTargetType] = useState("comment");
-  const [reportReason, setReportReason] = useState("Spam / Publicité");
+  const [reportReason, setReportReason] = useState(t("jeu_report_reason_spam"));
   const [customReason, setCustomReason] = useState("");
   const [reportSuccess, setReportSuccess] = useState(false);
 
@@ -279,18 +280,15 @@ const Jeu = ({
           if (status === 401) {
             setGameError({
               code: 401,
-              msg:
-                err.response.data?.msg ||
-                "Connectez-vous pour voir ce contenu.",
+              msg: err.response.data?.msg || t("jeu_error_login_required_msg"),
             });
           } else if (status === 403) {
             setGameError({
               code: 403,
-              msg:
-                err.response.data?.msg || "Vous n'avez pas accès à ce contenu.",
+              msg: err.response.data?.msg || t("jeu_error_restricted_msg"),
             });
           } else {
-            setGameError({ code: 0, msg: "Impossible de charger ce jeu." });
+            setGameError({ code: 0, msg: t("jeu_error_generic_msg") });
           }
         }
       } finally {
@@ -344,7 +342,7 @@ const Jeu = ({
 
   const toggleFavorite = async () => {
     if (!auth.currentUser) {
-      alert("Connectez-vous pour ajouter un favori.");
+      alert(t("jeu_fav_login_alert"));
       return;
     }
     setFavLoading(true);
@@ -368,7 +366,7 @@ const Jeu = ({
         onFavoriteChange?.();
       }
     } catch (err) {
-      alert("Erreur lors de la mise à jour des favoris.");
+      alert(t("jeu_fav_update_error"));
     } finally {
       setFavLoading(false);
     }
@@ -377,11 +375,11 @@ const Jeu = ({
   // Logique pour la création d'une nouvelle critique ou la mise à jour d'une existante
   const handleSaveReview = async () => {
     if (!auth.currentUser) {
-      alert("Connectez-vous pour laisser un avis.");
+      alert(t("jeu_reviews_login_to_review"));
       return;
     }
     if (rating === 0) {
-      alert("Veuillez choisir une note.");
+      alert(t("jeu_reviews_choose_rating"));
       return;
     }
     setReviewLoading(true);
@@ -391,7 +389,7 @@ const Jeu = ({
         user?.pseudo ||
         user?.displayName ||
         auth.currentUser?.displayName ||
-        "Anonyme";
+        t("jeu_reviews_anonymous");
       if (myReview)
         await api.put(`/reviews/${gameId}`, {
           rating,
@@ -408,14 +406,14 @@ const Jeu = ({
       await refreshReviews();
       setShowCommentBox(false);
     } catch (err) {
-      alert("Erreur lors de l'envoi de votre avis.");
+      alert(t("jeu_reviews_send_error"));
     } finally {
       setReviewLoading(false);
     }
   };
 
   const handleDeleteReview = async () => {
-    if (!window.confirm("Supprimer votre avis ?")) return;
+    if (!window.confirm(t("jeu_reviews_delete_confirm"))) return;
     setReviewLoading(true);
     try {
       const api = await authAxios();
@@ -425,7 +423,7 @@ const Jeu = ({
       setNewComment("");
       setShowCommentBox(false);
     } catch (err) {
-      alert("Erreur lors de la suppression.");
+      alert(t("jeu_reviews_delete_error"));
     } finally {
       setReviewLoading(false);
     }
@@ -434,7 +432,7 @@ const Jeu = ({
   // Envoi d'une critique (nouvelle ou mise à jour) vers l'API
   const handleLikeReview = async (reviewId) => {
     if (!auth.currentUser) {
-      alert("Connectez-vous pour aimer un avis.");
+      alert(t("jeu_reviews_login_to_like"));
       return;
     }
     try {
@@ -461,7 +459,7 @@ const Jeu = ({
 
   const handleSendComment = async (reviewId) => {
     if (!auth.currentUser) {
-      alert("Connectez-vous pour commenter.");
+      alert(t("jeu_comment_login_to_comment"));
       return;
     }
     if (!reviewCommentText.trim()) return;
@@ -472,7 +470,7 @@ const Jeu = ({
         user?.pseudo ||
         user?.displayName ||
         auth.currentUser?.displayName ||
-        "Anonyme";
+        t("jeu_reviews_anonymous");
       const res = await api.post(`/interactions/reviews/${reviewId}/comments`, {
         text: reviewCommentText,
         pseudo,
@@ -493,7 +491,7 @@ const Jeu = ({
         }
       }
     } catch (_) {
-      alert("Erreur lors de l'envoi du commentaire.");
+      alert(t("jeu_comment_send_error"));
     } finally {
       setCommentLoading(false);
     }
@@ -503,7 +501,7 @@ const Jeu = ({
   const handleReportContent = (targetId, targetType) => {
     setReportTargetId(targetId);
     setReportTargetType(targetType);
-    setReportReason("Spam / Publicité");
+    setReportReason(t("jeu_report_reason_spam"));
     setCustomReason("");
     setIsReportModalOpen(true);
   };
@@ -511,9 +509,11 @@ const Jeu = ({
   // Soumet le signalement vers l'API
   const handleConfirmReport = async () => {
     const finalReason =
-      reportReason === "Autre" ? customReason.trim() : reportReason;
+      reportReason === t("jeu_report_reason_other")
+        ? customReason.trim()
+        : reportReason;
     if (!finalReason) {
-      alert("Veuillez indiquer un motif valide.");
+      alert(t("jeu_report_modal_invalid_reason"));
       return;
     }
 
@@ -528,12 +528,12 @@ const Jeu = ({
         setReportSuccess(true);
       }
     } catch (_) {
-      alert("Une erreur s'est produite lors de l'envoi.");
+      alert(t("jeu_report_modal_submit_error"));
     }
   };
 
   const handleDeleteComment = async (reviewId, commentId) => {
-    if (!window.confirm("Supprimer ce commentaire définitivement ?")) return;
+    if (!window.confirm(t("jeu_comment_admin_delete_confirm"))) return;
 
     try {
       const api = await authAxios();
@@ -541,7 +541,7 @@ const Jeu = ({
         `/moderation/reviews/${reviewId}/comments/${commentId}`,
       );
       if (res.data.success) {
-        alert("Commentaire supprimé avec succès.");
+        alert(t("jeu_comment_admin_delete_success"));
         setReviews((prev) =>
           prev.map((r) =>
             r.id === reviewId
@@ -556,7 +556,7 @@ const Jeu = ({
         );
       }
     } catch (_) {
-      alert("Erreur lors de la suppression du commentaire.");
+      alert(t("jeu_comment_admin_delete_error"));
     }
   };
 
@@ -597,9 +597,9 @@ const Jeu = ({
   const displaySummary = () => {
     if (i18n.language === "fr") {
       if (translating) return game?.summary || "";
-      return translatedSummary || game?.summary || "Aucun résumé disponible.";
+      return translatedSummary || game?.summary || t("jeu_summary_none_fr");
     }
-    return game?.summary || "No summary available.";
+    return game?.summary || t("jeu_summary_none_en");
   };
 
   if (loading)
@@ -627,7 +627,7 @@ const Jeu = ({
               gap: "8px",
             }}
           >
-            ← Retour
+            ← {t("jeu_back")}
           </button>
           <div className="empty-state">
             <div className="empty-icon">
@@ -639,14 +639,13 @@ const Jeu = ({
             </div>
             <h3 className="empty-title">
               {gameError?.code === 401
-                ? "Connexion requise"
+                ? t("jeu_error_login_required_title")
                 : gameError?.code === 403
-                  ? "Accès restreint"
-                  : "Jeu introuvable"}
+                  ? t("jeu_error_restricted_title")
+                  : t("jeu_error_not_found_title")}
             </h3>
             <p className="empty-text">
-              {gameError?.msg ||
-                "Ce jeu n'existe pas ou n'est plus disponible."}
+              {gameError?.msg || t("jeu_error_not_found_msg")}
             </p>
             {gameError?.code === 401 && (
               <button
@@ -654,7 +653,7 @@ const Jeu = ({
                 style={{ marginTop: "1.5rem", padding: "10px 32px" }}
                 onClick={() => navigate("/login")}
               >
-                Se connecter
+                {t("jeu_login_button")}
               </button>
             )}
           </div>
@@ -679,7 +678,7 @@ const Jeu = ({
             gap: "8px",
           }}
         >
-          <i className="fa-solid fa-arrow-left"></i> Retour à la navigation
+          <i className="fa-solid fa-arrow-left"></i> {t("jeu_back")}
         </button>
 
         <div className="game-details-layout" style={{ overflow: "hidden" }}>
@@ -754,7 +753,7 @@ const Jeu = ({
                         className="fa-solid fa-heart"
                         style={{ marginRight: "8px" }}
                       ></i>{" "}
-                      Dans la collection
+                      {t("jeu_fav_in_collection")}
                     </>
                   ) : (
                     <>
@@ -762,7 +761,7 @@ const Jeu = ({
                         className="fa-regular fa-heart"
                         style={{ marginRight: "8px" }}
                       ></i>{" "}
-                      Ajouter aux favoris
+                      {t("jeu_fav_add")}
                     </>
                   )}
                 </button>
@@ -781,8 +780,8 @@ const Jeu = ({
                 >
                   <i className="fa-solid fa-message"></i>
                   {gameThread
-                    ? "Voir le fil de discussion"
-                    : "Ouvrir une discussion"}
+                    ? t("jeu_forum_view_thread")
+                    : t("jeu_forum_open_thread")}
                   {gameThread?.replyCount > 0 && (
                     <span
                       style={{
@@ -810,7 +809,7 @@ const Jeu = ({
                   textAlign: "center",
                 }}
               >
-                Informations
+                {t("jeu_info_title")}
               </h4>
               <div
                 style={{
@@ -822,17 +821,23 @@ const Jeu = ({
                 }}
               >
                 <p>
-                  <strong>Genres :</strong>{" "}
-                  {game.genres?.map((g) => g.name).join(", ") || "—"}
+                  <strong>{t("jeu_info_genres")}</strong>{" "}
+                  {game.genres?.map((g) => g.name).join(", ") ||
+                    t("jeu_info_empty")}
                 </p>
                 <p>
-                  <strong>Plateformes :</strong>{" "}
-                  {game.platforms?.map((p) => p.name).join(", ") || "—"}
+                  <strong>{t("jeu_info_platforms")}</strong>{" "}
+                  {game.platforms?.map((p) => p.name).join(", ") ||
+                    t("jeu_info_empty")}
                 </p>
                 {game.first_release_date && (
                   <p>
-                    <strong>Sortie :</strong>{" "}
-                    {formatReleaseDate(game.first_release_date)}
+                    <strong>{t("jeu_info_release")}</strong>{" "}
+                    {formatReleaseDate(
+                      game.first_release_date,
+                      dateLocale,
+                      t("jeu_info_unknown_date"),
+                    )}
                   </p>
                 )}
               </div>
@@ -846,7 +851,7 @@ const Jeu = ({
             <h1 className="hero-title">{game.name}</h1>
 
             <div className="section-header">
-              <h3 className="section-title">Résumé</h3>
+              <h3 className="section-title">{t("jeu_summary_title")}</h3>
               {translating && (
                 <span
                   style={{
@@ -861,7 +866,7 @@ const Jeu = ({
                     className="loading-spinner"
                     style={{ width: "12px", height: "12px" }}
                   />
-                  Traduction…
+                  {t("jeu_summary_translating")}
                 </span>
               )}
             </div>
@@ -878,11 +883,15 @@ const Jeu = ({
                   className="section-header"
                   style={{ marginBottom: "16px" }}
                 >
-                  <h3 className="section-title">DLC & Extensions</h3>
+                  <h3 className="section-title">
+                    {t("jeu_dlc_section_title")}
+                  </h3>
                   {hasDlcContent && (
                     <span className="section-count">
-                      {dlcs.length + expansions.length} contenu
-                      {dlcs.length + expansions.length > 1 ? "s" : ""}
+                      {dlcs.length + expansions.length}{" "}
+                      {dlcs.length + expansions.length > 1
+                        ? t("jeu_dlc_count_many")
+                        : t("jeu_dlc_count_one")}
                     </span>
                   )}
                 </div>
@@ -902,7 +911,7 @@ const Jeu = ({
                       className="loading-spinner"
                       style={{ width: "18px", height: "18px" }}
                     />
-                    Chargement des DLC…
+                    {t("jeu_dlc_loading")}
                   </div>
                 ) : (
                   <>
@@ -919,7 +928,7 @@ const Jeu = ({
                             className="fa-solid fa-gamepad"
                             style={{ marginRight: "6px" }}
                           ></i>{" "}
-                          DLC ({dlcs.length})
+                          {t("jeu_dlc_tab_dlc")} ({dlcs.length})
                         </button>
                         <button
                           className={`category-btn ${dlcTab === "expansion" ? "active" : ""}`}
@@ -929,7 +938,7 @@ const Jeu = ({
                             className="fa-solid fa-layer-group"
                             style={{ marginRight: "6px" }}
                           ></i>{" "}
-                          Expansions ({expansions.length})
+                          {t("jeu_dlc_tab_expansion")} ({expansions.length})
                         </button>
                       </div>
                     )}
@@ -955,7 +964,7 @@ const Jeu = ({
                                 letterSpacing: "0.05em",
                               }}
                             >
-                              DLC
+                              {t("jeu_dlc_label_dlc")}
                             </p>
                           )}
                           {dlcs.map((dlc) => (
@@ -964,6 +973,8 @@ const Jeu = ({
                               item={dlc}
                               getThumbUrl={getThumbUrl}
                               onGameClick={onGameClick}
+                              dateLocale={dateLocale}
+                              t={t}
                             />
                           ))}
                         </div>
@@ -990,7 +1001,7 @@ const Jeu = ({
                                 letterSpacing: "0.05em",
                               }}
                             >
-                              Expansions
+                              {t("jeu_dlc_label_expansion")}
                             </p>
                           )}
                           {expansions.map((exp) => (
@@ -1000,6 +1011,8 @@ const Jeu = ({
                               getThumbUrl={getThumbUrl}
                               onGameClick={onGameClick}
                               isExpansion
+                              dateLocale={dateLocale}
+                              t={t}
                             />
                           ))}
                         </div>
@@ -1011,7 +1024,7 @@ const Jeu = ({
 
             <div className="comments-section-modern">
               <div className="section-header">
-                <h3 className="section-title">Avis des joueurs</h3>
+                <h3 className="section-title">{t("jeu_reviews_title")}</h3>
                 {averageRating && (
                   <span
                     className="section-count"
@@ -1039,10 +1052,10 @@ const Jeu = ({
                     }}
                   >
                     {showCommentBox
-                      ? "Annuler"
+                      ? t("jeu_reviews_cancel")
                       : myReview
-                        ? "Modifier mon avis"
-                        : "Noter le jeu"}
+                        ? t("jeu_reviews_edit_mine")
+                        : t("jeu_reviews_rate")}
                   </button>
                 )}
               </div>
@@ -1063,7 +1076,7 @@ const Jeu = ({
                       fontSize: "0.9rem",
                     }}
                   >
-                    Votre note
+                    {t("jeu_reviews_your_rating")}
                   </p>
                   <div style={{ marginBottom: "1rem" }}>
                     <StarRating
@@ -1085,7 +1098,7 @@ const Jeu = ({
                     }}
                     value={newComment}
                     onChange={(e) => setNewComment(e.target.value)}
-                    placeholder="Partagez votre expérience... (optionnel)"
+                    placeholder={t("jeu_reviews_placeholder")}
                   />
                   <div style={{ display: "flex", gap: "1rem" }}>
                     <button
@@ -1099,10 +1112,10 @@ const Jeu = ({
                       }}
                     >
                       {reviewLoading
-                        ? "Envoi..."
+                        ? t("jeu_reviews_sending")
                         : myReview
-                          ? "Mettre à jour"
-                          : "Publier mon avis"}
+                          ? t("jeu_reviews_update")
+                          : t("jeu_reviews_publish")}
                     </button>
                     {myReview && (
                       <button
@@ -1115,7 +1128,7 @@ const Jeu = ({
                           color: "#fff",
                         }}
                       >
-                        Supprimer
+                        {t("jeu_reviews_delete")}
                       </button>
                     )}
                   </div>
@@ -1131,7 +1144,7 @@ const Jeu = ({
                       padding: "2rem 0",
                     }}
                   >
-                    Aucun avis pour le moment. Soyez le premier !
+                    {t("jeu_reviews_empty")}
                   </p>
                 )}
                 {reviews.map((r) => {
@@ -1164,7 +1177,7 @@ const Jeu = ({
                       >
                         <StarRating value={r.rating} readOnly />
                         <span className="game-year">
-                          {formatDate(r.updatedAt)}
+                          {formatDate(r.updatedAt, dateLocale)}
                         </span>
                       </div>
                       {r.text && (
@@ -1185,7 +1198,7 @@ const Jeu = ({
                               fontSize: "0.75rem",
                             }}
                           >
-                            (vous)
+                            {t("jeu_reviews_you_suffix")}
                           </span>
                         )}
                       </div>
@@ -1265,7 +1278,9 @@ const Jeu = ({
                               }
                               style={{ marginRight: "4px" }}
                             ></i>
-                            {isCommenting ? "Annuler" : "Répondre"}
+                            {isCommenting
+                              ? t("jeu_reviews_reply_cancel")
+                              : t("jeu_reviews_reply")}
                           </button>
                         )}
 
@@ -1284,13 +1299,13 @@ const Jeu = ({
                               fontWeight: "600",
                               marginLeft: "auto",
                             }}
-                            title="Signaler cet avis"
+                            title={t("jeu_reviews_report_review_title")}
                           >
                             <i
                               className="fa-solid fa-flag"
                               style={{ fontSize: "0.8rem" }}
                             ></i>
-                            Signaler
+                            {t("jeu_reviews_report")}
                           </button>
                         )}
 
@@ -1300,7 +1315,7 @@ const Jeu = ({
                             onClick={async () => {
                               if (
                                 !window.confirm(
-                                  "Supprimer définitivement cet avis ?",
+                                  t("jeu_reviews_admin_delete_confirm"),
                                 )
                               )
                                 return;
@@ -1315,9 +1330,7 @@ const Jeu = ({
                                   );
                                 }
                               } catch (_) {
-                                alert(
-                                  "Erreur lors de la suppression de l'avis.",
-                                );
+                                alert(t("jeu_reviews_admin_delete_error"));
                               }
                             }}
                             style={{
@@ -1331,7 +1344,7 @@ const Jeu = ({
                               alignItems: "center",
                               gap: "4px",
                             }}
-                            title="Supprimer (Admin)"
+                            title={t("jeu_reviews_admin_delete_title")}
                           >
                             <i className="fa-solid fa-trash-can"></i>
                           </button>
@@ -1384,7 +1397,9 @@ const Jeu = ({
                                       fontWeight: "600",
                                     }}
                                   >
-                                    {c.pseudo || c.userId || "Anonyme"}
+                                    {c.pseudo ||
+                                      c.userId ||
+                                      t("jeu_reviews_anonymous")}
                                   </span>
 
                                   <div
@@ -1407,7 +1422,7 @@ const Jeu = ({
                                           cursor: "pointer",
                                           padding: "2px",
                                         }}
-                                        title="Signaler ce commentaire"
+                                        title={t("jeu_comment_report_title")}
                                       >
                                         <i
                                           className="fa-solid fa-flag"
@@ -1428,7 +1443,9 @@ const Jeu = ({
                                           cursor: "pointer",
                                           padding: "2px",
                                         }}
-                                        title="Supprimer (Admin)"
+                                        title={t(
+                                          "jeu_comment_admin_delete_title",
+                                        )}
                                       >
                                         <i
                                           className="fa-solid fa-trash-can"
@@ -1467,7 +1484,7 @@ const Jeu = ({
                             onChange={(e) =>
                               setReviewCommentText(e.target.value)
                             }
-                            placeholder="Écrire une réponse..."
+                            placeholder={t("jeu_comment_placeholder")}
                             autoFocus
                           />
                           <div style={{ display: "flex", gap: "8px" }}>
@@ -1486,7 +1503,9 @@ const Jeu = ({
                                 commentLoading || !reviewCommentText.trim()
                               }
                             >
-                              {commentLoading ? "Envoi..." : "Envoyer"}
+                              {commentLoading
+                                ? t("jeu_comment_sending")
+                                : t("jeu_comment_send")}
                             </button>
                             <button
                               className="category-btn"
@@ -1499,7 +1518,7 @@ const Jeu = ({
                                 setReviewCommentText("");
                               }}
                             >
-                              Annuler
+                              {t("jeu_comment_cancel")}
                             </button>
                           </div>
                         </div>
@@ -1516,7 +1535,7 @@ const Jeu = ({
                   className="section-title"
                   style={{ marginBottom: "1.5rem" }}
                 >
-                  Jeux similaires
+                  {t("jeu_similar_title")}
                 </h3>
                 <div
                   style={{
@@ -1528,7 +1547,7 @@ const Jeu = ({
                   <button
                     onClick={() => scrollSimilar("left")}
                     className="slider-nav-btn left"
-                    title="Précédent"
+                    title={t("jeu_similar_prev")}
                   >
                     <svg
                       width="24"
@@ -1600,7 +1619,7 @@ const Jeu = ({
                   <button
                     onClick={() => scrollSimilar("right")}
                     className="slider-nav-btn right"
-                    title="Suivant"
+                    title={t("jeu_similar_next")}
                   >
                     <svg
                       width="24"
@@ -1667,7 +1686,7 @@ const Jeu = ({
                   fontWeight: 500,
                 }}
               >
-                Signaler un abus
+                {t("jeu_report_modal_title")}
               </h3>
               <button
                 onClick={() => {
@@ -1702,7 +1721,7 @@ const Jeu = ({
                     marginBottom: "8px",
                   }}
                 >
-                  Signalement envoyé
+                  {t("jeu_report_modal_success_title")}
                 </p>
                 <p
                   style={{
@@ -1713,8 +1732,8 @@ const Jeu = ({
                   }}
                 >
                   {reportTargetType === "review"
-                    ? "L'avis a été signalé à l'équipe de modération."
-                    : "Le commentaire a été signalé à l'équipe de modération."}
+                    ? t("jeu_report_modal_success_review")
+                    : t("jeu_report_modal_success_comment")}
                 </p>
                 <button
                   className="nav-user-btn"
@@ -1724,7 +1743,7 @@ const Jeu = ({
                     setReportSuccess(false);
                   }}
                 >
-                  Fermer
+                  {t("jeu_report_modal_close")}
                 </button>
               </div>
             ) : (
@@ -1738,8 +1757,8 @@ const Jeu = ({
                   }}
                 >
                   {reportTargetType === "review"
-                    ? "Veuillez sélectionner la raison pour laquelle vous estimez que cet avis enfreint nos conditions d'utilisation."
-                    : "Veuillez sélectionner la raison pour laquelle vous estimez que ce commentaire enfreint nos conditions d'utilisation."}
+                    ? t("jeu_report_modal_prompt_review")
+                    : t("jeu_report_modal_prompt_comment")}
                 </p>
 
                 <select
@@ -1757,22 +1776,24 @@ const Jeu = ({
                     padding: "0 10px",
                   }}
                 >
-                  <option value="Spam / Publicité">Spam / Publicité</option>
-                  <option value="Harcèlement / Intimidation">
-                    Harcèlement / Intimidation
+                  <option value={t("jeu_report_reason_spam")}>
+                    {t("jeu_report_reason_spam")}
                   </option>
-                  <option value="Propos haineux ou injurieux">
-                    Propos haineux ou injurieux
+                  <option value={t("jeu_report_reason_harassment")}>
+                    {t("jeu_report_reason_harassment")}
                   </option>
-                  <option value="Contenu inapproprié">
-                    Contenu inapproprié
+                  <option value={t("jeu_report_reason_hate")}>
+                    {t("jeu_report_reason_hate")}
                   </option>
-                  <option value="Autre">
-                    Autre motif (préciser ci-dessous)
+                  <option value={t("jeu_report_reason_inappropriate")}>
+                    {t("jeu_report_reason_inappropriate")}
+                  </option>
+                  <option value={t("jeu_report_reason_other")}>
+                    {t("jeu_report_reason_other")}
                   </option>
                 </select>
 
-                {reportReason === "Autre" && (
+                {reportReason === t("jeu_report_reason_other") && (
                   <textarea
                     value={customReason}
                     onChange={(e) => setCustomReason(e.target.value)}
@@ -1788,7 +1809,7 @@ const Jeu = ({
                       borderRadius: "6px",
                       resize: "vertical",
                     }}
-                    placeholder="Renseignez des détails complémentaires concernant l'infraction..."
+                    placeholder={t("jeu_report_modal_custom_placeholder")}
                   />
                 )}
 
@@ -1805,14 +1826,14 @@ const Jeu = ({
                     onClick={() => setIsReportModalOpen(false)}
                     style={{ padding: "8px 16px" }}
                   >
-                    Annuler
+                    {t("jeu_report_modal_cancel")}
                   </button>
                   <button
                     className="nav-user-btn"
                     style={{ background: "#ef4444", padding: "8px 18px" }}
                     onClick={handleConfirmReport}
                   >
-                    Envoyer le signalement
+                    {t("jeu_report_modal_submit")}
                   </button>
                 </div>
               </>
@@ -1825,9 +1846,16 @@ const Jeu = ({
   );
 };
 
-const DlcCard = ({ item, getThumbUrl, onGameClick, isExpansion = false }) => {
+const DlcCard = ({
+  item,
+  getThumbUrl,
+  onGameClick,
+  isExpansion = false,
+  dateLocale,
+  t,
+}) => {
   const releaseDate = item.first_release_date
-    ? new Date(item.first_release_date * 1000).toLocaleDateString("fr-FR", {
+    ? new Date(item.first_release_date * 1000).toLocaleDateString(dateLocale, {
         day: "numeric",
         month: "short",
         year: "numeric",
@@ -1908,7 +1936,9 @@ const DlcCard = ({ item, getThumbUrl, onGameClick, isExpansion = false }) => {
               flexShrink: 0,
             }}
           >
-            {isExpansion ? "Expansion" : "DLC"}
+            {isExpansion
+              ? t("jeu_dlc_label_expansion")
+              : t("jeu_dlc_label_dlc")}
           </span>
           {releaseDate && (
             <span

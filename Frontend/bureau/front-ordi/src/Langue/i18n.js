@@ -4,6 +4,7 @@ import LanguageDetector from "i18next-browser-languagedetector";
 import { resources } from "./dictionnaire_Accueil_Profil";
 import { resources_connexion } from "./dictionnaire_Connexion";
 import { resources_inscription } from "./dictionnaire_inscription";
+import { resources_jeu } from "./dictionnaire_Jeu";
 
 // Fusion des différents dictionnaires de traduction par langue
 const combinedResources = {
@@ -12,6 +13,7 @@ const combinedResources = {
       ...resources.fr?.translation,
       ...resources_connexion.fr?.translation,
       ...resources_inscription.fr?.translation,
+      ...resources_jeu.fr?.translation,
     },
   },
   en: {
@@ -19,6 +21,7 @@ const combinedResources = {
       ...resources.en?.translation,
       ...resources_connexion.en?.translation,
       ...resources_inscription.en?.translation,
+      ...resources_jeu.en?.translation,
     },
   },
 };
