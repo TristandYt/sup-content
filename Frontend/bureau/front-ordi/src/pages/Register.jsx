@@ -180,7 +180,7 @@ const Register = ({ onSwitch, onLoginSuccess }) => {
           >
             {t("signup_title")}
           </h2>
-          <p className="hero-subtitle">Créez votre profil de joueur</p>
+          <p className="hero-subtitle">{t("signup_subtitle")}</p>
         </div>
 
         {error && (
@@ -324,7 +324,7 @@ const Register = ({ onSwitch, onLoginSuccess }) => {
           {isLoading ? t("loading") : t("button_signup")}
         </button>
 
-        {/* Séparateur */}
+        {/* Séparateur traduit */}
         <div
           style={{ display: "flex", alignItems: "center", margin: "1.5rem 0" }}
         >
@@ -338,7 +338,7 @@ const Register = ({ onSwitch, onLoginSuccess }) => {
           <span
             style={{ padding: "0 15px", color: "#64748b", fontSize: "0.85rem" }}
           >
-            OU CONTINUER AVEC
+            {t("divider_signup")}
           </span>
           <div
             style={{
