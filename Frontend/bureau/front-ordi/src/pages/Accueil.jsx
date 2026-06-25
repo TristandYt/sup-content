@@ -134,13 +134,11 @@ const Accueil = ({
       }
     } catch (err) {
       console.error("Erreur API:", err);
-      setError(
-        "Impossible de contacter le service de recherche. Vérifiez votre connexion.",
-      );
+      setError(t("accueil_connection_error_text"));
     } finally {
       setLoading(false);
     }
-  }, [searchTerm, params, searchType]);
+  }, [searchTerm, params, searchType, t]);
 
   // Logique de tri côté client pour optimiser les performances lors d'un changement d'ordre simple
   const sortGamesLocally = (gamesList, sortBy, sortOrder) => {
@@ -237,11 +235,8 @@ const Accueil = ({
       <div className="hero-section">
         <div className="hero-gradient"></div>
         <div className="hero-content">
-          <h2 className="hero-title">Découvrez les meilleurs jeux</h2>
-          <p className="hero-subtitle">
-            Tout le contenu sur TGMF à portée de clic. Explorez, filtrez et
-            trouvez votre prochain jeu préféré.
-          </p>
+          <h2 className="hero-title">{t("accueil_hero_title")}</h2>
+          <p className="hero-subtitle">{t("accueil_hero_subtitle")}</p>
         </div>
       </div>
 
@@ -251,14 +246,14 @@ const Accueil = ({
           onClick={() => setSearchType("games")}
         >
           <i className="fa-solid fa-gamepad" style={{ marginRight: "8px" }}></i>{" "}
-          Jeux
+          {t("accueil_tab_games")}
         </button>
         <button
           className={`category-btn ${searchType === "users" ? "active" : ""}`}
           onClick={() => setSearchType("users")}
         >
           <i className="fa-solid fa-users" style={{ marginRight: "8px" }}></i>{" "}
-          Membres
+          {t("accueil_tab_members")}
         </button>
         {user?.role === "admin" && (
           <button
@@ -267,7 +262,7 @@ const Accueil = ({
             onClick={onAdminClick}
           >
             <i className="fa-solid fa-lock" style={{ marginRight: "6px" }}></i>{" "}
-            Administration
+            {t("accueil_tab_admin")}
           </button>
         )}
       </div>
@@ -288,17 +283,17 @@ const Accueil = ({
         </div>
         <h3 className="section-title">
           {searchTerm
-            ? `Résultats pour "${searchTerm}"`
+            ? t("accueil_results_for", { term: searchTerm })
             : searchType === "games"
-              ? "Tendances mondiales"
-              : "Membres de la communauté"}
+              ? t("accueil_trending")
+              : t("accueil_community_members")}
         </h3>
       </div>
 
       {loading && games.length === 0 && users.length === 0 ? (
         <div className="loading-container">
           <div className="loading-spinner"></div>
-          <p className="loading-text">Chargement en cours...</p>
+          <p className="loading-text">{t("accueil_loading")}</p>
         </div>
       ) : error ? (
         <div className="empty-state">
@@ -308,7 +303,7 @@ const Accueil = ({
               style={{ color: "rgb(239, 68, 68)" }}
             ></i>
           </div>
-          <h3 className="empty-title">Erreur de connexion</h3>
+          <h3 className="empty-title">{t("accueil_connection_error_title")}</h3>
           <p className="empty-text">{error}</p>
         </div>
       ) : (searchType === "games" ? games.length : users.length) === 0 ? (
@@ -326,10 +321,8 @@ const Accueil = ({
               ></i>
             )}
           </div>
-          <h3 className="empty-title">Aucun résultat</h3>
-          <p className="empty-text">
-            Essayez de modifier vos filtres ou votre recherche
-          </p>
+          <h3 className="empty-title">{t("accueil_no_results_title")}</h3>
+          <p className="empty-text">{t("accueil_no_results_text")}</p>
         </div>
       ) : (
         <div className={searchType === "games" ? "games-grid" : "game-grid"}>
@@ -369,7 +362,7 @@ const Accueil = ({
                           ? new Date(
                               game.first_release_date * 1000,
                             ).getFullYear()
-                          : "TBA"}
+                          : t("accueil_tba")}
                       </span>
                       {game.genres && game.genres.length > 0 && (
                         <span className="game-genre">
@@ -413,7 +406,7 @@ const Accueil = ({
                   >
                     <h3 className="game-title">{u.username || u.pseudo}</h3>
                     <p className="game-genre" style={{ fontSize: "0.8rem" }}>
-                      {u.bio || "Joueur passionné"}
+                      {u.bio || t("accueil_passionate_player")}
                     </p>
                   </div>
                 </div>
@@ -439,7 +432,7 @@ const Accueil = ({
               onClick={onOpenCatalogue}
               style={{ padding: "12px 60px", fontSize: "1rem" }}
             >
-              Voir tout le catalogue
+              {t("accueil_see_full_catalogue")}
             </button>
           </div>
         )}
@@ -453,13 +446,13 @@ const Accueil = ({
                 style={{ color: "rgb(59, 130, 246)" }}
               ></i>
             </div>
-            <h3 className="section-title">Jeux à venir</h3>
+            <h3 className="section-title">{t("accueil_upcoming_games")}</h3>
           </div>
 
           {upcomingLoading ? (
             <div className="loading-container">
               <div className="loading-spinner"></div>
-              <p className="loading-text">Chargement des jeux à venir...</p>
+              <p className="loading-text">{t("accueil_loading_upcoming")}</p>
             </div>
           ) : upcomingGames.length === 0 ? (
             <div className="empty-state">
@@ -469,10 +462,8 @@ const Accueil = ({
                   style={{ color: "rgb(148, 163, 184)" }}
                 ></i>
               </div>
-              <h3 className="empty-title">Aucun jeu à venir</h3>
-              <p className="empty-text">
-                Restez à l'écoute, de nouveaux titres arrivent bientôt !
-              </p>
+              <h3 className="empty-title">{t("accueil_no_upcoming_title")}</h3>
+              <p className="empty-text">{t("accueil_no_upcoming_text")}</p>
             </div>
           ) : (
             <div style={{ position: "relative", padding: "0 28px" }}>
@@ -554,7 +545,7 @@ const Accueil = ({
                             ? new Date(
                                 game.first_release_date * 1000,
                               ).getFullYear()
-                            : "TBA"}
+                            : t("accueil_tba")}
                         </span>
                       </div>
                     </div>
@@ -591,7 +582,7 @@ const Accueil = ({
                           style={{ width: "24px", height: "24px" }}
                         />
                         <span style={{ fontSize: "0.75rem" }}>
-                          Chargement...
+                          {t("loading")}
                         </span>
                       </>
                     ) : (
@@ -606,7 +597,7 @@ const Accueil = ({
                             padding: "0 10px",
                           }}
                         >
-                          Voir plus
+                          {t("accueil_see_more")}
                         </span>
                       </>
                     )}

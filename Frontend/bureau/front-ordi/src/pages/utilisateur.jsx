@@ -49,9 +49,9 @@ const PublicProfile = ({
 
   useEffect(() => {
     if (profile?.username) {
-      document.title = `Profil de ${profile.username} | TGMF`;
+      document.title = `${t("public_profile_title", { name: profile.username })} | TGMF`;
     } else {
-      document.title = "Profil | TGMF";
+      document.title = `${t("profile_tab_title")} | TGMF`;
     }
   }, [profile?.username]);
 
@@ -67,7 +67,7 @@ const PublicProfile = ({
       const api = await authAxios();
 
       if (!api) {
-        setError("Veuillez vous connecter pour voir ce profil.");
+        setError(t("error_login_required"));
         setLoading(false);
         return;
       }
@@ -105,7 +105,7 @@ const PublicProfile = ({
       const lib = libraryRes.data?.library || [];
 
       setProfile({
-        username: userData.username || userData.pseudo || "Utilisateur",
+        username: userData.username || userData.pseudo || t("default_username"),
         bio: userData.bio || "",
         website: userData.website || "",
         avatar:
@@ -121,7 +121,6 @@ const PublicProfile = ({
       });
 
       setLibrary(lib);
-      // On filtre les listes privées dans la vue publique
       setCustomLists(
         (customListsReq.data?.lists || []).filter((l) => !l.isPrivate),
       );
@@ -136,7 +135,7 @@ const PublicProfile = ({
       );
     } catch (err) {
       console.error("Erreur fetchAll:", err);
-      setError("Impossible de charger ce profil.");
+      setError(t("error_profile_load"));
     } finally {
       setLoading(false);
     }
@@ -177,9 +176,7 @@ const PublicProfile = ({
       onOpenMessaging(res.data.conversation);
     } catch (err) {
       console.error("Erreur conversation:", err);
-      showToast(
-        err.response?.data?.msg || "Impossible d'ouvrir la conversation.",
-      );
+      showToast(err.response?.data?.msg || t("error_conversation_open"));
     } finally {
       setMsgLoading(false);
     }
@@ -229,7 +226,7 @@ const PublicProfile = ({
       >
         <div className="loading-spinner" />
         <p className="loading-text" style={{ marginTop: "16px" }}>
-          Chargement du profil…
+          {t("loading_profile")}
         </p>
         <Footer />
       </div>
@@ -248,14 +245,14 @@ const PublicProfile = ({
             style={{ color: "rgb(148, 163, 184)" }}
           ></i>
         </div>
-        <h3 className="empty-title">Profil introuvable</h3>
+        <h3 className="empty-title">{t("profile_not_found")}</h3>
         <p className="empty-text">{error}</p>
         <button
           className="category-btn"
           onClick={onBack}
           style={{ marginTop: "20px" }}
         >
-          Retour
+          {t("btn_back")}
         </button>
         <Footer />
       </div>
@@ -270,7 +267,7 @@ const PublicProfile = ({
           onClick={onBack}
           style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}
         >
-          <i className="fa-solid fa-arrow-left"></i> Retour
+          <i className="fa-solid fa-arrow-left"></i> {t("btn_back")}
         </button>
       </div>
 
@@ -329,7 +326,7 @@ const PublicProfile = ({
               {profile.username}
               {profile.isCertified && (
                 <span
-                  title="Profil certifié"
+                  title={t("certified_profile")}
                   style={{
                     marginLeft: "10px",
                     fontSize: "1.2rem",
@@ -369,7 +366,7 @@ const PublicProfile = ({
                     className="fa-solid fa-check"
                     style={{ color: "rgb(34, 197, 94)", marginRight: "4px" }}
                   ></i>{" "}
-                  Abonnement mutuel
+                  {t("badge_mutual")}
                 </span>
               )}
               {!isMutual && theyFollowMe && (
@@ -383,7 +380,7 @@ const PublicProfile = ({
                     fontSize: "0.75rem",
                   }}
                 >
-                  Vous suit
+                  {t("badge_follows_you")}
                 </span>
               )}
               {iFollow && !theyFollowMe && (
@@ -397,7 +394,7 @@ const PublicProfile = ({
                     fontSize: "0.75rem",
                   }}
                 >
-                  Abonné
+                  {t("badge_subscribed")}
                 </span>
               )}
             </div>
@@ -425,8 +422,8 @@ const PublicProfile = ({
               }}
             >
               {[
-                { label: "Abonnés", value: profile.followersCount },
-                { label: "Abonnements", value: profile.followingCount },
+                { label: t("stat_followers"), value: profile.followersCount },
+                { label: t("stat_following"), value: profile.followingCount },
               ].map((stat, i) => (
                 <div
                   key={stat.label}
@@ -490,7 +487,7 @@ const PublicProfile = ({
                           marginRight: "5px",
                         }}
                       ></i>{" "}
-                      Se désabonner
+                      {t("btn_unfollow")}
                     </>
                   ) : (
                     <>
@@ -498,7 +495,7 @@ const PublicProfile = ({
                         className="fa-solid fa-user-plus"
                         style={{ marginRight: "5px" }}
                       ></i>{" "}
-                      Suivre
+                      {t("btn_follow")}
                     </>
                   )}
                 </button>
@@ -523,7 +520,7 @@ const PublicProfile = ({
                           className="fa-solid fa-message"
                           style={{ color: "#c084fc", marginRight: "5px" }}
                         ></i>{" "}
-                        Envoyer un message
+                        {t("btn_send_message")}
                       </>
                     )}
                   </button>
@@ -561,14 +558,13 @@ const PublicProfile = ({
                 border: "none",
               }}
             >
-              Ce compte est privé
+              {t("private_account_title")}
             </h3>
             <p
               className="hero-subtitle"
               style={{ fontSize: "0.95rem", margin: 0, opacity: 0.7 }}
             >
-              Abonnez-vous mutuellement pour découvrir sa collection et ses
-              listes.
+              {t("private_account_desc")}
             </p>
           </div>
         ) : (
@@ -576,14 +572,16 @@ const PublicProfile = ({
             {/* ── Collection publique ── */}
             <div style={{ marginTop: "40px" }}>
               <div className="section-header" style={{ marginBottom: "20px" }}>
-                <h3 className="section-title">Sa Collection</h3>
+                <h3 className="section-title">
+                  {t("public_collection_title")}
+                </h3>
               </div>
               {library.length === 0 ? (
                 <p
                   className="empty-text"
                   style={{ textAlign: "center", padding: "20px" }}
                 >
-                  Cet utilisateur n'a pas encore ajouté de jeux.
+                  {t("public_collection_empty")}
                 </p>
               ) : (
                 <div className="game-grid">
@@ -625,7 +623,7 @@ const PublicProfile = ({
                   className="section-header"
                   style={{ marginBottom: "20px" }}
                 >
-                  <h3 className="section-title">Ses Listes</h3>
+                  <h3 className="section-title">{t("public_lists_title")}</h3>
                   <span className="section-count">{customLists.length}</span>
                 </div>
                 <div
@@ -696,7 +694,9 @@ const PublicProfile = ({
                               className="section-count"
                               style={{ fontSize: "0.75rem" }}
                             >
-                              {(list.games || []).length} jeux
+                              {t("list_game_count", {
+                                count: (list.games || []).length,
+                              })}
                             </span>
                             <i
                               className={
@@ -725,7 +725,7 @@ const PublicProfile = ({
                                   textAlign: "center",
                                 }}
                               >
-                                Cette liste est vide.
+                                {t("list_empty")}
                               </p>
                             ) : (
                               <div
@@ -843,6 +843,7 @@ const PublicProfile = ({
 
 // CustomLists : Logique de gestion des collections de jeux personnalisées (Création/Édition/Suppression)
 const CustomLists = ({ onGameClick }) => {
+  const { t } = useTranslation();
   const [lists, setLists] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -874,7 +875,7 @@ const CustomLists = ({ onGameClick }) => {
       setGameResults([]);
       return;
     }
-    const t = setTimeout(async () => {
+    const timer = setTimeout(async () => {
       setSearchingGames(true);
       try {
         const api = await authAxios();
@@ -887,7 +888,7 @@ const CustomLists = ({ onGameClick }) => {
         setSearchingGames(false);
       }
     }, 350);
-    return () => clearTimeout(t);
+    return () => clearTimeout(timer);
   }, [gameSearch]);
 
   const fetchLists = async () => {
@@ -934,15 +935,15 @@ const CustomLists = ({ onGameClick }) => {
 
   const handleDeleteList = (id) => {
     setConfirmDialog({
-      message: "Voulez-vous vraiment supprimer cette liste ?",
+      message: t("confirm_delete_list"),
       onConfirm: async () => {
         try {
           const api = await authAxios();
           await api.delete(`/lists/custom/${id}`);
           setLists((prev) => prev.filter((l) => l.id !== id));
-          showToast("Liste supprimée avec succès.", "success");
+          showToast(t("toast_list_deleted"), "success");
         } catch (err) {
-          showToast("Erreur lors de la suppression de la liste.");
+          showToast(t("toast_list_delete_error"));
         }
       },
     });
@@ -1011,7 +1012,7 @@ const CustomLists = ({ onGameClick }) => {
   return (
     <div>
       <div className="section-header" style={{ marginBottom: "20px" }}>
-        <h2 className="section-title">Mes Listes</h2>
+        <h2 className="section-title">{t("section_lists")}</h2>
         <button
           className="category-btn active"
           onClick={() => {
@@ -1026,7 +1027,7 @@ const CustomLists = ({ onGameClick }) => {
                 className="fa-solid fa-xmark"
                 style={{ marginRight: "6px" }}
               ></i>{" "}
-              Annuler
+              {t("btn_cancel")}
             </>
           ) : (
             <>
@@ -1034,7 +1035,7 @@ const CustomLists = ({ onGameClick }) => {
                 className="fa-solid fa-plus"
                 style={{ marginRight: "6px" }}
               ></i>{" "}
-              Nouvelle liste
+              {t("btn_new_list")}
             </>
           )}
         </button>
@@ -1046,12 +1047,14 @@ const CustomLists = ({ onGameClick }) => {
           style={{ padding: "20px", marginBottom: "24px", cursor: "default" }}
         >
           <h4 className="game-title" style={{ marginBottom: "16px" }}>
-            {editingList ? "Modifier la liste" : "Créer une liste"}
+            {editingList
+              ? t("form_edit_list_title")
+              : t("form_create_list_title")}
           </h4>
           <input
             className="filter-select"
             style={{ width: "100%", marginBottom: "10px" }}
-            placeholder="Nom de la liste (ex: Horreur, RPG indés…)"
+            placeholder={t("form_list_name_placeholder")}
             value={formData.name}
             onChange={(e) => setFormData({ ...formData, name: e.target.value })}
           />
@@ -1063,7 +1066,7 @@ const CustomLists = ({ onGameClick }) => {
               marginBottom: "10px",
               paddingTop: "10px",
             }}
-            placeholder="Description (optionnel)"
+            placeholder={t("form_list_desc_placeholder")}
             value={formData.description}
             onChange={(e) =>
               setFormData({ ...formData, description: e.target.value })
@@ -1095,7 +1098,7 @@ const CustomLists = ({ onGameClick }) => {
                 className="fa-solid fa-lock"
                 style={{ color: "inherit", opacity: 0.6, marginRight: "6px" }}
               ></i>{" "}
-              Liste privée (visible uniquement par moi)
+              {t("form_list_private_label")}
             </label>
           </div>
           <button
@@ -1109,14 +1112,14 @@ const CustomLists = ({ onGameClick }) => {
             disabled={saving}
           >
             {saving ? (
-              "Sauvegarde..."
+              t("saving")
             ) : editingList ? (
               <>
                 <i
                   className="fa-solid fa-pen-to-square"
                   style={{ marginRight: "6px" }}
                 ></i>{" "}
-                Mettre à jour
+                {t("btn_update")}
               </>
             ) : (
               <>
@@ -1124,7 +1127,7 @@ const CustomLists = ({ onGameClick }) => {
                   className="fa-solid fa-check"
                   style={{ marginRight: "6px" }}
                 ></i>{" "}
-                Créer la liste
+                {t("btn_create_list")}
               </>
             )}
           </button>
@@ -1143,7 +1146,7 @@ const CustomLists = ({ onGameClick }) => {
           <p style={{ fontSize: "2rem", marginBottom: "12px", opacity: 0.6 }}>
             <i className="fa-solid fa-clipboard-list"></i>
           </p>
-          <p className="hero-subtitle">Aucune liste pour l'instant.</p>
+          <p className="hero-subtitle">{t("lists_empty")}</p>
         </div>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
@@ -1200,7 +1203,7 @@ const CustomLists = ({ onGameClick }) => {
                             className="fa-solid fa-lock"
                             style={{ marginRight: "4px" }}
                           ></i>
-                          Privée
+                          {t("badge_private")}
                         </span>
                       ) : (
                         <span
@@ -1217,14 +1220,16 @@ const CustomLists = ({ onGameClick }) => {
                             className="fa-solid fa-earth-americas"
                             style={{ marginRight: "4px" }}
                           ></i>
-                          Publique
+                          {t("badge_public")}
                         </span>
                       )}
                       <span
                         className="section-count"
                         style={{ fontSize: "0.72rem" }}
                       >
-                        {(list.games || []).length} jeux
+                        {t("list_game_count", {
+                          count: (list.games || []).length,
+                        })}
                       </span>
                     </div>
                   </div>
@@ -1301,8 +1306,7 @@ const CustomLists = ({ onGameClick }) => {
                           textAlign: "center",
                         }}
                       >
-                        Aucun jeu dans cette liste. Recherche ci-dessous pour en
-                        ajouter.
+                        {t("list_empty_add_hint")}
                       </p>
                     ) : (
                       <div
@@ -1386,7 +1390,7 @@ const CustomLists = ({ onGameClick }) => {
                       <input
                         className="filter-select"
                         style={{ width: "100%" }}
-                        placeholder="Ajouter un jeu à cette liste…"
+                        placeholder={t("list_add_game_placeholder")}
                         value={gameSearch}
                         onChange={(e) => setGameSearch(e.target.value)}
                         onBlur={() => setTimeout(() => setGameResults([]), 200)}
@@ -1472,7 +1476,7 @@ const CustomLists = ({ onGameClick }) => {
                                     className="fa-solid fa-check"
                                     style={{ marginRight: "4px" }}
                                   ></i>{" "}
-                                  Ajouté
+                                  {t("badge_added")}
                                 </span>
                               )}
                             </div>
@@ -1543,7 +1547,7 @@ const CustomLists = ({ onGameClick }) => {
                 fontSize: "1.1rem",
               }}
             >
-              Confirmation
+              {t("confirm_title")}
             </h3>
             <p
               style={{
@@ -1565,7 +1569,7 @@ const CustomLists = ({ onGameClick }) => {
                 className="category-btn"
                 onClick={() => setConfirmDialog(null)}
               >
-                Annuler
+                {t("btn_cancel")}
               </button>
               <button
                 className="nav-user-btn"
@@ -1575,7 +1579,7 @@ const CustomLists = ({ onGameClick }) => {
                   setConfirmDialog(null);
                 }}
               >
-                Confirmer
+                {t("btn_confirm")}
               </button>
             </div>
           </div>
@@ -1592,7 +1596,11 @@ const MyProfile = ({ user, onLoginSuccess, onLogout, onGameClick }) => {
 
   const [profileData, setProfileData] = useState({
     uid: user?.uid || user?.id || "",
-    pseudo: user?.username || user?.pseudo || user?.displayName || "Joueur",
+    pseudo:
+      user?.username ||
+      user?.pseudo ||
+      user?.displayName ||
+      t("default_username"),
     email: user?.email || "",
     bio: user?.bio || "",
     website: user?.profileData?.website || "",
@@ -1611,7 +1619,7 @@ const MyProfile = ({ user, onLoginSuccess, onLogout, onGameClick }) => {
   const [saveStatus, setSaveStatus] = useState("");
 
   useEffect(() => {
-    document.title = "Mon Profil | TGMF";
+    document.title = `${t("profileTitle")} | TGMF`;
   }, []);
 
   useEffect(() => {
@@ -1716,13 +1724,11 @@ const MyProfile = ({ user, onLoginSuccess, onLogout, onGameClick }) => {
       const api = await authAxios();
       if (!api) throw new Error("Erreur authentification");
 
-      // On nettoie le payload pour ne pas envoyer de chaînes vides bloquantes (Zod errors)
       const payload = {
         username: profileData.pseudo,
         bio: profileData.bio,
       };
       if (profileData.website) payload.website = profileData.website;
-      // On accepte désormais les liens classiques OU les images encodées en base64 compressées
       if (
         profileData.avatar &&
         (profileData.avatar.startsWith("http") ||
@@ -1759,8 +1765,6 @@ const MyProfile = ({ user, onLoginSuccess, onLogout, onGameClick }) => {
       setTimeout(() => {
         setSaveStatus("");
         setIsEditing(false);
-
-        // Force la mise à jour du Header si l'application principale n'écoute pas l'événement dynamique
         if (!onLoginSuccess) {
           window.location.reload();
         }
@@ -1778,7 +1782,6 @@ const MyProfile = ({ user, onLoginSuccess, onLogout, onGameClick }) => {
     else setProfileData({ ...profileData, [name]: value });
   };
 
-  // Fonction pour traiter, redimensionner et compresser l'image avant l'envoi
   const handleAvatarChange = (e) => {
     const file = e.target.files[0];
     if (file && file.type.startsWith("image/")) {
@@ -1787,11 +1790,10 @@ const MyProfile = ({ user, onLoginSuccess, onLogout, onGameClick }) => {
         const img = new Image();
         img.onload = () => {
           const canvas = document.createElement("canvas");
-          const MAX_SIZE = 250; // Taille maximale en pixels
+          const MAX_SIZE = 250;
           let width = img.width;
           let height = img.height;
 
-          // Calcul des nouvelles dimensions en conservant le ratio
           if (width > height) {
             if (width > MAX_SIZE) {
               height *= MAX_SIZE / width;
@@ -1810,7 +1812,6 @@ const MyProfile = ({ user, onLoginSuccess, onLogout, onGameClick }) => {
           const ctx = canvas.getContext("2d");
           ctx.drawImage(img, 0, 0, width, height);
 
-          // Compression à 70% de qualité JPEG pour garantir une très petite taille de payload
           const dataUrl = canvas.toDataURL("image/jpeg", 0.7);
           setProfileData({ ...profileData, avatar: dataUrl });
         };
@@ -1831,6 +1832,15 @@ const MyProfile = ({ user, onLoginSuccess, onLogout, onGameClick }) => {
   };
   const userAge = getAge(profileData.birthDate);
 
+  // Les clés internes restent en FR pour matcher countByStatus
+  const FILTERS = [
+    { key: "filter_all", status: "Tous" },
+    { key: "filter_to_play", status: "A faire" },
+    { key: "filter_playing", status: "En cours" },
+    { key: "filter_finished", status: "Fini" },
+    { key: "filter_dropped", status: "Abandonné" },
+  ];
+
   const filteredGames = favorites.filter((game) => {
     if (filter === "Tous") return true;
     const filterMapping = {
@@ -1850,7 +1860,6 @@ const MyProfile = ({ user, onLoginSuccess, onLogout, onGameClick }) => {
     return defaultCover;
   };
 
-  // Calcul des effectifs par statut
   const totalGames = favorites.length;
   const countByStatus = {
     Tous: totalGames,
@@ -1861,14 +1870,14 @@ const MyProfile = ({ user, onLoginSuccess, onLogout, onGameClick }) => {
   };
 
   const saveLabel = {
-    saving: "Sauvegarde...",
+    saving: t("saving"),
     saved: (
       <>
         <i
           className="fa-solid fa-check"
           style={{ color: "rgb(34, 197, 94)", marginRight: "5px" }}
         ></i>{" "}
-        Sauvegardé !
+        {t("alertSuccess")}
       </>
     ),
     error: (
@@ -1877,10 +1886,10 @@ const MyProfile = ({ user, onLoginSuccess, onLogout, onGameClick }) => {
           className="fa-solid fa-xmark"
           style={{ color: "rgb(239, 68, 68)", marginRight: "5px" }}
         ></i>{" "}
-        Erreur
+        {t("save_error")}
       </>
     ),
-    "": t("btnUpdate") || "Sauvegarder les modifications",
+    "": t("btnUpdate"),
   }[saveStatus];
 
   return (
@@ -1921,7 +1930,7 @@ const MyProfile = ({ user, onLoginSuccess, onLogout, onGameClick }) => {
           >
             <img
               src={profileData.avatar}
-              alt="Avatar"
+              alt={t("avatar_alt")}
               style={{
                 width: "110px",
                 height: "110px",
@@ -1942,7 +1951,7 @@ const MyProfile = ({ user, onLoginSuccess, onLogout, onGameClick }) => {
               {profileData.pseudo}
               {profileData.isCertified && (
                 <span
-                  title="Profil certifié"
+                  title={t("certified_profile")}
                   style={{ marginLeft: "10px", fontSize: "1.2rem" }}
                 >
                   <i
@@ -1971,7 +1980,7 @@ const MyProfile = ({ user, onLoginSuccess, onLogout, onGameClick }) => {
                     className="fa-solid fa-lock"
                     style={{ marginRight: "6px" }}
                   ></i>{" "}
-                  Votre compte est en mode privé
+                  {t("my_account_private")}
                 </span>
               </div>
             )}
@@ -1985,7 +1994,7 @@ const MyProfile = ({ user, onLoginSuccess, onLogout, onGameClick }) => {
                   fontWeight: "600",
                 }}
               >
-                {userAge} ans
+                {t("age_display", { age: userAge })}
               </p>
             )}
 
@@ -2009,7 +2018,7 @@ const MyProfile = ({ user, onLoginSuccess, onLogout, onGameClick }) => {
                   opacity: 0.5,
                 }}
               >
-                Aucune bio renseignée.
+                {t("no_bio")}
               </p>
             )}
 
@@ -2023,9 +2032,15 @@ const MyProfile = ({ user, onLoginSuccess, onLogout, onGameClick }) => {
               }}
             >
               {[
-                { label: "Abonnés", value: profileData.followersCount },
-                { label: "Abonnements", value: profileData.followingCount },
-                { label: "Jeux Favoris", value: favorites.length },
+                {
+                  label: t("stat_followers"),
+                  value: profileData.followersCount,
+                },
+                {
+                  label: t("stat_following"),
+                  value: profileData.followingCount,
+                },
+                { label: t("stat_games"), value: favorites.length },
               ].map((stat, i) => (
                 <div
                   key={stat.label}
@@ -2083,7 +2098,7 @@ const MyProfile = ({ user, onLoginSuccess, onLogout, onGameClick }) => {
                     className="fa-solid fa-xmark"
                     style={{ marginRight: "5px" }}
                   ></i>{" "}
-                  Fermer l'édition
+                  {t("btn_edit_close")}
                 </>
               ) : (
                 <>
@@ -2091,7 +2106,7 @@ const MyProfile = ({ user, onLoginSuccess, onLogout, onGameClick }) => {
                     className="fa-solid fa-pen-to-square"
                     style={{ marginRight: "5px" }}
                   ></i>{" "}
-                  Éditer le profil
+                  {t("btn_edit_open")}
                 </>
               )}
             </button>
@@ -2112,7 +2127,7 @@ const MyProfile = ({ user, onLoginSuccess, onLogout, onGameClick }) => {
               className="section-title"
               style={{ fontSize: "1.3rem", marginBottom: "20px" }}
             >
-              Modifier les informations
+              {t("edit_profile_title")}
             </h3>
 
             <div style={{ display: "grid", gap: "20px" }}>
@@ -2121,7 +2136,7 @@ const MyProfile = ({ user, onLoginSuccess, onLogout, onGameClick }) => {
                   className="game-genre"
                   style={{ display: "block", marginBottom: "8px" }}
                 >
-                  Photo de profil (Fichier image)
+                  {t("label_avatar")}
                 </label>
                 <input
                   type="file"
@@ -2140,7 +2155,7 @@ const MyProfile = ({ user, onLoginSuccess, onLogout, onGameClick }) => {
                     fontWeight: "bold",
                   }}
                 >
-                  {t("langLabel") || "Langue de l'interface"}
+                  {t("langLabel")}
                 </label>
                 <select
                   name="lang"
@@ -2157,8 +2172,8 @@ const MyProfile = ({ user, onLoginSuccess, onLogout, onGameClick }) => {
                     cursor: "pointer",
                   }}
                 >
-                  <option value="fr">Français</option>
-                  <option value="en">Anglais</option>
+                  <option value="fr">{t("lang_french")}</option>
+                  <option value="en">{t("lang_english")}</option>
                 </select>
               </div>
 
@@ -2168,7 +2183,7 @@ const MyProfile = ({ user, onLoginSuccess, onLogout, onGameClick }) => {
                     className="game-genre"
                     style={{ display: "block", marginBottom: "8px" }}
                   >
-                    {t("label_pseudo") || "Pseudo"}
+                    {t("label_pseudo")}
                   </label>
                   <input
                     type="text"
@@ -2184,7 +2199,7 @@ const MyProfile = ({ user, onLoginSuccess, onLogout, onGameClick }) => {
                     className="game-genre"
                     style={{ display: "block", marginBottom: "8px" }}
                   >
-                    Date de naissance
+                    {t("label_birthdate")}
                   </label>
                   <input
                     type="date"
@@ -2202,7 +2217,7 @@ const MyProfile = ({ user, onLoginSuccess, onLogout, onGameClick }) => {
                   className="game-genre"
                   style={{ display: "block", marginBottom: "8px" }}
                 >
-                  {t("bioLabel") || "Bio"}
+                  {t("bioLabel")}
                 </label>
                 <textarea
                   name="bio"
@@ -2214,7 +2229,7 @@ const MyProfile = ({ user, onLoginSuccess, onLogout, onGameClick }) => {
                     minHeight: "80px",
                     paddingTop: "10px",
                   }}
-                  placeholder={t("placeholderBio") || "Parle un peu de toi..."}
+                  placeholder={t("placeholderBio")}
                 />
               </div>
 
@@ -2242,23 +2257,21 @@ const MyProfile = ({ user, onLoginSuccess, onLogout, onGameClick }) => {
         {/* ========== SECTION COLLECTION  ========== */}
         <div style={{ marginTop: "40px" }}>
           <div className="section-header" style={{ marginBottom: "20px" }}>
-            <h2 className="section-title">Ma Collection</h2>
+            <h2 className="section-title">{t("section_collection")}</h2>
           </div>
 
-          {/* Filtres avec effectifs dans chaque bouton */}
           <div className="filters-container" style={{ marginBottom: "30px" }}>
-            {["Tous", "A faire", "En cours", "Fini", "Abandonné"].map((s) => (
+            {FILTERS.map(({ key, status }) => (
               <button
-                key={s}
-                className={`category-btn ${filter === s ? "active" : ""}`}
-                onClick={() => setFilter(s)}
+                key={status}
+                className={`category-btn ${filter === status ? "active" : ""}`}
+                onClick={() => setFilter(status)}
               >
-                {s} ({countByStatus[s]})
+                {t(key)} ({countByStatus[status]})
               </button>
             ))}
           </div>
 
-          {/* Grille des jeux filtrés */}
           {filteredGames.length === 0 ? (
             <div
               className="game-card-modern"
@@ -2270,8 +2283,10 @@ const MyProfile = ({ user, onLoginSuccess, onLogout, onGameClick }) => {
             >
               <p className="hero-subtitle">
                 {favorites.length === 0
-                  ? "Ta bibliothèque est vide. Ajoute des jeux pour les voir ici !"
-                  : `Aucun jeu dans la catégorie "${filter}"`}
+                  ? t("library_empty")
+                  : t("library_empty_filter", {
+                      filter: t(FILTERS.find((f) => f.status === filter)?.key),
+                    })}
               </p>
             </div>
           ) : (
@@ -2304,10 +2319,10 @@ const MyProfile = ({ user, onLoginSuccess, onLogout, onGameClick }) => {
                         )
                       }
                     >
-                      <option value="to_play">À faire</option>
-                      <option value="playing">En cours</option>
-                      <option value="finished">Fini</option>
-                      <option value="dropped">Abandonné</option>
+                      <option value="to_play">{t("filter_to_play")}</option>
+                      <option value="playing">{t("filter_playing")}</option>
+                      <option value="finished">{t("filter_finished")}</option>
+                      <option value="dropped">{t("filter_dropped")}</option>
                     </select>
                   </div>
                 </div>
@@ -2326,6 +2341,7 @@ const MyProfile = ({ user, onLoginSuccess, onLogout, onGameClick }) => {
 
 // Notificationsbell : Composant gérant la récupération périodique et l'affichage des notifications sociales
 export const Notificationsbell = ({ user, onUserClick, onGameClick }) => {
+  const { t } = useTranslation();
   const [notifs, setNotifs] = useState([]);
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -2340,7 +2356,7 @@ export const Notificationsbell = ({ user, onUserClick, onGameClick }) => {
           style={{ color: "rgb(148, 163, 184)" }}
         ></i>
       ),
-      label: "vous suit",
+      label: t("notif_follow"),
       color: "#a78bfa",
     },
     like: {
@@ -2350,7 +2366,7 @@ export const Notificationsbell = ({ user, onUserClick, onGameClick }) => {
           style={{ color: "rgb(239, 68, 68)" }}
         ></i>
       ),
-      label: "a aimé votre avis",
+      label: t("notif_like"),
       color: "#f87171",
     },
     comment: {
@@ -2360,7 +2376,7 @@ export const Notificationsbell = ({ user, onUserClick, onGameClick }) => {
           style={{ color: "rgb(96, 165, 250)" }}
         ></i>
       ),
-      label: "a commenté",
+      label: t("notif_comment"),
       color: "#60a5fa",
     },
     review: {
@@ -2370,7 +2386,7 @@ export const Notificationsbell = ({ user, onUserClick, onGameClick }) => {
           style={{ color: "rgb(255, 212, 59)" }}
         ></i>
       ),
-      label: "a noté le jeu",
+      label: t("notif_review"),
       color: "#fbbf24",
     },
     message: {
@@ -2380,7 +2396,7 @@ export const Notificationsbell = ({ user, onUserClick, onGameClick }) => {
           style={{ color: "rgb(52, 211, 153)" }}
         ></i>
       ),
-      label: "vous a écrit",
+      label: t("notif_message"),
       color: "#34d399",
     },
     thread_reply: {
@@ -2390,7 +2406,7 @@ export const Notificationsbell = ({ user, onUserClick, onGameClick }) => {
           style={{ color: "rgb(192, 132, 252)" }}
         ></i>
       ),
-      label: "a répondu au fil",
+      label: t("notif_thread_reply"),
       color: "#c084fc",
     },
   };
@@ -2399,10 +2415,11 @@ export const Notificationsbell = ({ user, onUserClick, onGameClick }) => {
     if (!ts) return "";
     const d = ts?._seconds ? new Date(ts._seconds * 1000) : new Date(ts);
     const diff = (Date.now() - d) / 1000;
-    if (diff < 60) return "À l'instant";
-    if (diff < 3600) return `${Math.floor(diff / 60)} min`;
-    if (diff < 86400) return `${Math.floor(diff / 3600)} h`;
-    return `${Math.floor(diff / 86400)} j`;
+    if (diff < 60) return t("time_just_now");
+    if (diff < 3600) return t("time_minutes", { count: Math.floor(diff / 60) });
+    if (diff < 86400)
+      return t("time_hours", { count: Math.floor(diff / 3600) });
+    return t("time_days", { count: Math.floor(diff / 86400) });
   };
 
   const fetchNotifs = React.useCallback(async () => {
@@ -2468,7 +2485,7 @@ export const Notificationsbell = ({ user, onUserClick, onGameClick }) => {
           if (!open) fetchNotifs();
         }}
         className="nav-icon-btn"
-        title="Notifications"
+        title={t("notifications_title")}
         style={{ position: "relative" }}
       >
         <i className="fa-solid fa-bell" style={{ color: "currentColor" }}></i>
@@ -2522,7 +2539,7 @@ export const Notificationsbell = ({ user, onUserClick, onGameClick }) => {
             }}
           >
             <span style={{ fontWeight: "600", fontSize: "0.95rem" }}>
-              Notifications{" "}
+              {t("notifications_title")}{" "}
               {unread > 0 && (
                 <span
                   style={{
@@ -2534,7 +2551,7 @@ export const Notificationsbell = ({ user, onUserClick, onGameClick }) => {
                     padding: "1px 7px",
                   }}
                 >
-                  {unread} nouvelles
+                  {t("notifications_new_count", { count: unread })}
                 </span>
               )}
             </span>
@@ -2550,7 +2567,7 @@ export const Notificationsbell = ({ user, onUserClick, onGameClick }) => {
                   fontWeight: "600",
                 }}
               >
-                Tout marquer lu
+                {t("notifications_mark_all_read")}
               </button>
             )}
           </div>
@@ -2571,7 +2588,7 @@ export const Notificationsbell = ({ user, onUserClick, onGameClick }) => {
                   <i className="fa-solid fa-bell-slash"></i>
                 </div>
                 <p style={{ opacity: 0.6, fontSize: "0.85rem" }}>
-                  Aucune notification pour le moment
+                  {t("notifications_empty")}
                 </p>
               </div>
             ) : (
@@ -2630,7 +2647,9 @@ export const Notificationsbell = ({ user, onUserClick, onGameClick }) => {
                         }}
                       >
                         <strong style={{ color: cfg.color }}>
-                          {n.senderPseudo || n.sourceUserId || "Quelqu'un"}
+                          {n.senderPseudo ||
+                            n.sourceUserId ||
+                            t("notif_someone")}
                         </strong>{" "}
                         {cfg.label}
                         {n.gameName && (
