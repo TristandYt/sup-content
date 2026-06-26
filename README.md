@@ -1,3 +1,5 @@
+Si vous interressé n'hesitez pas a reprendre le projet.
+
 # 🎮 TGMF (GameList)
 
 TGMF est une plateforme sociale et un gestionnaire de bibliothèque pour les passionnés de jeux vidéo.
